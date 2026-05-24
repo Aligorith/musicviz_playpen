@@ -1,0 +1,386 @@
+Prompt
+======
+
+Add an extra "Record" button beside the "Restart" one (and in that same group). When clicked, this will start recording the canvas to a mp4 video file. This video capture will include everything in the browser window + the audio playback; It will record the audio being played from start to finish once (i.e. similar to pressing the Restart button)
+
+------------
+
+Response
+========
+
+To implement this cleanly, the recording system should:
+
+* capture the visible canvas stream
+* merge in WebAudio playback audio
+* automatically restart playback from beginning
+* stop automatically at end-of-track
+* export as `.mp4` if supported, otherwise `.webm`
+* include:
+
+  * spectrogram
+  * bubbles
+  * scrubber
+  * timeline
+  * overlays
+  * playback motion
+  * audio
+
+---
+
+# Required Architecture Changes
+
+## 1. Add Record Button
+
+Add beside Restart:
+
+```html
+<button id="recordBtn">
+    ⬤ Record
+</button>
+```
+
+---
+
+# 2. Create MediaStream Recording Pipeline
+
+The browser cannot directly record:
+
+```text
+canvas + WebAudio
+```
+
+together automatically.
+
+Instead:
+
+* canvas stream captured with:
+
+```js
+canvas.captureStream(60)
+```
+
+* audio captured with:
+
+```js
+audioCtx.createMediaStreamDestination()
+```
+
+* playback routed BOTH to:
+
+  * speakers
+  * recording destination
+
+---
+
+# 3. Merge Audio + Video Tracks
+
+```js
+const combined =
+    new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...audioDest.stream.getAudioTracks()
+    ]);
+```
+
+---
+
+# 4. Start Playback From Beginning
+
+Recording should behave like:
+
+```text
+Restart + Play + Capture
+```
+
+So:
+
+```js
+playAt(0);
+```
+
+must occur automatically.
+
+---
+
+# 5. Auto-stop Recording
+
+At end of audio:
+
+```js
+setTimeout(
+    stopRecording,
+    audioDuration * 1000 + 250
+);
+```
+
+---
+
+# 6. Export Download
+
+After recording:
+
+```js
+const blob =
+    new Blob(chunks,{
+        type:mime
+    });
+```
+
+Then auto-download.
+
+---
+
+# 7. MIME Type Fallback
+
+Most browsers support:
+
+```text
+video/webm
+```
+
+Some Chromium builds support:
+
+```text
+video/mp4
+```
+
+Recommended logic:
+
+```js
+if(MediaRecorder.isTypeSupported("video/mp4"))
+```
+
+else fallback to:
+
+```text
+video/webm
+```
+
+---
+
+# EXACT CODE ADDITIONS
+
+---
+
+# A. Add Globals
+
+Place near other globals:
+
+```js
+let mediaRecorder = null;
+let recordingChunks = [];
+let recording = false;
+
+const recordingDest =
+    audioCtx.createMediaStreamDestination();
+```
+
+---
+
+# B. Modify playAt()
+
+REPLACE:
+
+```js
+playbackSource.connect(
+    audioCtx.destination
+);
+```
+
+WITH:
+
+```js
+playbackSource.connect(
+    audioCtx.destination
+);
+
+playbackSource.connect(
+    recordingDest
+);
+```
+
+---
+
+# C. Add Record Button HTML
+
+Beside Restart:
+
+```html
+<button id="recordBtn">
+    ⬤ Record
+</button>
+```
+
+---
+
+# D. Add Recording Function
+
+Add near playback functions:
+
+```js
+async function startRecording(){
+
+    if(!audioBuffer)
+        return;
+
+    stopPlayback();
+
+    recordingChunks = [];
+
+    const canvasStream =
+        canvas.captureStream(60);
+
+    const combined =
+        new MediaStream([
+
+            ...canvasStream.getVideoTracks(),
+
+            ...recordingDest
+                .stream
+                .getAudioTracks()
+        ]);
+
+    const mime =
+        MediaRecorder.isTypeSupported(
+            "video/mp4"
+        )
+        ? "video/mp4"
+        : "video/webm";
+
+    mediaRecorder =
+        new MediaRecorder(
+            combined,
+            {
+                mimeType:mime
+            }
+        );
+
+    mediaRecorder.ondataavailable =
+        e=>{
+
+            if(e.data.size > 0)
+                recordingChunks.push(e.data);
+        };
+
+    mediaRecorder.onstop = ()=>{
+
+        const blob =
+            new Blob(
+                recordingChunks,
+                {type:mime}
+            );
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const a =
+            document.createElement("a");
+
+        a.href = url;
+
+        a.download =
+            mime.includes("mp4")
+            ? "spectrogram_capture.mp4"
+            : "spectrogram_capture.webm";
+
+        a.click();
+
+        URL.revokeObjectURL(url);
+
+        recording = false;
+
+        document
+        .getElementById("recordBtn")
+        .textContent =
+            "⬤ Record";
+    };
+
+    mediaRecorder.start();
+
+    recording = true;
+
+    document
+    .getElementById("recordBtn")
+    .textContent =
+        "■ Recording";
+
+    playAt(0);
+
+    setTimeout(()=>{
+
+        if(mediaRecorder &&
+           recording){
+
+            mediaRecorder.stop();
+        }
+
+    }, audioDuration * 1000 + 300);
+}
+```
+
+---
+
+# E. Hook Up Button
+
+Add:
+
+```js
+document
+.getElementById("recordBtn")
+.onclick = ()=>{
+
+    if(recording){
+
+        mediaRecorder.stop();
+
+    }else{
+
+        startRecording();
+    }
+};
+```
+
+---
+
+# Result
+
+This produces:
+
+* full animated spectrogram video
+* scrubber motion
+* overlays
+* note bubbles
+* playback audio
+* automatic restart
+* automatic export
+
+with:
+
+* no external libraries
+* pure browser APIs
+* realtime synchronized output
+
+The resulting recording behaves much like:
+
+```text
+OBS capture of the visualization
+```
+
+except generated directly in-browser.
+
+==================
+
+Q: generate the full html
+
+------------
+
+Below is a complete working single-file HTML with the Record feature fully integrated into your current spectrogram + playback system.
+
+It:
+
+Adds Record button next to Restart
+Records canvas + audio together
+Auto-starts from beginning when recording
+Auto-stops at end of track
+Exports .webm (and .mp4 only if browser supports it)
+Keeps everything else intact (spectrogram, bubbles, scrub, playback)

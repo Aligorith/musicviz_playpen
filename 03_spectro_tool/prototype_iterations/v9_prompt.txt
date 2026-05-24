@@ -1,0 +1,192 @@
+Prompt
+======
+
+Time ticks are still hidden, Move them to bottom of the page
+
+
+------------------
+
+Response
+========
+
+Replace your existing `drawTimelineTicks()` function with this version:
+
+```js id="j5xv7n"
+function drawTimelineTicks() {
+
+    if (!audioDuration) return;
+
+    /*
+        Timeline moved to bottom
+    */
+    const baseY =
+        canvas.height - 34;
+
+    const pxPerSecond =
+        canvas.width / audioDuration;
+
+    /*
+        Bottom guide line
+    */
+    ctx.fillStyle =
+        "rgba(255,255,255,0.10)";
+
+    ctx.fillRect(
+        0,
+        baseY,
+        canvas.width,
+        1
+    );
+
+    for (
+        let sec = 0;
+        sec <= audioDuration;
+        sec++
+    ) {
+
+        const x =
+            sec * pxPerSecond;
+
+        const major =
+            sec % 10 === 0;
+
+        /*
+            Tick sizes
+        */
+        const tickHeight =
+            major ? 26 : 14;
+
+        ctx.strokeStyle =
+            "rgba(255,255,255,0.88)";
+
+        ctx.lineWidth =
+            major ? 1.5 : 1;
+
+        ctx.beginPath();
+
+        /*
+            Draw upward
+        */
+        ctx.moveTo(x, baseY);
+
+        ctx.lineTo(
+            x,
+            baseY - tickHeight
+        );
+
+        ctx.stroke();
+
+        /*
+            Major labels
+        */
+        if (major) {
+
+            const label =
+                formatTime(sec);
+
+            ctx.font =
+                "12px monospace";
+
+            ctx.fillStyle =
+                "rgba(255,255,255,0.94)";
+
+            /*
+                Keep labels onscreen
+            */
+            let tx = x + 4;
+
+            const width =
+                ctx.measureText(label).width;
+
+            if (
+                tx + width >
+                canvas.width - 4
+            ) {
+
+                tx =
+                    canvas.width -
+                    width -
+                    4;
+            }
+
+            ctx.fillText(
+                label,
+                tx,
+                baseY - 30
+            );
+        }
+    }
+}
+```
+
+Also update the spectrogram vertical mapping so the spectrogram does not overlap the bottom timeline.
+
+Find this inside `generateSpectrogram()`:
+
+```js id="ygvkt4"
+const y =
+    uiOffsetY +
+    (
+        height - uiOffsetY
+    ) -
+    (
+        Math.log2(freq / 20) /
+        Math.log2(8000 / 20)
+    ) *
+    (
+        height - uiOffsetY
+    );
+```
+
+Replace with:
+
+```js id="fr4u1m"
+const timelineHeight = 42;
+
+const usableHeight =
+    height -
+    uiOffsetY -
+    timelineHeight;
+
+const y =
+    uiOffsetY +
+    usableHeight -
+    (
+        Math.log2(freq / 20) /
+        Math.log2(8000 / 20)
+    ) *
+    usableHeight;
+```
+
+And update the bubble vertical placement.
+
+Find:
+
+```js id="zj4h3s"
+y:
+    uiOffsetY +
+    (
+        canvas.height -
+        uiOffsetY
+    ) * 0.72,
+```
+
+Replace with:
+
+```js id="m6k2qc"
+y:
+    uiOffsetY +
+    (
+        canvas.height -
+        uiOffsetY -
+        42
+    ) * 0.72,
+```
+
+This moves:
+
+* all timeline ticks to the bottom edge
+* large timestamp labels above the bottom ticks
+* spectrogram rendering above the timeline strip
+* bubbles above the timeline area
+* keeps the entire UI unobstructed by the top toolbar

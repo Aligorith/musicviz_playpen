@@ -1,0 +1,230 @@
+Prompt
+======
+
+* Allow tuning offset to operate over a larger range (e.g. up to an octave either way)
+* When the tuning slider is being dragged, only update the scrubber pitch name. Then, only when the dragging stops should the rest of the data be updated to match. Otherwise it's too slow to tweak
+* Brightness slider should not desaturate the line colors
+
+
+-------------------
+
+Response
+========
+
+Replace the tuning slider HTML with this wider range:
+
+```html id="wide_tuning_slider"
+<label>
+    Tuning Offset
+    <input
+        type="range"
+        id="tuning"
+        min="-12"
+        max="12"
+        step="0.01"
+        value="0"
+    />
+    <span id="tuningVal">
+        0.00 st
+    </span>
+</label>
+```
+
+---
+
+Add these globals near the other state variables:
+
+```js id="drag_state"
+let tuningDragValue = 0;
+let tuningDragging = false;
+```
+
+---
+
+Replace your ENTIRE tuning slider JS listener block with this:
+
+```js id="deferred_tuning_update"
+const tuningSlider =
+    document.getElementById("tuning");
+
+tuningSlider.addEventListener(
+    "input",
+    e => {
+
+        tuningDragValue =
+            parseFloat(
+                e.target.value
+            );
+
+        tuningDragging = true;
+
+        document
+        .getElementById("tuningVal")
+        .textContent =
+            tuningDragValue.toFixed(2)
+            + " st";
+    }
+);
+
+function commitTuning(){
+
+    tuningOffset =
+        tuningDragValue;
+
+    updatePitchLabels();
+
+    redrawSpectrogram();
+
+    tuningDragging = false;
+}
+
+tuningSlider.addEventListener(
+    "change",
+    commitTuning
+);
+
+tuningSlider.addEventListener(
+    "mouseup",
+    commitTuning
+);
+
+tuningSlider.addEventListener(
+    "touchend",
+    commitTuning
+);
+```
+
+---
+
+Now replace `tunedMidi()` with this:
+
+```js id="live_scrub_tuning"
+function tunedMidi(freq){
+
+    const midi =
+        69 +
+        12 * Math.log2(freq / 440);
+
+    return (
+        midi +
+        (
+            tuningDragging
+            ? tuningDragValue
+            : tuningOffset
+        )
+    );
+}
+```
+
+This makes:
+
+* scrubber labels update live while dragging
+* full spectrogram + note relabeling deferred until release
+* tuning remains smooth even with huge spectrograms
+
+---
+
+Now replace `colorForFreq()` with this brightness-safe version:
+
+```js id="brightness_saturation_fix"
+function colorForFreq(freq){
+
+    const midi =
+        tunedMidi(freq);
+
+    const octave =
+        Math.floor(midi / 12);
+
+    const pitch =
+        Math.round(midi) % 12;
+
+    let rgb;
+
+    switch(pitch){
+
+        case 0:
+            rgb = [255,210,160];
+            break;
+
+        case 2:
+            rgb = [40,60,150];
+            break;
+
+        case 4:
+            rgb =
+                freq >= 440
+                ? [220,180,255]
+                : [120,80,50];
+            break;
+
+        case 5:
+            rgb = [190,255,80];
+            break;
+
+        case 7:
+
+            if(octave < 4)
+                rgb = [0,80,30];
+            else if(octave === 4)
+                rgb = [70,190,50];
+            else
+                rgb = [180,255,80];
+
+            break;
+
+        case 9:
+            rgb = [255,70,70];
+            break;
+
+        case 11:
+            rgb = [120,220,255];
+            break;
+
+        default:
+            rgb = [180,180,180];
+    }
+
+    return rgb;
+}
+```
+
+---
+
+Then replace BOTH occurrences of:
+
+```js id="old_alpha"
+const alpha =
+    Math.min(
+        1,
+        (
+            mag / 55
+        ) *
+        brightnessBoost
+    );
+```
+
+with:
+
+```js id="new_alpha"
+const alpha =
+    Math.min(
+        1,
+        Math.pow(
+            (
+                mag / 55
+            ) *
+            brightnessBoost,
+            0.8
+        )
+    );
+```
+
+This changes brightness behavior from:
+
+* scaling RGB values (which washes out colors)
+
+to:
+
+* scaling opacity/intensity only
+
+which preserves saturation and keeps the note colors vivid.

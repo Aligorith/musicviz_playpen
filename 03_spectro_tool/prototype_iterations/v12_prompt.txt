@@ -1,0 +1,233 @@
+Prompt
+======
+
+How to increase accuracy of the pitch detection
+
+
+------------------
+
+
+Response
+========
+
+Right now your “pitch detection” is really just **FFT peak picking**, which is why it feels unstable and only loosely musical. To make it genuinely accurate, you need to fix three things: resolution, estimator quality, and harmonic interpretation.
+
+---
+
+# 1. Increase frequency resolution (biggest win)
+
+### Problem
+
+`fftSize = 1024` is too small for clean pitch work, especially below ~200 Hz.
+
+### Fix
+
+Increase FFT size:
+
+```js
+const fftSize = 4096; // or 8192 for better bass accuracy
+const hop = fftSize / 4;
+```
+
+Why it matters:
+
+* frequency resolution = `sampleRate / fftSize`
+* at 44.1kHz:
+
+  * 1024 → ~43 Hz bins (too coarse)
+  * 4096 → ~10.8 Hz bins (usable)
+  * 8192 → ~5.4 Hz bins (good)
+
+---
+
+# 2. Apply better windowing (reduce spectral smearing)
+
+You already use Hann, which is good, but you can improve stability slightly by making it explicit and correct:
+
+```js
+function hannWindow(n, N) {
+    return 0.5 * (1 - Math.cos((2 * Math.PI * n) / (N - 1)));
+}
+```
+
+Replace:
+
+```js
+seg[i] *= 0.5 * (1 - Math.cos(...));
+```
+
+with:
+
+```js
+seg[i] *= hannWindow(i, seg.length);
+```
+
+This improves peak sharpness and reduces fake harmonics.
+
+---
+
+# 3. Replace “peak picking” with **parabolic interpolation**
+
+Right now you take integer-bin peaks → that causes jitter.
+
+Improve frequency estimate like this:
+
+```js
+function refinePeak(i, mag) {
+
+    const alpha = mag[i - 1];
+    const beta  = mag[i];
+    const gamma = mag[i + 1];
+
+    const p = 0.5 * (alpha - gamma) / (alpha - 2 * beta + gamma);
+
+    return i + p;
+}
+```
+
+Then use:
+
+```js
+const binIndex = refinePeak(i, spectrum);
+const freq = binIndex * sampleRate / fftSize;
+```
+
+This alone noticeably stabilizes pitch labels.
+
+---
+
+# 4. Switch from “FFT peak” → “fundamental estimation”
+
+FFT peaks often pick harmonics instead of the fundamental.
+
+### Better approach: Harmonic Product Spectrum (HPS)
+
+Simple version:
+
+```js
+function hps(spectrum) {
+
+    const N = spectrum.length;
+    const hps = new Float32Array(N);
+
+    for (let i = 0; i < N; i++) {
+        hps[i] = spectrum[i];
+    }
+
+    for (let h = 2; h <= 5; h++) {
+        for (let i = 0; i < N / h; i++) {
+            hps[i] *= spectrum[i * h];
+        }
+    }
+
+    return hps;
+}
+```
+
+Then pick max from `hps` instead of raw FFT.
+
+This is the **single biggest upgrade for musical pitch correctness**.
+
+---
+
+# 5. Ignore low-confidence bins
+
+Add noise gating:
+
+```js
+const noiseFloor = 0.02;
+
+if (mag < noiseFloor * maxMagnitude) continue;
+```
+
+This reduces false pitch detections in silence / noise.
+
+---
+
+# 6. Limit pitch range to musical region
+
+You already clamp frequency in spectrogram; do it for pitch detection too:
+
+```js
+if (freq < 60 || freq > 2000) continue;
+```
+
+This removes:
+
+* sub-bass junk
+* ultrasonic artifacts
+
+---
+
+# 7. Optional: switch to autocorrelation (best for monophonic audio)
+
+FFT is inherently “spectral”, not “pitch-aware”.
+
+For vocals or single-note instruments, autocorrelation is often better:
+
+* more stable fundamentals
+* less harmonic confusion
+
+Core idea:
+
+```js
+function autocorrelate(buf) {
+
+    const N = buf.length;
+    let bestLag = 0;
+    let bestVal = 0;
+
+    for (let lag = 20; lag < 1000; lag++) {
+
+        let sum = 0;
+
+        for (let i = 0; i < N - lag; i++) {
+            sum += buf[i] * buf[i + lag];
+        }
+
+        if (sum > bestVal) {
+            bestVal = sum;
+            bestLag = lag;
+        }
+    }
+
+    return bestLag;
+}
+```
+
+Then:
+
+```js
+freq = sampleRate / bestLag;
+```
+
+---
+
+# What I would do in your app (practical recommendation)
+
+If you want a clear upgrade path:
+
+### Level 1 (easy, big improvement)
+
+* FFT size → 4096
+* Hann window fix
+* parabolic interpolation
+
+### Level 2 (major improvement)
+
+* Add HPS for pitch detection
+
+### Level 3 (pro-level)
+
+* Switch pitch detection to autocorrelation for monophonic segments
+* Keep FFT only for visualization
+
+---
+
+If you want, I can patch your current HTML and upgrade it to:
+
+* HPS-based pitch detection
+* stable note clustering (less flicker)
+* correct fundamental tracking even in chords (approximate polyphonic separation)
+
+Just say 👍

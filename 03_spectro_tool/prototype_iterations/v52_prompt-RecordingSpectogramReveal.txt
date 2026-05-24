@@ -1,0 +1,328 @@
+Prompt
+======
+
+How to get the spectrogram to reveal itself with the scrubber but only when playing back for recording?
+
+-----------
+
+Response
+========
+
+Right now your spectrogram is effectively:
+
+```text
+always fully visible
+```
+
+But for recording playback you want:
+
+```text
+spectrogram progressively revealed by the transport/scrubber
+```
+
+like:
+
+* DAW timeline rendering
+* “music visualizer reveal”
+* oscilloscope playback masks
+* FFmpeg showcqt reveal wipes
+
+The clean way to do this is **NOT** to redraw the spectrogram incrementally during playback.
+
+Instead:
+
+---
+
+# Correct Approach
+
+Keep:
+
+```text
+full spectrogram rendered offscreen
+```
+
+Then during recording playback:
+
+```text
+only display the part left of the scrubber
+```
+
+using clipping.
+
+This is:
+
+* vastly simpler
+* GPU-friendly
+* resize-safe
+* recording-safe
+* visually perfect
+
+---
+
+# Architecture
+
+You already have:
+
+| Canvas            | Purpose                   |
+| ----------------- | ------------------------- |
+| spectrogramCanvas | full rendered spectrogram |
+| visible canvas    | compositing               |
+
+The reveal effect should happen ONLY during compositing.
+
+---
+
+# Desired Behaviour
+
+| State              | Spectrogram Visibility |
+| ------------------ | ---------------------- |
+| idle               | fully visible          |
+| normal playback    | fully visible          |
+| recording playback | reveal progressively   |
+| paused recording   | frozen reveal          |
+
+---
+
+# Correct Rendering Strategy
+
+During draw:
+
+---
+
+## Normal mode
+
+```js
+ctx.drawImage(
+    spectrogramCanvas,
+    0,
+    0
+);
+```
+
+---
+
+## Recording reveal mode
+
+Clip to scrubber position:
+
+```js
+ctx.save();
+
+ctx.beginPath();
+
+ctx.rect(
+    LEFT_GUTTER,
+    0,
+    scrubberX - LEFT_GUTTER,
+    canvas.height
+);
+
+ctx.clip();
+
+ctx.drawImage(
+    spectrogramCanvas,
+    0,
+    0
+);
+
+ctx.restore();
+```
+
+This means:
+
+* only the revealed region is shown
+* unrevealed future remains hidden
+* scrubber becomes reveal boundary
+
+---
+
+# Why This Is Correct
+
+Because:
+
+```text
+the spectrogram already exists
+```
+
+You are simply:
+
+```text
+revealing visibility
+```
+
+instead of:
+
+* re-rendering FFT columns
+* rebuilding canvas
+* shifting pixels
+* progressively painting
+
+This avoids:
+
+* compression artifacts
+* timing drift
+* resize corruption
+* recording jitter
+
+---
+
+# Trigger Condition
+
+Only do clipping when:
+
+```js
+recording && playing
+```
+
+Example:
+
+```js
+if(recording && playing){
+
+    // reveal mode
+
+}else{
+
+    // full spectrogram visible
+}
+```
+
+---
+
+# Optional Enhancement: Soft Reveal Edge
+
+You can make the scrubber edge glow slightly.
+
+After clipping draw:
+
+```js
+ctx.fillStyle =
+    "rgba(255,160,40,0.15)";
+
+ctx.fillRect(
+    scrubberX - 10,
+    0,
+    20,
+    canvas.height
+);
+```
+
+This creates:
+
+```text
+subtle transport glow
+```
+
+like professional editors.
+
+---
+
+# Optional Enhancement: Darken Future Region
+
+Instead of:
+
+```text
+future = invisible
+```
+
+you can dim it:
+
+```js
+ctx.fillStyle =
+    "rgba(0,0,0,0.55)";
+
+ctx.fillRect(
+    scrubberX,
+    0,
+    canvas.width - scrubberX,
+    canvas.height
+);
+```
+
+Result:
+
+* future remains visible faintly
+* revealed past appears “activated”
+
+This often looks much better.
+
+---
+
+# Important Resize Detail
+
+Because the reveal uses:
+
+```js
+scrubberX
+```
+
+derived every frame from:
+
+```js
+currentPlaybackTime()
+```
+
+it automatically survives resize correctly.
+
+No extra logic required.
+
+---
+
+# Recommended Final Visual Style
+
+For recording playback:
+
+| Region            | Appearance             |
+| ----------------- | ---------------------- |
+| left of scrubber  | full vivid spectrogram |
+| scrubber edge     | orange glow            |
+| right of scrubber | darkened future        |
+
+This produces the strongest:
+
+```text
+"live musical reveal"
+```
+
+effect.
+
+---
+
+# Final Recommended Composite Order
+
+Inside draw():
+
+```js
+draw background
+
+draw spectrogram reveal
+
+draw future dim
+
+draw timeline
+
+draw c-markers
+
+draw bubbles
+
+draw scrubber
+
+draw scrubber bubble
+```
+
+This preserves layering correctly.
+
+---
+
+# Why This Method Is Better Than Incremental Drawing
+
+Incremental rendering causes:
+
+* resize corruption
+* compression/stretch artifacts
+* timing drift
+* recorder desync
+* repaint overhead
+
+Clipped compositing avoids all of those while producing the exact same visual effect.
+

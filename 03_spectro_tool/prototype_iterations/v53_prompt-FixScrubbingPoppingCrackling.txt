@@ -1,0 +1,427 @@
+Prompt
+======
+
+How to improve the scrubbing playback so there's less popping / crackling when the previews start/end?
+
+--------
+
+Response
+========
+
+The popping/crackling happens because your scrub-preview playback currently behaves like:
+
+```text
+stop source immediately
+start new source immediately
+```
+
+That creates discontinuities in the waveform.
+
+In audio terms:
+
+* the signal jumps abruptly
+* DC offset changes instantly
+* waveform phase is cut mid-cycle
+
+Those discontinuities become:
+
+```text
+clicks / pops / crackles
+```
+
+This is extremely common in naive WebAudio scrubbing implementations.
+
+---
+
+# Correct Fix
+
+You need:
+
+| Technique                      | Purpose                      |
+| ------------------------------ | ---------------------------- |
+| gain envelopes                 | fade in/out                  |
+| very short ramps               | avoid discontinuities        |
+| overlapping source replacement | seamless retrigger           |
+| debounce/throttle              | avoid excessive restart spam |
+
+The MOST important fix is:
+
+```text
+micro-fades
+```
+
+---
+
+# Proper Architecture
+
+Instead of:
+
+```js
+source.connect(audioCtx.destination);
+```
+
+you should use:
+
+```js
+source → gainNode → destination
+```
+
+This allows smooth fades.
+
+---
+
+# 1. Add Scrub Gain Node
+
+Create globally:
+
+```js
+const scrubGain =
+    audioCtx.createGain();
+
+scrubGain.connect(
+    audioCtx.destination
+);
+
+scrubGain.gain.value = 0;
+```
+
+---
+
+# 2. Fade-In on Preview Start
+
+Instead of instant full volume:
+
+BAD:
+
+```js
+gain.value = 1;
+```
+
+GOOD:
+
+```js
+const now =
+    audioCtx.currentTime;
+
+scrubGain.gain.cancelScheduledValues(now);
+
+scrubGain.gain.setValueAtTime(
+    0,
+    now
+);
+
+scrubGain.gain.linearRampToValueAtTime(
+    1,
+    now + 0.008
+);
+```
+
+This creates:
+
+```text
+8ms fade-in
+```
+
+which removes attack clicks.
+
+---
+
+# 3. Fade-Out BEFORE stopping
+
+This is critical.
+
+BAD:
+
+```js
+source.stop();
+```
+
+GOOD:
+
+```js
+scrubGain.gain.linearRampToValueAtTime(
+    0,
+    now + 0.01
+);
+
+source.stop(now + 0.012);
+```
+
+This avoids end-clicks.
+
+---
+
+# 4. Never Hard-Stop Immediately
+
+The main source of crackling is:
+
+```js
+source.stop();
+```
+
+during active waveform output.
+
+Always:
+
+1. fade out
+2. stop slightly later
+
+---
+
+# 5. Use Small Preview Duration
+
+For scrub preview:
+
+```js
+source.start(0, time, 0.08);
+```
+
+Use:
+
+```text
+50–120ms
+```
+
+Too long:
+
+* overlapping mud
+* excessive node buildup
+
+Too short:
+
+* stuttering
+
+Sweet spot:
+
+```text
+~70ms
+```
+
+---
+
+# 6. Throttle Scrub Retriggering
+
+Huge improvement.
+
+Currently you likely retrigger:
+
+```text
+every mousemove
+```
+
+which can exceed:
+
+```text
+hundreds/sec
+```
+
+That overwhelms:
+
+* decoder
+* GC
+* source scheduling
+
+Use:
+
+```js
+let lastScrubTime = 0;
+```
+
+Then:
+
+```js
+const now = performance.now();
+
+if(now - lastScrubTime < 35)
+    return;
+
+lastScrubTime = now;
+```
+
+This limits retriggers to:
+
+```text
+~28Hz
+```
+
+which feels smooth but avoids crackling.
+
+---
+
+# 7. Optional: Crossfade Between Preview Sources
+
+Professional approach.
+
+Instead of:
+
+```text
+old source stop
+new source start
+```
+
+you:
+
+* fade old out
+* fade new in
+* overlap 5–10ms
+
+This creates:
+
+```text
+tape-style smooth scrubbing
+```
+
+---
+
+# 8. Optional: Mono Preview Playback
+
+Stereo phase changes can worsen clicks.
+
+For previews:
+
+* sum channels to mono
+* use lower gain
+
+Feels much smoother.
+
+---
+
+# 9. Lower Preview Volume Slightly
+
+Previews often sound better at:
+
+```js
+scrubGain.gain.linearRampToValueAtTime(
+    0.45,
+    now + 0.008
+);
+```
+
+instead of full-volume.
+
+---
+
+# Recommended Scrub Preview Function
+
+This is the clean architecture:
+
+```js
+function playScrubPreview(time){
+
+    if(!audioBuffer)
+        return;
+
+    const now =
+        audioCtx.currentTime;
+
+    if(scrubSource){
+
+        scrubGain.gain.cancelScheduledValues(now);
+
+        scrubGain.gain.setValueAtTime(
+            scrubGain.gain.value,
+            now
+        );
+
+        scrubGain.gain.linearRampToValueAtTime(
+            0,
+            now + 0.01
+        );
+
+        scrubSource.stop(now + 0.012);
+    }
+
+    scrubSource =
+        audioCtx.createBufferSource();
+
+    scrubSource.buffer =
+        audioBuffer;
+
+    scrubSource.connect(scrubGain);
+
+    scrubGain.gain.setValueAtTime(
+        0,
+        now
+    );
+
+    scrubGain.gain.linearRampToValueAtTime(
+        0.45,
+        now + 0.008
+    );
+
+    scrubSource.start(
+        now,
+        time,
+        0.07
+    );
+
+    scrubGain.gain.linearRampToValueAtTime(
+        0,
+        now + 0.065
+    );
+
+    scrubSource.stop(
+        now + 0.075
+    );
+}
+```
+
+---
+
+# Why This Eliminates Crackling
+
+Because:
+
+* waveform edges become smooth
+* no instantaneous jumps
+* overlapping transitions hide discontinuities
+* source churn reduced dramatically
+
+This is exactly how:
+
+* DAWs
+* samplers
+* granular synths
+* waveform editors
+
+implement scrubbing.
+
+---
+
+# Additional Huge Improvement
+
+If you REALLY want premium scrubbing feel:
+
+Use:
+
+```text
+granular playback
+```
+
+instead of:
+
+```text
+restart source chunks
+```
+
+That creates:
+
+* buttery smooth tape scrubbing
+* continuous texture
+* no popping whatsoever
+
+But it requires:
+
+* overlapping grains
+* window functions
+* grain scheduler
+
+The fade-envelope approach above gets you:
+
+```text
+80–90% of the improvement
+```
+
+with much less complexity.
+
+

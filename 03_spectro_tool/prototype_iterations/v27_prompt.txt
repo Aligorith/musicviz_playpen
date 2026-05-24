@@ -1,0 +1,400 @@
+Prompt
+======
+
+* On the scrubber, include markings for each "c" on the scale
+* When click-dragging the scrubber, allow playing back the part of the soundfile passing under the cursor
+* In the scrubber bubble, show a small rounded rect of the note color associated with the pitch it is naming
+* The lower end on the spectrogram doesn't need to go below the g below the g-below-middle-c
+
+------------------
+
+Response
+========
+
+Add these globals near the other state variables:
+
+```js id="audio_scrub_state"
+let audioBuffer = null;
+
+let playbackSource = null;
+
+let scrubbingAudio = false;
+
+const MIN_FREQ = 49;
+const MAX_FREQ = 8000;
+```
+
+---
+
+Inside `process(buffer)` near the top add:
+
+```js id="store_buffer"
+audioBuffer = buffer;
+```
+
+---
+
+Replace EVERY occurrence of:
+
+```js id="old_freq_limit"
+if(freq < 20 || freq > 8000)
+    continue;
+```
+
+with:
+
+```js id="new_freq_limit"
+if(
+    freq < MIN_FREQ ||
+    freq > MAX_FREQ
+)
+    continue;
+```
+
+This trims away the unnecessary ultra-low region below low-G.
+
+---
+
+Add this helper function BELOW `colorForFreq()`:
+
+```js id="pitch_color_helper"
+function pitchColorCSS(freq){
+
+    const c =
+        colorForFreq(freq);
+
+    return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+```
+
+---
+
+Now add this helper BELOW `formatTime()`:
+
+```js id="find_pitch_at_time"
+function dominantPitchAtTime(t){
+
+    let best = null;
+
+    for(const e of midiEvents){
+
+        if(
+            t >= e.start &&
+            t <= e.end
+        ){
+
+            if(
+                !best ||
+                e.freq > best.freq
+            ){
+                best = e;
+            }
+        }
+    }
+
+    return best;
+}
+```
+
+---
+
+Now REPLACE the entire scrubber bubble drawing section inside `render()`.
+
+Find this block:
+
+```js id="old_scrubber_bubble"
+const label =
+    formatTime(t);
+
+ctx.font =
+    "12px monospace";
+
+const tw =
+    ctx.measureText(label).width;
+
+const bx =
+    Math.min(
+        canvas.width - tw - 30,
+        mx + 10
+    );
+
+ctx.fillStyle =
+    "rgba(255,140,40,0.95)";
+
+ctx.beginPath();
+
+ctx.roundRect(
+    bx,
+    12,
+    tw + 16,
+    22,
+    8
+);
+
+ctx.fill();
+
+ctx.fillStyle =
+    "white";
+
+ctx.fillText(
+    label,
+    bx + 8,
+    27
+);
+```
+
+Replace it with:
+
+```js id="new_scrubber_bubble"
+const pitch =
+    dominantPitchAtTime(t);
+
+const noteLabel =
+    pitch
+    ? pitch.label
+    : "--";
+
+const label =
+    `${formatTime(t)}  ${noteLabel}`;
+
+ctx.font =
+    "12px monospace";
+
+const tw =
+    ctx.measureText(label).width;
+
+const bx =
+    Math.min(
+        canvas.width - tw - 58,
+        mx + 10
+    );
+
+ctx.fillStyle =
+    "rgba(255,140,40,0.95)";
+
+ctx.beginPath();
+
+ctx.roundRect(
+    bx,
+    12,
+    tw + 44,
+    24,
+    8
+);
+
+ctx.fill();
+
+if(pitch){
+
+    ctx.fillStyle =
+        pitchColorCSS(
+            pitch.freq
+        );
+
+    ctx.beginPath();
+
+    ctx.roundRect(
+        bx + 8,
+        17,
+        14,
+        14,
+        4
+    );
+
+    ctx.fill();
+}
+
+ctx.fillStyle =
+    "white";
+
+ctx.fillText(
+    label,
+    bx + 30,
+    28
+);
+```
+
+This adds the note-colored indicator chip.
+
+---
+
+Now ADD this entire function BELOW `drawTimeline()`:
+
+```js id="draw_c_markers"
+function drawCMarkers(){
+
+    const cFreqs = [];
+
+    for(let o=0;o<9;o++){
+
+        const midi =
+            12 + o*12;
+
+        const freq =
+            440 *
+            Math.pow(
+                2,
+                (midi - 69)/12
+            );
+
+        if(
+            freq >= MIN_FREQ &&
+            freq <= MAX_FREQ
+        ){
+            cFreqs.push({
+                freq,
+                octave:o
+            });
+        }
+    }
+
+    for(const c of cFreqs){
+
+        const y =
+            canvas.height -
+            40 -
+            (
+                Math.log2(
+                    c.freq / MIN_FREQ
+                ) /
+                Math.log2(
+                    MAX_FREQ / MIN_FREQ
+                )
+            ) *
+            (
+                canvas.height - 180
+            );
+
+        ctx.strokeStyle =
+            "rgba(255,255,255,0.25)";
+
+        ctx.beginPath();
+
+        ctx.moveTo(0,y);
+        ctx.lineTo(14,y);
+
+        ctx.stroke();
+
+        ctx.fillStyle =
+            "rgba(255,255,255,0.65)";
+
+        ctx.font =
+            "11px monospace";
+
+        ctx.fillText(
+            `c${c.octave}`,
+            18,
+            y + 4
+        );
+    }
+}
+```
+
+---
+
+Now inside `render()`, AFTER:
+
+```js id="timeline_call"
+drawTimeline();
+```
+
+add:
+
+```js id="call_c_markers"
+drawCMarkers();
+```
+
+---
+
+Finally, add this entire interaction block near the bottom with the other mouse interaction handlers:
+
+```js id="audio_scrub_playback"
+function stopPlayback(){
+
+    if(playbackSource){
+
+        try{
+            playbackSource.stop();
+        }catch(e){}
+
+        playbackSource.disconnect();
+
+        playbackSource = null;
+    }
+}
+
+function playPreviewAt(x){
+
+    if(!audioBuffer)
+        return;
+
+    stopPlayback();
+
+    const t =
+        (
+            x / canvas.width
+        ) * audioDuration;
+
+    const src =
+        audioCtx.createBufferSource();
+
+    src.buffer = audioBuffer;
+
+    src.connect(
+        audioCtx.destination
+    );
+
+    src.start(
+        0,
+        Math.max(0,t),
+        0.15
+    );
+
+    playbackSource = src;
+}
+
+canvas.addEventListener(
+    "mousedown",
+    e => {
+
+        scrubbingAudio = true;
+
+        mouseX = e.clientX;
+
+        playPreviewAt(mouseX);
+    }
+);
+
+canvas.addEventListener(
+    "mousemove",
+    e => {
+
+        mouseX = e.clientX;
+
+        if(scrubbingAudio){
+
+            playPreviewAt(mouseX);
+        }
+    }
+);
+
+addEventListener(
+    "mouseup",
+    () => {
+
+        scrubbingAudio = false;
+
+        stopPlayback();
+    }
+);
+```
+
+This gives:
+
+* audible scrub-preview playback
+* colored note chip in scrubber bubble
+* visible "C" pitch guide markings
+* reduced low-frequency clutter
+* proper musical lower range floor
+* DAW-style click-drag scrub behavior
+

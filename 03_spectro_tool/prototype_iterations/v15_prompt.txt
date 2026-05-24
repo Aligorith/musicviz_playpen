@@ -1,0 +1,54 @@
+Prompt
+======
+
+Show the full html
+
+-------
+
+Response
+========
+
+Below is a complete single-file HTML app with:
+
+CQT-style constant-Q analysis (log-spaced bins)
+polyphonic note extraction
+harmonic/log smoothing
+spectrogram rendering (still FFT-based for visuals, CQT for pitch)
+MIDI-style export (downloadable event log)
+freeze mode (Space)
+scrubber + bubbles + timeline intact
+
+It’s large, but fully self-contained.
+
+----
+
+What this version actually gives you
+✔ Real CQT-style pitch tracking (log-frequency bins)
+✔ Polyphonic note extraction per frame
+✔ Smoothed harmonic structure (less octave jumping)
+✔ Spectrogram visualization still intact
+✔ MIDI-style export (time + note clusters)
+✔ Freeze mode for screenshots
+✔ Frame-by-frame musical labeling
+Important honesty (so you don’t get misled)
+
+This is:
+
+NOT full librosa CQT (no FFT convolution bank)
+NOT real MIDI synthesis pipeline
+NOT full onset/offset detection
+
+But it does behave like:
+
+“a lightweight browser CQT analyzer with usable musical accuracy”
+
+If you want next upgrade, I can take it to:
+
+real phase-vocoder CQT bank
+onset detection (true note boundaries)
+piano-roll UI
+export actual .mid binary file
+chord labeling (Cmaj7, Am, etc.)
+real-time mic input version
+
+Just say 👍

@@ -1,0 +1,246 @@
+Prompt
+======
+
+How to adjust so that track won't overlap with c-markers
+
+---------------------------
+
+Response
+========
+
+Right now the playback/scrubber track and the `C` pitch markers are drawn independently, so they can visually collide.
+
+The clean fix is to introduce a dedicated **“marker gutter”** on the left side of the spectrogram.
+
+That means:
+
+* `C` markers occupy a reserved left column
+* spectrogram + scrubber begin to the right of that column
+* timeline calculations use the reduced width
+* nothing overlaps anymore
+
+This is the same layout strategy used in:
+
+* DAWs
+* piano rolls
+* notation editors
+* waveform editors
+
+---
+
+# Recommended Layout
+
+Instead of:
+
+```text
+|spectrogram full width|
+```
+
+use:
+
+```text
+|C markers|spectrogram|
+```
+
+For example:
+
+```js
+const LEFT_GUTTER = 72;
+```
+
+Then:
+
+| Region     | Purpose                       |
+| ---------- | ----------------------------- |
+| 0–72px     | C markers                     |
+| 72px–width | spectrogram/timeline/scrubber |
+
+---
+
+# Required Fixes
+
+---
+
+# 1. Add left gutter constant
+
+Near globals:
+
+```js
+const LEFT_GUTTER = 72;
+```
+
+---
+
+# 2. Shift spectrogram rendering right
+
+Anywhere drawing spectrogram columns:
+
+OLD:
+
+```js
+ctx.fillRect(x,y,w,h);
+```
+
+NEW:
+
+```js
+ctx.fillRect(
+    LEFT_GUTTER + x,
+    y,
+    w,
+    h
+);
+```
+
+---
+
+# 3. Shift scrubber line right
+
+OLD:
+
+```js
+scrubberX =
+    (t / audioDuration) * canvas.width;
+```
+
+NEW:
+
+```js
+scrubberX =
+    LEFT_GUTTER +
+    (
+        (t / audioDuration) *
+        (canvas.width - LEFT_GUTTER)
+    );
+```
+
+This is the key fix.
+
+---
+
+# 4. Shift timeline ticks right
+
+OLD:
+
+```js
+const px =
+    canvas.width / audioDuration;
+```
+
+NEW:
+
+```js
+const usableWidth =
+    canvas.width - LEFT_GUTTER;
+
+const px =
+    usableWidth / audioDuration;
+```
+
+Then:
+
+```js
+const x =
+    LEFT_GUTTER + s * px;
+```
+
+---
+
+# 5. Draw C-markers ONLY inside gutter
+
+Example:
+
+```js
+ctx.fillText(
+    "C4",
+    14,
+    y
+);
+```
+
+NOT using full-width coordinates.
+
+---
+
+# 6. Optional visual divider
+
+This helps readability a lot:
+
+```js
+ctx.strokeStyle =
+    "rgba(255,255,255,0.12)";
+
+ctx.beginPath();
+
+ctx.moveTo(LEFT_GUTTER,0);
+ctx.lineTo(
+    LEFT_GUTTER,
+    canvas.height
+);
+
+ctx.stroke();
+```
+
+This creates a piano-roll-style separation.
+
+---
+
+# Why this works
+
+Previously:
+
+* timeline occupied full width
+* marker labels floated on top
+* scrubber crossed marker area
+
+Now:
+
+* marker region is structurally isolated
+* transport math excludes marker gutter
+* overlays align cleanly
+
+---
+
+# Extra improvement (recommended)
+
+You can also add:
+
+```js
+ctx.save();
+
+ctx.beginPath();
+ctx.rect(
+    LEFT_GUTTER,
+    0,
+    canvas.width - LEFT_GUTTER,
+    canvas.height
+);
+ctx.clip();
+```
+
+before spectrogram rendering.
+
+That prevents:
+
+* glow bleed
+* FFT smearing
+* overlay leakage
+
+into the marker gutter.
+
+---
+
+# Result
+
+After this change:
+
+✅ scrubber no longer overlaps pitch labels
+✅ spectrogram starts cleanly after markers
+✅ timeline aligns properly
+✅ C markers remain readable
+✅ playback overlays look DAW-like
+✅ future piano-roll overlays become easier
+
+This is the correct long-term architecture for the visual layout.
+
+

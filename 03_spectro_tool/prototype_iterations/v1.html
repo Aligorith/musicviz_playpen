@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Pitch-Colored Spectrogram Analyzer</title>
+
+<style>
+    html, body {
+        margin: 0;
+        padding: 0;
+        background: #111;
+        color: #eee;
+        font-family: sans-serif;
+        overflow: hidden;
+    }
+
+    #topbar {
+        position: absolute;
+        z-index: 10;
+        left: 0;
+        top: 0;
+        width: 100%;
+        padding: 10px;
+        background: rgba(0,0,0,0.7);
+        backdrop-filter: blur(6px);
+    }
+
+    #canvas {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100vw;
+        height: 100vh;
+    }
+
+    #status {
+        margin-top: 6px;
+        font-size: 14px;
+        color: #ccc;
+    }
+
+    .hint {
+        font-size: 12px;
+        color: #aaa;
+        margin-top: 6px;
+        max-width: 1000px;
+    }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+    <input type="file" id="fileInput" accept=".mp3,.wav,.flac,audio/*" />
+    <button id="analyzeBtn">Analyze</button>
+
+    <div id="status">
+        Load a sound file to generate a pitch-colored spectrogram.
+    </div>
+
+    <div class="hint">
+        Suggested libraries:
+        <br>
+        • MP3/WAV decoding: native WebAudio decodeAudioData()
+        <br>
+        • FLAC support:
+        <a href="https://github.com/mmig/libflac.js" target="_blank">libflac.js</a>
+        or
+        <a href="https://github.com/eshaz/wasm-audio-decoders" target="_blank">wasm-audio-decoders</a>
+        <br>
+        • Better FFT / DSP:
+        <a href="https://github.com/indutny/fft.js/" target="_blank">fft.js</a>
+        <br>
+        • Constant-Q transforms:
+        <a href="https://github.com/sebpiq/essentia.js/" target="_blank">Essentia.js</a>
+    </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+const statusEl = document.getElementById("status");
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+/*
+    Pitch color mapping.
+
+    You can customize these freely.
+*/
+const NOTE_COLORS = {
+    c: [255, 200, 120], // peach/gold
+    d: [25, 35, 100],   // navy
+    e_high: [200, 160, 255], // lavender
+    e_low: [110, 70, 40],    // brown
+    f: [180, 255, 80],  // yellow-green
+    g: [0, 255, 0],     // adjusted by octave
+    a: [255, 60, 60],   // red
+    b: [120, 220, 255]  // sky blue
+};
+
+const NOTE_NAMES = [
+    "c","cis","d","ees","e","f",
+    "fis","g","gis","a","bes","b"
+];
+
+function midiToFreq(midi) {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+}
+
+function freqToMidi(freq) {
+    return 69 + 12 * Math.log2(freq / 440);
+}
+
+function midiToLily(midi) {
+    const rounded = Math.round(midi);
+    const note = NOTE_NAMES[((rounded % 12) + 12) % 12];
+    const octave = Math.floor(rounded / 12) - 1;
+
+    let suffix = "";
+
+    if (octave >= 3) {
+        suffix = "'".repeat(octave - 3);
+    } else {
+        suffix = ",".repeat(3 - octave);
+    }
+
+    return note + suffix;
+}
+
+function getPitchClass(midi) {
+    const pc = ((Math.round(midi) % 12) + 12) % 12;
+
+    const names = [
+        "c","c","d","d","e","f",
+        "f","g","g","a","a","b"
+    ];
+
+    return names[pc];
+}
+
+function getPitchColor(freq) {
+    const midi = freqToMidi(freq);
+    const octave = Math.floor(midi / 12);
+
+    const pc = getPitchClass(midi);
+
+    let rgb;
+
+    switch(pc) {
+        case "c":
+            rgb = NOTE_COLORS.c;
+            break;
+        case "d":
+            rgb = NOTE_COLORS.d;
+            break;
+        case "e":
+            rgb = freq >= 440 ? NOTE_COLORS.e_high : NOTE_COLORS.e_low;
+            break;
+        case "f":
+            rgb = NOTE_COLORS.f;
+            break;
+        case "g":
+            if (octave < 4) {
+                rgb = [0, 90, 20]; // dark bottle green
+            } else if (octave === 4) {
+                rgb = [80, 200, 50]; // lawn green
+            } else {
+                rgb = [160, 255, 60]; // lime
+            }
+            break;
+        case "a":
+            rgb = NOTE_COLORS.a;
+            break;
+        case "b":
+            rgb = NOTE_COLORS.b;
+            break;
+        default:
+            rgb = [180,180,180];
+    }
+
+    // octave brightness shaping
+    const brightness = Math.max(
+        0.25,
+        Math.min(1.2, octave / 6)
+    );
+
+    return rgb.map(v =>
+        Math.max(0, Math.min(255, v * brightness))
+    );
+}
+
+/*
+    Basic FFT implementation.
+    For production:
+    use fft.js or Essentia.js
+*/
+function naiveFFT(signal) {
+    const N = signal.length;
+    const spectrum = new Float32Array(N / 2);
+
+    for (let k = 0; k < N / 2; k++) {
+        let re = 0;
+        let im = 0;
+
+        for (let n = 0; n < N; n++) {
+            const phi = (2 * Math.PI * k * n) / N;
+            re += signal[n] * Math.cos(phi);
+            im -= signal[n] * Math.sin(phi);
+        }
+
+        spectrum[k] = Math.sqrt(re*re + im*im);
+    }
+
+    return spectrum;
+}
+
+async function decodeFile(file) {
+    const buffer = await file.arrayBuffer();
+
+    try {
+        return await audioCtx.decodeAudioData(buffer);
+    } catch (err) {
+        alert(
+            "Browser decode failed.\n" +
+            "FLAC may require external decoder libraries."
+        );
+        throw err;
+    }
+}
+
+function analyzeDominantPitches(spectrum, sampleRate, fftSize) {
+    const peaks = [];
+
+    for (let i = 1; i < spectrum.length; i++) {
+        if (
+            spectrum[i] > spectrum[i - 1] &&
+            spectrum[i] > spectrum[i + 1]
+        ) {
+            peaks.push({
+                freq: i * sampleRate / fftSize,
+                mag: spectrum[i]
+            });
+        }
+    }
+
+    peaks.sort((a,b) => b.mag - a.mag);
+
+    return peaks
+        .slice(0, 6)
+        .map(p => ({
+            freq: p.freq,
+            mag: p.mag,
+            label: midiToLily(freqToMidi(p.freq))
+        }));
+}
+
+async function generateSpectrogram(audioBuffer) {
+
+    const data = audioBuffer.getChannelData(0);
+
+    const width = canvas.width;
+    const height = canvas.height;
+
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0,0,width,height);
+
+    const fftSize = 1024;
+    const hop = 512;
+
+    const totalFrames = Math.floor((data.length - fftSize) / hop);
+
+    const xScale = width / totalFrames;
+
+    let previousLabels = "";
+
+    for (let frame = 0; frame < totalFrames; frame++) {
+
+        if (frame % 5 === 0) {
+            statusEl.textContent =
+                `Analyzing ${frame}/${totalFrames}`;
+            await new Promise(r => setTimeout(r,0));
+        }
+
+        const start = frame * hop;
+
+        const segment = data.slice(start, start + fftSize);
+
+        // Hann window
+        for (let i = 0; i < segment.length; i++) {
+            segment[i] *=
+                0.5 *
+                (1 - Math.cos(
+                    (2*Math.PI*i)/(segment.length-1)
+                ));
+        }
+
+        const spectrum = naiveFFT(segment);
+
+        for (let bin = 0; bin < spectrum.length; bin++) {
+
+            const freq =
+                bin * audioBuffer.sampleRate / fftSize;
+
+            if (freq < 20 || freq > 8000) continue;
+
+            const mag = spectrum[bin];
+
+            const y =
+                height -
+                Math.log2(freq / 20) /
+                Math.log2(8000 / 20) *
+                height;
+
+            const color = getPitchColor(freq);
+
+            const alpha =
+                Math.min(1, mag / 60);
+
+            ctx.fillStyle =
+                `rgba(${color[0]},${color[1]},${color[2]},${alpha})`;
+
+            ctx.fillRect(
+                frame * xScale,
+                y,
+                Math.ceil(xScale),
+                1
+            );
+        }
+
+        /*
+            Fundamental pitch estimation
+        */
+        const dominant =
+            analyzeDominantPitches(
+                spectrum,
+                audioBuffer.sampleRate,
+                fftSize
+            );
+
+        const labels =
+            dominant
+                .map(d => d.label)
+                .join(" ");
+
+        if (labels !== previousLabels) {
+
+            previousLabels = labels;
+
+            ctx.fillStyle = "rgba(255,255,255,0.9)";
+            ctx.font = "12px monospace";
+
+            ctx.fillText(
+                labels,
+                frame * xScale + 4,
+                30 + (frame % 5) * 14
+            );
+        }
+    }
+
+    statusEl.textContent =
+        "Analysis complete.";
+}
+
+document.getElementById("analyzeBtn")
+.addEventListener("click", async () => {
+
+    const file =
+        document.getElementById("fileInput")
+        .files[0];
+
+    if (!file) {
+        alert("Choose a sound file first.");
+        return;
+    }
+
+    statusEl.textContent =
+        "Decoding audio...";
+
+    try {
+        const audioBuffer =
+            await decodeFile(file);
+
+        statusEl.textContent =
+            "Generating spectrogram...";
+
+        await generateSpectrogram(audioBuffer);
+
+    } catch(err) {
+        console.error(err);
+        statusEl.textContent =
+            "Failed to analyze audio.";
+    }
+});
+</script>
+
+</body>
+</html>

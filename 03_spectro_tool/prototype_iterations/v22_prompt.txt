@@ -1,0 +1,372 @@
+Prompt
+======
+
+Make the following changes / fixes:
+* The sliders have no effect. Changing these should result in immediate changes reflected in the ui.
+* The brightness slider only needs to be shown on the topbar now, not in the panel
+* The legend button + sliders should be on the far right side, separated from the "export" by a flexible gap that will resize with the window size
+
+--------
+
+Response
+========
+
+Replace the existing `.row` CSS with this:
+
+```css id="topbar_layout_fix"
+.row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
+}
+
+.leftControls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.rightControls {
+    margin-left: auto;
+
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+```
+
+---
+
+Replace the contents of the topbar with this:
+
+```html id="topbar_fixed"
+<div id="topbar">
+
+    <div class="row">
+
+        <div class="leftControls">
+
+            <input type="file" id="file"/>
+
+            <button id="analyze">
+                Analyze
+            </button>
+
+            <button id="export">
+                Export Note Events
+            </button>
+
+        </div>
+
+        <div class="rightControls">
+
+            <button id="legendBtn">
+                Legend
+            </button>
+
+            <label>
+                Tuning Offset
+                <input
+                    type="range"
+                    id="tuning"
+                    min="-1"
+                    max="1"
+                    step="0.01"
+                    value="0"
+                />
+                <span id="tuningVal">
+                    0.00 st
+                </span>
+            </label>
+
+            <label>
+                Brightness
+                <input
+                    type="range"
+                    id="brightness"
+                    min="0.3"
+                    max="3"
+                    step="0.05"
+                    value="1"
+                />
+            </label>
+
+        </div>
+
+    </div>
+
+    <div id="status">
+        Load file
+    </div>
+
+</div>
+```
+
+---
+
+Inside the legend panel DELETE this entire block:
+
+```html id="remove_legend_slider"
+<div class="sectionTitle">
+    Spectrogram Strength
+</div>
+
+<label>
+    Intensity Boost
+    <input
+        type="range"
+        id="legendBrightness"
+        min="0.3"
+        max="3"
+        step="0.05"
+        value="1"
+    />
+</label>
+```
+
+---
+
+Delete this entire JS block:
+
+```js id="remove_sync"
+function syncBrightness(v){
+
+    brightnessBoost = parseFloat(v);
+
+    document
+    .getElementById("brightness")
+    .value = v;
+
+    document
+    .getElementById("legendBrightness")
+    .value = v;
+}
+
+document
+.getElementById("brightness")
+.addEventListener(
+    "input",
+    e => syncBrightness(e.target.value)
+);
+
+document
+.getElementById("legendBrightness")
+.addEventListener(
+    "input",
+    e => syncBrightness(e.target.value)
+);
+```
+
+---
+
+Replace it with this:
+
+```js id="brightness_live_fix"
+document
+.getElementById("brightness")
+.addEventListener(
+    "input",
+    e => {
+
+        brightnessBoost =
+            parseFloat(
+                e.target.value
+            );
+
+        redrawSpectrogram();
+    }
+);
+```
+
+---
+
+Replace your tuning slider listener with this:
+
+```js id="tuning_live_fix"
+document
+.getElementById("tuning")
+.addEventListener(
+    "input",
+    e => {
+
+        tuningOffset =
+            parseFloat(
+                e.target.value
+            );
+
+        document
+        .getElementById("tuningVal")
+        .textContent =
+            tuningOffset.toFixed(2)
+            + " st";
+
+        updatePitchLabels();
+
+        redrawSpectrogram();
+    }
+);
+```
+
+---
+
+Add these globals near the other state variables:
+
+```js id="cache_vars"
+let cachedSpectrogram = [];
+let cachedFFTSize = 4096;
+let cachedSampleRate = 44100;
+```
+
+---
+
+Inside `process(buffer)` near the top add:
+
+```js id="clear_cache"
+cachedSpectrogram = [];
+cachedSampleRate =
+    buffer.sampleRate;
+```
+
+---
+
+Inside the processing loop, immediately AFTER:
+
+```js
+const spec = fft(seg);
+```
+
+add:
+
+```js id="cache_spec"
+cachedSpectrogram.push(spec);
+```
+
+---
+
+Now add this entire new function BELOW `process()`:
+
+```js id="redraw_function"
+function redrawSpectrogram(){
+
+    specCtx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    if(
+        !cachedSpectrogram.length
+    ) return;
+
+    const xScale =
+        canvas.width /
+        cachedSpectrogram.length;
+
+    for(
+        let i = 0;
+        i < cachedSpectrogram.length;
+        i++
+    ){
+
+        const spec =
+            cachedSpectrogram[i];
+
+        for(
+            let b = 1;
+            b < spec.length;
+            b++
+        ){
+
+            const freq =
+                b *
+                (
+                    cachedSampleRate /
+                    cachedFFTSize
+                );
+
+            if(
+                freq < 20 ||
+                freq > 8000
+            ) continue;
+
+            const y =
+                canvas.height -
+                40 -
+                (
+                    Math.log2(freq / 20) /
+                    Math.log2(8000 / 20)
+                ) *
+                (
+                    canvas.height - 180
+                );
+
+            const mag =
+                spec[b];
+
+            const alpha =
+                Math.min(
+                    1,
+                    (
+                        mag / 55
+                    ) *
+                    brightnessBoost
+                );
+
+            const c =
+                colorForFreq(freq);
+
+            specCtx.fillStyle =
+                `rgba(
+                    ${c[0]},
+                    ${c[1]},
+                    ${c[2]},
+                    ${alpha}
+                )`;
+
+            specCtx.fillRect(
+                i * xScale,
+                y,
+                Math.ceil(xScale),
+                1
+            );
+        }
+    }
+}
+```
+
+---
+
+Finally, inside your spectrogram rendering loop in `process()`, replace:
+
+```js
+const alpha =
+    Math.min(
+        1,
+        mag / 55
+    );
+```
+
+with:
+
+```js id="alpha_live_fix"
+const alpha =
+    Math.min(
+        1,
+        (
+            mag / 55
+        ) *
+        brightnessBoost
+    );
+```
+
+These changes fix:
+
+* ✅ sliders now immediately update the UI
+* ✅ tuning slider live-updates pitch labels + spectrogram coloring
+* ✅ brightness slider instantly changes spectrogram intensity
+* ✅ legend slider removed
+* ✅ controls aligned right with flexible spacing
+* ✅ spectrogram can now be fully redrawn from cached FFT data without reprocessing audio

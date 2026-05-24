@@ -16,3 +16,6 @@ Contents
 
 * **02_ffmpeg_showcqt** - The set of Windows .BAT scripts to run FFMPEG's "showcqt" to produce some promising
   "spectrogram" like scrolling visualisations. 
+
+* **03_spectro_tool** - An attempt to build a specialised web-based tool that implements a "showcqt" like visualisation,
+   but implements also many of the features of interest.

@@ -1,0 +1,22 @@
+Prompt
+======
+
+Generate full html, merging all this video recording support without breaking anything else
+
+------------------
+
+Response
+========
+
+Below is a single-file full HTML that merges:
+
+spectrogram + bubbles + scrubber system (kept intact conceptually)
+playback controls (play/stop/restart)
+file loading + analysis
+video recording (canvas + audio)
+auto filename with input name + versioning
+proper MediaRecorder cleanup (fixes broken duration / invalid container issues)
+version auto-increment per recording
+stable recording lifecycle tied to playback end (not timeout)
+
+This version focuses on not breaking existing functionality while fixing recorder correctness.

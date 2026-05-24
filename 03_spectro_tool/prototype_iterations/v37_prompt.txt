@@ -1,0 +1,216 @@
+Prompt
+======
+
+Let's try another way:  Restore the spectograph behaviour to the version before the playback controls were added, but keeping the playback controls.
+
+----------
+
+Response
+========
+
+Yes — that is the correct recovery path.
+
+The playback-controls version introduced several rendering regressions because the spectrogram pipeline got rewritten at the same time.
+
+The cleanest fix is:
+
+* revert ONLY the spectrogram generation/rendering pipeline
+* keep:
+
+  * playback transport controls
+  * scrubber following playback
+  * jumping during playback
+  * tuning controls
+  * brightness controls
+  * legend
+  * time estimates
+  * C markers
+  * bubbles
+  * top bar layout
+
+The version before playback controls had the correct:
+
+* dense colourful showcqt-like rendering
+* stable time mapping
+* proper reveal behaviour
+* harmonic continuity
+* non-compressed plotting
+* correct bubble spacing
+
+The playback-control version broke:
+
+* FFT scaling
+* column positioning
+* reveal accumulation
+* harmonic blending
+* onset clustering
+
+---
+
+# EXACT RESTORE PLAN
+
+Keep the playback system.
+
+Restore these functions from the older version:
+
+## Restore:
+
+* `redrawSpectrogram()`
+* FFT windowing section
+* progressive reveal logic
+* bubble clustering logic
+
+## Keep:
+
+* `playAt()`
+* `stopPlayback()`
+* transport buttons
+* playback scrubber following
+* jump-to-click during playback
+
+---
+
+# Main rendering fix
+
+Your current broken renderer:
+
+```js
+specCtx.fillRect(...)
+```
+
+should be reverted to the previous glow renderer:
+
+```js
+const grad =
+    specCtx.createLinearGradient(
+        0,
+        y - glow,
+        0,
+        y + glow
+    );
+```
+
+That older version was visually correct.
+
+---
+
+# Main timeline fix
+
+The broken playback version computes:
+
+```js
+fixedColumnWidth =
+    canvas.width / total;
+```
+
+BUT redraws the whole spectrogram every frame.
+
+Instead:
+
+* draw ONLY newly processed columns
+* never redraw old columns during analysis
+* cache the canvas permanently
+
+This restores:
+
+* true left→right reveal
+* no compression
+* no shrinking
+
+---
+
+# Main bubble fix
+
+The old clustered hover behaviour should be restored:
+
+* inactive notes = tiny dots
+* active hovered note = orange rounded rect
+* ONLY one active bubble at a time
+* fade between active bubbles
+
+The playback version accidentally expanded multiple neighbouring bubbles simultaneously.
+
+---
+
+# What to revert specifically
+
+Use the PRE-playback versions of:
+
+```js
+drawBubbles()
+redrawSpectrogram()
+process()
+```
+
+Keep the playback-control versions of:
+
+```js
+playAt()
+stopPlayback()
+render()
+click handlers
+```
+
+---
+
+# Why this works
+
+Playback controls themselves are NOT the cause.
+
+The regressions came from:
+
+* changing spectrogram rendering model
+* changing reveal model
+* changing bubble-expansion rules
+
+Reverting only those sections restores the good visuals while preserving transport controls cleanly.
+
+---
+
+# Important implementation detail
+
+The spectrogram should NOT be regenerated during playback.
+
+Playback should ONLY:
+
+* move scrubber
+* update active bubble
+* update timestamp
+
+The spectrogram must remain cached/static once analysis finishes.
+
+That was another regression introduced in the newer version.
+
+---
+
+# Final architecture (recommended)
+
+## Analysis stage
+
+Build:
+
+* cached FFT frames
+* note clusters
+* spectrogram bitmap
+
+## Playback stage
+
+ONLY:
+
+* move scrubber
+* animate bubbles
+* update time
+
+NEVER:
+
+* rerender spectrogram
+* recompute FFT
+* rebuild bubbles
+
+---
+
+This will restore the earlier “showcqt-like” visual quality while keeping all transport/playback features working correctly.
+
+==============
+
+Generate the HTML

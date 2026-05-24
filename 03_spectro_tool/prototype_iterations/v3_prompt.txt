@@ -1,0 +1,347 @@
+Prompt
+======
+
+Scrubbing the mouse over the screen should bring the relevant label up from the rest (with a gentle animated transition), and that bubble should then be shown in orange.  The bubble should in such a case should remain framed within the bounds of the screen/page so that the full contents are visible. 
+
+A scrubber line (vertical, like a timeline indicator in video/sound editors) should be drawn spanning the whole extent of the page, following the mouse when the spectrogram is shown, and in a slightly darker shade of the orange that the bubble is shown with.
+
+The most dominant pitch should be bolded.
+
+When a previously active bubble goes out of range, it goes back to the normal blue appearance, with a fadeout animation. Also, non-active bubbles stay as dots instead of going wide.
+
+
+--------------------------------------------
+
+Add the following upgrades.
+
+---
+
+# 1. Add global bubble state storage
+
+Place this near the top of the script:
+
+```js id="qqh3hk"
+const bubbles = [];
+
+let mouseX = -9999;
+let activeBubble = null;
+
+let spectrogramImage = null;
+```
+
+---
+
+# 2. Replace the OLD label drawing block entirely
+
+Delete the entire old label rendering section and replace it with this:
+
+```js id="bx87pu"
+if (labels !== previousLabels) {
+
+    previousLabels = labels;
+
+    const dominantLabel =
+        dominant.length
+            ? dominant[0].label
+            : "";
+
+    bubbles.push({
+        x: frame * xScale + 8,
+        y: canvas.height * 0.72,
+        labels,
+        dominantLabel,
+        opacity: 0,
+        targetOpacity: 0,
+        active: false
+    });
+}
+```
+
+---
+
+# 3. Add this rendering system BELOW `generateSpectrogram()`
+
+```js id="zz95mf"
+function roundedRect(ctx, x, y, w, h, r) {
+
+    ctx.beginPath();
+
+    ctx.moveTo(x + r, y);
+
+    ctx.lineTo(x + w - r, y);
+
+    ctx.quadraticCurveTo(
+        x + w, y,
+        x + w, y + r
+    );
+
+    ctx.lineTo(
+        x + w,
+        y + h - r
+    );
+
+    ctx.quadraticCurveTo(
+        x + w, y + h,
+        x + w - r, y + h
+    );
+
+    ctx.lineTo(
+        x + r,
+        y + h
+    );
+
+    ctx.quadraticCurveTo(
+        x,
+        y + h,
+        x,
+        y + h - r
+    );
+
+    ctx.lineTo(
+        x,
+        y + r
+    );
+
+    ctx.quadraticCurveTo(
+        x,
+        y,
+        x + r,
+        y
+    );
+
+    ctx.closePath();
+}
+
+function drawBubble(bubble) {
+
+    const isActive = bubble.active;
+
+    const targetW =
+        isActive ? 220 : 10;
+
+    bubble.currentWidth =
+        bubble.currentWidth || 10;
+
+    bubble.currentWidth +=
+        (targetW - bubble.currentWidth) * 0.12;
+
+    bubble.opacity +=
+        (bubble.targetOpacity - bubble.opacity) * 0.12;
+
+    const width = bubble.currentWidth;
+    const height = isActive ? 36 : 10;
+
+    /*
+        Keep bubble onscreen
+    */
+    let x = bubble.x;
+
+    if (x + width > canvas.width - 10) {
+        x = canvas.width - width - 10;
+    }
+
+    if (x < 10) x = 10;
+
+    const y = bubble.y;
+
+    /*
+        Color transitions
+    */
+    const bg =
+        isActive
+        ? `rgba(255,140,40,${0.88 * bubble.opacity})`
+        : `rgba(40,80,180,${0.65 * bubble.opacity})`;
+
+    const border =
+        isActive
+        ? `rgba(255,190,120,${bubble.opacity})`
+        : `rgba(180,220,255,${bubble.opacity})`;
+
+    roundedRect(
+        ctx,
+        x,
+        y,
+        width,
+        height,
+        10
+    );
+
+    ctx.fillStyle = bg;
+    ctx.fill();
+
+    ctx.strokeStyle = border;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    /*
+        Dot mode for inactive bubbles
+    */
+    if (!isActive) return;
+
+    /*
+        Labels
+    */
+    const notes =
+        bubble.labels.split(" ");
+
+    let tx = x + 12;
+
+    ctx.font = "bold 16px monospace";
+
+    for (const note of notes) {
+
+        const isDominant =
+            note === bubble.dominantLabel;
+
+        ctx.font =
+            isDominant
+            ? "bold 16px monospace"
+            : "16px monospace";
+
+        ctx.fillStyle =
+            "rgba(255,255,255,0.97)";
+
+        ctx.fillText(
+            note,
+            tx,
+            y + 24
+        );
+
+        tx +=
+            ctx.measureText(note + " ").width;
+    }
+}
+
+function renderScene() {
+
+    requestAnimationFrame(renderScene);
+
+    ctx.clearRect(
+        0,0,
+        canvas.width,
+        canvas.height
+    );
+
+    if (spectrogramImage) {
+        ctx.drawImage(
+            spectrogramImage,
+            0,
+            0
+        );
+    }
+
+    /*
+        Scrubber line
+    */
+    if (mouseX >= 0) {
+
+        ctx.strokeStyle =
+            "rgba(200,90,20,0.65)";
+
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+
+        ctx.moveTo(mouseX, 0);
+        ctx.lineTo(mouseX, canvas.height);
+
+        ctx.stroke();
+    }
+
+    /*
+        Bubble activation
+    */
+    activeBubble = null;
+
+    let closestDist = 999999;
+
+    for (const bubble of bubbles) {
+
+        const dist =
+            Math.abs(mouseX - bubble.x);
+
+        if (dist < 35 && dist < closestDist) {
+
+            activeBubble = bubble;
+            closestDist = dist;
+        }
+    }
+
+    /*
+        Animate states
+    */
+    for (const bubble of bubbles) {
+
+        bubble.active =
+            bubble === activeBubble;
+
+        bubble.targetOpacity =
+            bubble.active ? 1 : 0.85;
+
+        drawBubble(bubble);
+    }
+}
+```
+
+---
+
+# 4. After spectrogram generation finishes, cache it as an image
+
+At the END of `generateSpectrogram()`, before setting `"Analysis complete"`:
+
+```js id="ptz6n4"
+spectrogramImage = new Image();
+
+spectrogramImage.src =
+    canvas.toDataURL();
+
+await new Promise(resolve => {
+    spectrogramImage.onload = resolve;
+});
+```
+
+---
+
+# 5. Add mouse tracking
+
+Add this near the bottom of the script:
+
+```js id="cr4gkp"
+canvas.addEventListener("mousemove", e => {
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+    mouseX =
+        e.clientX - rect.left;
+});
+
+canvas.addEventListener("mouseleave", () => {
+
+    mouseX = -9999;
+});
+```
+
+---
+
+# 6. Start the animation loop
+
+At the very bottom of the script:
+
+```js id="pc2skm"
+renderScene();
+```
+
+---
+
+You now get:
+
+* animated expanding pitch bubbles
+* inactive bubbles collapsed into dots
+* orange hover-highlight state
+* fade transitions
+* scrubber/timeline line
+* strongest pitch bolded
+* viewport-safe bubble positioning
+* continuous animated rendering loop
+* DAW/video-editor style scrubbing interaction

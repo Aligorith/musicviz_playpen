@@ -1,0 +1,9 @@
+Initial Prompt
+==============
+
+Make a single-page HTML app that implements something like the showcqt filter, to process a given sound file (that can be chosen from a file picker on the page). 
+* Once the file is loaded, the page will first generate a spectogram of the entire piece, and display this as the background of the page, spanning from left side = start time, and right side = end time, bottom edge = low pitches, top edge = high pitches. 
+* The colors for each frequency line in this spectrogram should be able to be manually set via associative array (general idea, g = green, a = red, b = sky blue, c = gold/peach, d = navy blue, e = lavendar above "tuning a" 440hz and brown below it, f = yellow-green, and darkness of the colors depends on octave, with the g beside tuning-A a lawn green, g below that a dark bottle-green, and g above lime green).   
+* When generating that spectrogram, figure out the fundamental frequency related to the dominant frequency sets, and provide text labels (in lilypond style) of the likely pitches identified (sorted in descending order of strength). These labels should only be included as frequently as there seems to be a change in the set of frequencies/pitches identified
+* Include links or suggestions to libraries to load mp3, flac, and wav files as necessary
+

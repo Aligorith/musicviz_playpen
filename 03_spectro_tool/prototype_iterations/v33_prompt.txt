@@ -1,0 +1,17 @@
+Prompt
+======
+
+* The group of Playback buttons should be centered in the topbar, with a large flexible gap on either side of those buttons.
+
+* The Play/Pause buttons should be combined together. Clicking on that toggles whether playback is happening, with the icon + text shown changing when this happens.
+
+* Fix the behaviour of the spectrogram being built, so that it gets slowly revealed from left to right, instead of spanning the whole width then getting compressed leftwards as more and more of the file is processed.
+
+* Draw a rounded-rect border around the "c4" middle-c label. Only using bold text is not enough.
+
+
+Show the complete html implementing these fixes.
+
+------------------------
+
+<just HTML without explanations>

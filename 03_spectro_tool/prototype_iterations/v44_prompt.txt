@@ -1,0 +1,99 @@
+Prompt
+======
+
+The generated filename for the recording should include the input audio filename
+
+
+-------------
+
+Response
+========
+
+Good catch — that’s important for keeping recordings traceable.
+
+Right now the recorder always outputs:
+
+```text
+spectrogram_capture.webm
+```
+
+We just need to store the uploaded filename and reuse it when exporting.
+
+---
+
+# ✅ Fix: Add input filename tracking
+
+## 1. Add a global variable
+
+Add near your globals:
+
+```js
+let inputFileName = "audio";
+```
+
+---
+
+## 2. Capture filename on file load
+
+Update your file handler:
+
+```js
+document.getElementById("file").onchange = async e => {
+    const file = e.target.files[0];
+    if(!file) return;
+
+    inputFileName = file.name.replace(/\.[^/.]+$/, ""); // strip extension
+
+    const arr = await file.arrayBuffer();
+    audioBuffer = await audioCtx.decodeAudioData(arr);
+    audioDuration = audioBuffer.duration;
+
+    document.getElementById("status").textContent =
+        "Loaded: " + file.name;
+};
+```
+
+---
+
+## 3. Use filename in recorder output
+
+Replace this line in `onstop`:
+
+```js
+a.download = "spectrogram_capture." + (mime.includes("mp4") ? "mp4" : "webm");
+```
+
+### With:
+
+```js
+const ext = mime.includes("mp4") ? "mp4" : "webm";
+
+a.download = `${inputFileName}_spectrogram_recording.${ext}`;
+```
+
+---
+
+## 🎯 Result
+
+If you load:
+
+```text
+piano_sonata.mp3
+```
+
+You now get:
+
+```text
+piano_sonata_spectrogram_recording.webm
+```
+
+(or `.mp4` if supported)
+
+---
+
+If you want next refinement, I can also:
+
+* include BPM / tuning / timestamp in filename
+* auto-increment versions (`_v1`, `_v2`)
+* embed metadata inside the video file itself (title, artist, etc.)
+

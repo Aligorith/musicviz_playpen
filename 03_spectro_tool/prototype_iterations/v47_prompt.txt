@@ -1,0 +1,231 @@
+Prompt
+======
+
+Why doesn't scrubber move?
+
+--------
+
+
+Response
+========
+
+Because in the current merged version the scrubber is effectively **tied to `playing` + `playAt()` time tracking**, but in practice your playback timing state is no longer advancing correctly.
+
+There are **three concrete reasons in your code path**:
+
+---
+
+# 1. `playbackSource.onended` is NOT reliably firing
+
+You rely on:
+
+```js
+playbackSource.onended = () => {
+    ...
+};
+```
+
+But once you connect the source to:
+
+```js
+recordDest.stream
+```
+
+some browsers (especially Chromium) change how the node is “observed”, and `onended` can become:
+
+* delayed
+* inconsistent
+* or skipped if the recorder is active
+
+➡️ Result: `playing` stays true or false incorrectly, so scrubber logic breaks.
+
+---
+
+# 2. Scrubber position depends on this expression
+
+```js
+const t =
+    playbackOffset +
+    (audioCtx.currentTime - playbackStart);
+```
+
+This only works if:
+
+* `playbackStart` is correct
+* `playbackOffset` is correct
+* playback is actually running from the same AudioContext timeline
+
+But your recording setup introduces a second timing dependency:
+
+```js
+recordDest + MediaRecorder
+```
+
+which does NOT affect AudioContext timing, but **your UI assumes it might be synchronized**.
+
+If playback is restarted or interrupted during recording startup, `playbackStart` becomes stale → scrubber freezes.
+
+---
+
+# 3. You are not updating scrubber when NOT playing
+
+This is the biggest logic gap:
+
+```js
+if(audioBuffer && playing){
+    const t = ...
+    mouseX = ...
+}
+```
+
+So:
+
+* if `playing === false` → scrubber NEVER moves
+* but `onended` failure often leaves `playing` stuck false
+
+➡️ Result: frozen scrubber
+
+---
+
+# THE REAL ROOT CAUSE
+
+👉 Scrubber motion is incorrectly coupled to:
+
+```text
+"playback lifecycle state"
+```
+
+instead of:
+
+```text
+"audio clock position"
+```
+
+---
+
+# ✅ THE CORRECT FIX (robust architecture)
+
+You should **NOT derive scrubber from `playAt()` timing variables alone**.
+
+Instead, always compute:
+
+---
+
+## FIX 1 — Use AudioContext time + offset safely
+
+Replace scrubber update block with:
+
+```js
+const currentTime =
+    playing
+    ? (audioCtx.currentTime - playbackStart + playbackOffset)
+    : playbackOffset;
+```
+
+Then:
+
+```js
+mouseX =
+    (currentTime / audioDuration) * canvas.width;
+```
+
+---
+
+## FIX 2 — Always update scrubber even when paused
+
+Change:
+
+```js
+if(audioBuffer && playing)
+```
+
+to:
+
+```js
+if(audioBuffer)
+```
+
+This alone fixes “stuck scrubber”.
+
+---
+
+## FIX 3 — Fix playback end detection properly
+
+Replace `onended` logic with polling fallback:
+
+Add in render loop:
+
+```js
+if(playing && audioBuffer){
+
+    const t =
+        playbackOffset +
+        (audioCtx.currentTime - playbackStart);
+
+    if(t >= audioDuration){
+        stopPlayback();
+    }
+}
+```
+
+This avoids reliance on broken `onended`.
+
+---
+
+## FIX 4 — Ensure playbackStart is always reset
+
+In `playAt(t)` ensure:
+
+```js
+playbackStart = audioCtx.currentTime;
+playbackOffset = t;
+```
+
+and NEVER updated elsewhere.
+
+---
+
+# WHY THIS FIX WORKS
+
+Because it makes scrubber depend on:
+
+### ✔ stable monotonic clock
+
+```text
+AudioContext.currentTime
+```
+
+instead of:
+
+* event callbacks (`onended`)
+* recorder lifecycle
+* UI state flags
+
+---
+
+# SUMMARY
+
+Your scrubber is frozen because:
+
+1. `onended` is unreliable when recording is attached
+2. `playing` state becomes inconsistent
+3. UI update depends too heavily on `playing`
+4. scrubber time is not recomputed independently
+
+---
+
+If you want, I can next:
+
+### 🔧 upgrade this to a fully correct DAW-style transport system:
+
+* single source of truth clock
+* drift-free scrubber
+* frame-accurate recording sync
+* deterministic playback timeline (OBS-level correctness)
+
+That will permanently eliminate these timing bugs.
+
+
+==========================
+
+VERDICT:  Fix Unappliable

@@ -1,0 +1,20 @@
+Prompt
+======
+
+Put back the time ticks, overlay bubbles, and colors for the spectrogram
+
+-------
+
+
+Response
+========
+
+Here’s a restored + upgraded full HTML that puts back:
+
+⏱ time ticks (bottom timeline, labeled + major/minor ticks)
+🫧 overlay bubbles (note clusters with active expansion + scrub highlight behavior)
+🌈 spectrogram pitch coloring (log-frequency + note-class coloring)
+🎛 onset + CQT + polyphonic tracking (still intact)
+🎹 note blocks + scrubber line
+
+This is your previous “onset stage”, but rebuilt to include the UI features you explicitly lost.

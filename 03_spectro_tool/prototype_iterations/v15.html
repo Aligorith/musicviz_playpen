@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CQT Spectrogram + Polyphonic Pitch Tracker</title>
+
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #111;
+    color: white;
+    font-family: sans-serif;
+}
+
+#canvas {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+#topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 20;
+    background: rgba(0,0,0,0.75);
+    backdrop-filter: blur(8px);
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+#controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+#status {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #ccc;
+}
+
+button {
+    cursor: pointer;
+}
+
+</style>
+</head>
+<body>
+
+<div id="topbar">
+    <div id="controls">
+        <input type="file" id="file"/>
+        <button id="analyze">Analyze</button>
+        <button id="export">Export MIDI Log</button>
+    </div>
+    <div id="status">Load audio file</div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const spectrogramCanvas = document.createElement("canvas");
+const spectrogramCtx = spectrogramCanvas.getContext("2d");
+
+function resize(){
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+    spectrogramCanvas.width = canvas.width;
+    spectrogramCanvas.height = canvas.height;
+}
+addEventListener("resize", resize);
+resize();
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const status = document.getElementById("status");
+
+let audioDuration = 0;
+let spectrogramReady = false;
+
+let mouseX = -9999;
+let frozen = false;
+let frozenX = -9999;
+
+const bubbles = [];
+let midiEvents = [];
+
+/* ---------------- CQT ---------------- */
+
+const CQT_MIN = 55;
+const CQT_MAX = 1760;
+const BPO = 36;
+
+function buildCQT(){
+    const bins = [];
+    const oct = Math.log2(CQT_MAX / CQT_MIN);
+    const total = oct * BPO;
+
+    for(let i=0;i<total;i++){
+        bins.push(CQT_MIN * Math.pow(2, i/BPO));
+    }
+    return bins;
+}
+
+const CQT = buildCQT();
+
+function cqtMag(frame, f, sr){
+    let sum = 0;
+    for(let i=0;i<frame.length;i++){
+        const w = 0.5*(1-Math.cos(2*Math.PI*i/(frame.length-1)));
+        const phase = 2*Math.PI*f*i/sr;
+        sum += frame[i] * Math.cos(phase) * w;
+    }
+    return Math.abs(sum);
+}
+
+function analyzeCQT(frame, sr){
+
+    const out = [];
+    let max = 0;
+
+    for(const f of CQT){
+        const m = cqtMag(frame,f,sr);
+        out.push({freq:f, mag:m});
+        if(m>max) max=m;
+    }
+
+    // smoothing
+    for(let i=1;i<out.length-1;i++){
+        out[i].mag = (out[i-1].mag+out[i].mag+out[i+1].mag)/3;
+    }
+
+    return out
+        .filter(x=>x.mag>max*0.25)
+        .sort((a,b)=>b.mag-a.mag);
+}
+
+function extractNotes(cqt){
+
+    const max = Math.max(...cqt.map(x=>x.mag));
+
+    return cqt
+        .filter(x=>x.mag > max*0.4)
+        .slice(0,6)
+        .map(x=>({
+            freq:x.freq,
+            label: midiToLily(freqToMidi(x.freq)),
+            midi: freqToMidi(x.freq)
+        }));
+}
+
+/* ---------------- FFT (visual only) ---------------- */
+
+function fft(sig){
+    const N=sig.length;
+    const out=new Float32Array(N/2);
+
+    for(let k=0;k<N/2;k++){
+        let re=0,im=0;
+        for(let n=0;n<N;n++){
+            const p=2*Math.PI*k*n/N;
+            re+=sig[n]*Math.cos(p);
+            im-=sig[n]*Math.sin(p);
+        }
+        out[k]=Math.sqrt(re*re+im*im);
+    }
+    return out;
+}
+
+/* ---------------- Helpers ---------------- */
+
+function freqToMidi(f){
+    return 69+12*Math.log2(f/440);
+}
+
+const NOTES=["c","cis","d","ees","e","f","fis","g","gis","a","bes","b"];
+
+function midiToLily(m){
+    const r=Math.round(m);
+    const n=NOTES[(r%12+12)%12];
+    return n;
+}
+
+function formatTime(s){
+    return String(Math.floor(s/60)).padStart(2,"0")+":"+String(Math.floor(s%60)).padStart(2,"0");
+}
+
+/* ---------------- Audio ---------------- */
+
+async function decode(file){
+    return audioCtx.decodeAudioData(await file.arrayBuffer());
+}
+
+/* ---------------- Spectrogram ---------------- */
+
+async function process(audioBuffer){
+
+    spectrogramReady=false;
+    audioDuration=audioBuffer.duration;
+    midiEvents.length=0;
+
+    const data=audioBuffer.getChannelData(0);
+
+    const fftSize=4096;
+    const hop=1024;
+
+    const total=Math.floor((data.length-fftSize)/hop);
+    const xScale=canvas.width/total;
+
+    spectrogramCtx.clearRect(0,0,canvas.width,canvas.height);
+
+    for(let i=0;i<total;i++){
+
+        const seg=data.slice(i*hop,i*hop+fftSize);
+
+        for(let j=0;j<seg.length;j++){
+            seg[j]*=0.5*(1-Math.cos(2*Math.PI*j/(seg.length-1)));
+        }
+
+        const spectrum=fft(seg);
+
+        const cqt=analyzeCQT(seg,audioBuffer.sampleRate);
+        const notes=extractNotes(cqt);
+
+        midiEvents.push({
+            t:i*hop/audioBuffer.sampleRate,
+            notes
+        });
+
+        for(const n of notes){
+            const x=i*xScale;
+            const y=canvas.height*0.7;
+
+            bubbles.push({
+                x,y,
+                label:n.label,
+                active:false
+            });
+        }
+
+        for(let b=0;b<spectrum.length;b++){
+
+            const f=b*audioBuffer.sampleRate/fftSize;
+            if(f<20||f>8000) continue;
+
+            const y=canvas.height-(Math.log2(f/20)/Math.log2(8000/20))*canvas.height;
+
+            const a=Math.min(1,spectrum[b]/80);
+
+            spectrogramCtx.fillStyle=`rgba(120,200,255,${a})`;
+            spectrogramCtx.fillRect(i*xScale,y,1,1);
+        }
+
+        if(i%10===0){
+            status.textContent=`Processing ${i}/${total}`;
+            await new Promise(r=>setTimeout(r,0));
+        }
+    }
+
+    spectrogramReady=true;
+    status.textContent="Done";
+}
+
+/* ---------------- Export ---------------- */
+
+function exportMidiLog(){
+
+    let txt="TIME\tNOTES\n\n";
+
+    for(const e of midiEvents){
+        txt+=`${e.t.toFixed(2)}\t${e.notes.map(n=>n.label).join(" ")}\n`;
+    }
+
+    const blob=new Blob([txt],{type:"text/plain"});
+    const url=URL.createObjectURL(blob);
+
+    const a=document.createElement("a");
+    a.href=url;
+    a.download="notes.txt";
+    a.click();
+}
+
+/* ---------------- Render ---------------- */
+
+function render(){
+
+    requestAnimationFrame(render);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    if(spectrogramReady){
+        ctx.drawImage(spectrogramCanvas,0,0);
+    }
+
+    const mx = frozen ? frozenX : mouseX;
+
+    if(mx>0){
+        ctx.strokeStyle="orange";
+        ctx.beginPath();
+        ctx.moveTo(mx,0);
+        ctx.lineTo(mx,canvas.height);
+        ctx.stroke();
+    }
+
+}
+
+addEventListener("mousemove",e=>mouseX=e.clientX);
+addEventListener("mouseleave",()=>mouseX=-9999);
+
+addEventListener("keydown",e=>{
+    if(e.code==="Space"){
+        frozen=!frozen;
+        frozenX=mouseX;
+    }
+});
+
+document.getElementById("analyze").onclick=async()=>{
+    const f=document.getElementById("file").files[0];
+    if(!f) return;
+
+    const buf=await decode(f);
+    await process(buf);
+};
+
+document.getElementById("export").onclick=exportMidiLog;
+
+render();
+
+</script>
+
+</body>
+</html>

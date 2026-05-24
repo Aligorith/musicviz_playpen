@@ -1,0 +1,329 @@
+Prompt
+======
+
+Resizing window causes parts of spectograph to blank out, scrubber to not show
+
+----------
+
+
+Response
+========
+
+That happens because the current implementation redraws directly into the visible canvas, but resizing:
+
+1. destroys the canvas bitmap
+2. changes coordinate scaling
+3. invalidates cached positions
+4. clears the spectrogram pixels
+5. leaves scrubber positions stale
+
+So after resize:
+
+* old spectrogram pixels are lost
+* only newly drawn areas appear
+* scrubber math still references old dimensions
+
+The correct fix is to move to a **persistent offscreen spectrogram buffer**.
+
+---
+
+# Root Cause
+
+When you do:
+
+```js
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+```
+
+the browser:
+
+* completely clears the canvas
+* resets all drawing state
+* invalidates all previous pixels
+
+This is standard HTML canvas behavior.
+
+Your spectrogram is currently:
+
+```text
+ephemeral
+```
+
+meaning:
+
+* it only exists in the visible canvas
+* not in reusable image memory
+
+---
+
+# Correct Architecture
+
+You need:
+
+| Canvas                       | Purpose                         |
+| ---------------------------- | ------------------------------- |
+| visible canvas               | overlays + compositing          |
+| offscreen spectrogram canvas | persistent rendered spectrogram |
+
+This is how:
+
+* DAWs
+* waveform editors
+* spectrogram tools
+* video editors
+
+all work.
+
+---
+
+# Proper Fix
+
+---
+
+# 1. Create offscreen spectrogram buffer
+
+Add:
+
+```js
+const spectrogramCanvas =
+    document.createElement("canvas");
+
+const spectrogramCtx =
+    spectrogramCanvas.getContext("2d");
+```
+
+This canvas permanently stores:
+
+* spectrogram pixels
+* completed rendering
+
+---
+
+# 2. Resize BOTH canvases
+
+Update resize:
+
+```js
+function resize(){
+
+    const oldSpec =
+        document.createElement("canvas");
+
+    oldSpec.width =
+        spectrogramCanvas.width;
+
+    oldSpec.height =
+        spectrogramCanvas.height;
+
+    oldSpec
+        .getContext("2d")
+        .drawImage(
+            spectrogramCanvas,
+            0,
+            0
+        );
+
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    spectrogramCanvas.width = innerWidth;
+    spectrogramCanvas.height = innerHeight;
+
+    spectrogramCtx.drawImage(
+        oldSpec,
+        0,
+        0,
+        oldSpec.width,
+        oldSpec.height,
+        0,
+        0,
+        spectrogramCanvas.width,
+        spectrogramCanvas.height
+    );
+}
+```
+
+This:
+
+* preserves old spectrogram
+* rescales it smoothly
+* prevents blank areas
+
+---
+
+# 3. Draw spectrogram ONLY into offscreen canvas
+
+Instead of:
+
+```js
+ctx.fillRect(...)
+```
+
+use:
+
+```js
+spectrogramCtx.fillRect(...)
+```
+
+for ALL spectrogram rendering.
+
+Important:
+
+* overlays still draw on visible canvas
+* spectrogram itself draws offscreen
+
+---
+
+# 4. Composite spectrogram every frame
+
+In main draw loop:
+
+```js
+ctx.drawImage(
+    spectrogramCanvas,
+    0,
+    0
+);
+```
+
+before overlays.
+
+---
+
+# 5. Recompute scrubber from current dimensions
+
+Currently scrubber positions become stale because:
+
+```js
+scrubberX
+```
+
+was effectively cached.
+
+Instead ALWAYS derive from:
+
+* current playback time
+* current canvas width
+
+every frame.
+
+---
+
+# Replace this
+
+```js
+scrubberX = ...
+```
+
+stored globally.
+
+---
+
+# With this
+
+Inside draw:
+
+```js
+const scrubberX =
+    LEFT_GUTTER +
+    (
+        currentPlaybackTime()
+        / audioDuration
+    ) *
+    (
+        canvas.width -
+        LEFT_GUTTER
+    );
+```
+
+This guarantees:
+
+* resize-safe scrubber
+* no stale coordinates
+* perfect transport alignment
+
+---
+
+# 6. Rebuild timeline after resize
+
+Timeline ticks should also:
+
+* derive from current width
+* NOT use cached pixel spacing
+
+Always recompute:
+
+```js
+const pxPerSecond =
+    (
+        canvas.width -
+        LEFT_GUTTER
+    ) / audioDuration;
+```
+
+inside draw.
+
+---
+
+# Why This Fix Works
+
+Previously:
+
+```text
+visible canvas WAS the spectrogram
+```
+
+After resize:
+
+```text
+canvas bitmap destroyed
+```
+
+Now:
+
+```text
+offscreen canvas stores persistent image
+```
+
+Visible canvas becomes:
+
+```text
+temporary compositing layer
+```
+
+which is the correct rendering architecture.
+
+---
+
+# Result After Fix
+
+✅ spectrogram survives resize
+✅ no blank areas
+✅ scrubber always visible
+✅ timeline stays aligned
+✅ playback overlays remain synchronized
+✅ resizing becomes smooth and stable
+✅ future zoom/pan becomes possible
+
+---
+
+# Additional Recommended Improvement
+
+To avoid blurry resize scaling:
+
+after resize:
+
+```text
+re-render spectrogram progressively
+```
+
+instead of scaling bitmap.
+
+Professional tools:
+
+* preserve old image immediately
+* asynchronously regenerate high-quality version afterward
+
+You now have the architecture needed for that.
+

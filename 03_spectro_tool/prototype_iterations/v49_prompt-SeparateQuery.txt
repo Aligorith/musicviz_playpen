@@ -1,0 +1,61 @@
+Prompt
+======
+
+When recording a canvas to a video, how to include the page background color in the recording
+
+(NOTE: Original prompt 49 timed out and died)
+
+------------------
+
+Response
+========
+
+When you record a `<canvas>` using `canvas.captureStream()` + `MediaRecorder`, only the pixels actually drawn inside the canvas are captured. CSS background colors on the page, body, or canvas element are **not included** in the recording. ([Chrome for Developers][1])
+
+You must explicitly paint the background color into the canvas before drawing anything else.
+
+Example:
+
+```js
+const canvas = document.querySelector("canvas");
+const ctx = canvas.getContext("2d");
+
+function render() {
+  // Draw background FIRST
+  ctx.fillStyle = "#ffffff"; // page background color
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Then draw your content
+  drawScene();
+
+  requestAnimationFrame(render);
+}
+
+render();
+
+const stream = canvas.captureStream(30);
+const recorder = new MediaRecorder(stream);
+```
+
+Important details:
+
+* `canvas.style.background = "white"` → NOT recorded
+* `body { background: white }` → NOT recorded
+* `ctx.fillRect(...)` → recorded correctly
+
+This happens because `captureStream()` records the canvas bitmap itself, not the DOM/CSS around it. ([Chrome for Developers][1])
+
+If you want the canvas to match the page background dynamically:
+
+```js
+const bg = getComputedStyle(document.body).backgroundColor;
+
+ctx.fillStyle = bg;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+```
+
+Also avoid transparent canvases when exporting video, because transparent areas often become black in recordings/exported codecs. Filling the entire frame every render prevents that. ([Stack Overflow][2])
+
+[1]: https://developer.chrome.com/blog/capture-stream/?utm_source=chatgpt.com "Capture a MediaStream from a canvas, video or audio element  |  Blog  |  Chrome for Developers"
+[2]: https://stackoverflow.com/questions/66289033/mediarecorder-and-javascript-on-canvas?utm_source=chatgpt.com "Mediarecorder and javascript on canvas - Stack Overflow"
+

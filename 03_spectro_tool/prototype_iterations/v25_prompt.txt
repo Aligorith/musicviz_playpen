@@ -1,0 +1,89 @@
+Prompt
+======
+
+Syntax error:  Uncaught ReferenceError: can't access lexical declaration 'cachedSpectrogram' before initialization
+    redrawSpectrogram file:///E:/sound_processing/my_experiments/2026_05_23-ai_showcqt_labelled_spectrogram/v23.html:669
+    resize file:///E:/sound_processing/my_experiments/2026_05_23-ai_showcqt_labelled_spectrogram/v23.html:253
+    <anonymous> file:///E:/sound_processing/my_experiments/2026_05_23-ai_showcqt_labelled_spectrogram/v23.html:257
+
+
+-----------------------
+
+
+Response
+========
+
+The problem is that `resize()` is being called before:
+
+```js
+let cachedSpectrogram = [];
+```
+
+has been initialized.
+
+At startup:
+
+1. `resize()` runs immediately
+2. `resize()` calls `redrawSpectrogram()`
+3. `redrawSpectrogram()` references `cachedSpectrogram`
+4. but `cachedSpectrogram` is still in the temporal dead zone
+
+---
+
+Fix it by moving this block:
+
+```js
+let cachedSpectrogram = [];
+let cachedFFTSize = 4096;
+let cachedSampleRate = 44100;
+```
+
+ABOVE this section:
+
+```js
+function resize(){
+```
+
+So the order becomes:
+
+```js id="init_order_fix"
+/* ------------------------------------------------ */
+/* cached spectrogram state */
+/* ------------------------------------------------ */
+
+let cachedSpectrogram = [];
+let cachedFFTSize = 4096;
+let cachedSampleRate = 44100;
+
+/* ------------------------------------------------ */
+/* canvas */
+/* ------------------------------------------------ */
+
+const canvas =
+    document.getElementById("canvas");
+
+const ctx =
+    canvas.getContext("2d");
+
+const specCanvas =
+    document.createElement("canvas");
+
+const specCtx =
+    specCanvas.getContext("2d");
+
+function resize(){
+
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    specCanvas.width = innerWidth;
+    specCanvas.height = innerHeight;
+
+    redrawSpectrogram();
+}
+
+addEventListener("resize", resize);
+resize();
+```
+
+That fixes the startup exception.

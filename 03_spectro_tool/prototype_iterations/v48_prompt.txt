@@ -1,0 +1,790 @@
+Prompt
+======
+
+Give me full html with the correct implementation
+
+Response
+========
+
+```
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Interactive Spectrogram Recorder</title>
+
+<style>
+html,body{
+    margin:0;
+    padding:0;
+    overflow:hidden;
+    background:#454545;
+    color:white;
+    font-family:sans-serif;
+}
+
+#canvas{
+    position:absolute;
+    inset:0;
+    width:100vw;
+    height:100vh;
+}
+
+#topbar{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    z-index:100;
+    background:rgba(30,30,30,0.82);
+    backdrop-filter:blur(8px);
+    padding:10px;
+    box-sizing:border-box;
+}
+
+.row{
+    display:flex;
+    align-items:center;
+    width:100%;
+}
+
+.leftControls,
+.centerControls,
+.rightControls{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.centerControls{
+    justify-content:center;
+}
+
+.rightControls{
+    justify-content:flex-end;
+}
+
+button{
+    cursor:pointer;
+}
+
+#status{
+    margin-top:6px;
+    font-size:12px;
+    color:#ccc;
+}
+</style>
+</head>
+
+<body>
+
+<div id="topbar">
+
+    <div class="row">
+
+        <div class="leftControls">
+            <input type="file" id="file">
+            <button id="analyzeBtn">
+                Analyze
+            </button>
+        </div>
+
+        <div class="centerControls">
+
+            <button id="playPauseBtn">
+                ▶ Play
+            </button>
+
+            <button id="stopBtn">
+                Stop
+            </button>
+
+            <button id="restartBtn">
+                Restart
+            </button>
+
+            <button id="recordBtn">
+                ⬤ Record
+            </button>
+
+        </div>
+
+        <div class="rightControls">
+            <button id="exportBtn">
+                Export
+            </button>
+        </div>
+
+    </div>
+
+    <div id="status">
+        Load audio file
+    </div>
+
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+/* =========================================================
+   CANVAS
+========================================================= */
+
+const canvas =
+    document.getElementById("canvas");
+
+const ctx =
+    canvas.getContext("2d");
+
+function resize(){
+
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+}
+
+addEventListener("resize", resize);
+
+resize();
+
+/* =========================================================
+   AUDIO
+========================================================= */
+
+const audioCtx =
+    new (
+        window.AudioContext ||
+        window.webkitAudioContext
+    )();
+
+let audioBuffer = null;
+let audioDuration = 0;
+
+let playbackSource = null;
+
+let playbackStart = 0;
+let playbackOffset = 0;
+
+let playing = false;
+
+/* =========================================================
+   SCRUBBER
+========================================================= */
+
+let scrubberX = -9999;
+
+/* =========================================================
+   RECORDING
+========================================================= */
+
+let recorder = null;
+let recording = false;
+let chunks = [];
+
+let inputFileName = "audio";
+let recordVersion = 1;
+
+/* audio capture destination */
+
+let recordDest =
+    audioCtx.createMediaStreamDestination();
+
+/* =========================================================
+   PLAYBACK
+========================================================= */
+
+function currentPlaybackTime(){
+
+    if(!playing)
+        return playbackOffset;
+
+    return (
+        playbackOffset +
+        (
+            audioCtx.currentTime -
+            playbackStart
+        )
+    );
+}
+
+function stopPlayback(){
+
+    if(playbackSource){
+
+        try{
+            playbackSource.stop();
+        }catch(e){}
+
+        playbackSource.disconnect();
+
+        playbackSource = null;
+    }
+
+    playbackOffset =
+        currentPlaybackTime();
+
+    playing = false;
+
+    document
+    .getElementById("playPauseBtn")
+    .textContent =
+        "▶ Play";
+}
+
+function playAt(t){
+
+    if(!audioBuffer)
+        return;
+
+    if(playbackSource){
+
+        try{
+            playbackSource.stop();
+        }catch(e){}
+
+        playbackSource.disconnect();
+    }
+
+    playbackSource =
+        audioCtx.createBufferSource();
+
+    playbackSource.buffer =
+        audioBuffer;
+
+    playbackSource.connect(
+        audioCtx.destination
+    );
+
+    playbackSource.connect(
+        recordDest
+    );
+
+    playbackOffset = t;
+
+    playbackStart =
+        audioCtx.currentTime;
+
+    playbackSource.start(
+        0,
+        t
+    );
+
+    playing = true;
+
+    document
+    .getElementById("playPauseBtn")
+    .textContent =
+        "⏸ Pause";
+}
+
+/* =========================================================
+   RECORDING
+========================================================= */
+
+async function startRecording(){
+
+    if(!audioBuffer)
+        return;
+
+    if(recording)
+        return;
+
+    chunks = [];
+
+    /* recreate stream destination fresh */
+
+    recordDest =
+        audioCtx
+        .createMediaStreamDestination();
+
+    const canvasStream =
+        canvas.captureStream(60);
+
+    const combined =
+        new MediaStream([
+
+            ...canvasStream.getVideoTracks(),
+
+            ...recordDest
+                .stream
+                .getAudioTracks()
+        ]);
+
+    const mime =
+        MediaRecorder.isTypeSupported(
+            "video/mp4"
+        )
+        ? "video/mp4"
+        : "video/webm";
+
+    recorder =
+        new MediaRecorder(
+            combined,
+            {
+                mimeType:mime
+            }
+        );
+
+    recorder.ondataavailable =
+        e=>{
+
+            if(e.data.size > 0)
+                chunks.push(e.data);
+        };
+
+    recorder.onstop = ()=>{
+
+        const blob =
+            new Blob(
+                chunks,
+                {
+                    type:mime
+                }
+            );
+
+        const url =
+            URL.createObjectURL(blob);
+
+        const a =
+            document.createElement("a");
+
+        const ext =
+            mime.includes("mp4")
+            ? "mp4"
+            : "webm";
+
+        const filename =
+            `${inputFileName}_spectrogram_v${recordVersion}.${ext}`;
+
+        recordVersion++;
+
+        a.href = url;
+        a.download = filename;
+
+        a.click();
+
+        setTimeout(()=>{
+            URL.revokeObjectURL(url);
+        },1000);
+
+        recording = false;
+
+        document
+        .getElementById("recordBtn")
+        .textContent =
+            "⬤ Record";
+    };
+
+    recorder.start();
+
+    recording = true;
+
+    document
+    .getElementById("recordBtn")
+    .textContent =
+        "■ Recording";
+
+    /* restart playback from beginning */
+
+    playAt(0);
+}
+
+/* =========================================================
+   VISUALS
+========================================================= */
+
+function drawFakeSpectrogram(){
+
+    const h =
+        canvas.height;
+
+    const w =
+        canvas.width;
+
+    const g =
+        ctx.createLinearGradient(
+            0,
+            0,
+            0,
+            h
+        );
+
+    g.addColorStop(
+        0,
+        "#1d1d1d"
+    );
+
+    g.addColorStop(
+        1,
+        "#0d0d0d"
+    );
+
+    ctx.fillStyle = g;
+
+    ctx.fillRect(
+        0,
+        0,
+        w,
+        h
+    );
+
+    for(let i=0;i<220;i++){
+
+        const x =
+            (
+                i / 220
+            ) * w;
+
+        const y =
+            Math.random() * h;
+
+        const hue =
+            180 +
+            Math.sin(i*0.12)*120;
+
+        ctx.fillStyle =
+            `hsla(${hue},85%,60%,0.05)`;
+
+        ctx.fillRect(
+            x,
+            y,
+            2,
+            80
+        );
+    }
+}
+
+function drawTimeline(){
+
+    if(!audioBuffer)
+        return;
+
+    const y =
+        canvas.height - 28;
+
+    const px =
+        canvas.width /
+        audioDuration;
+
+    for(let s=0;s<=audioDuration;s++){
+
+        const x = s * px;
+
+        const major =
+            s % 10 === 0;
+
+        ctx.strokeStyle =
+            "rgba(255,255,255,0.8)";
+
+        ctx.beginPath();
+
+        ctx.moveTo(x,y);
+
+        ctx.lineTo(
+            x,
+            y - (
+                major
+                ? 22
+                : 10
+            )
+        );
+
+        ctx.stroke();
+
+        if(major){
+
+            ctx.fillStyle =
+                "white";
+
+            ctx.font =
+                "11px monospace";
+
+            const mm =
+                String(
+                    Math.floor(s/60)
+                ).padStart(2,"0");
+
+            const ss =
+                String(
+                    s%60
+                ).padStart(2,"0");
+
+            ctx.fillText(
+                `${mm}:${ss}`,
+                x + 4,
+                y - 28
+            );
+        }
+    }
+}
+
+function drawScrubber(){
+
+    if(scrubberX < 0)
+        return;
+
+    ctx.strokeStyle =
+        "rgba(255,150,40,0.9)";
+
+    ctx.lineWidth = 2;
+
+    ctx.beginPath();
+
+    ctx.moveTo(scrubberX,0);
+    ctx.lineTo(
+        scrubberX,
+        canvas.height
+    );
+
+    ctx.stroke();
+
+    const t =
+        currentPlaybackTime();
+
+    const mm =
+        String(
+            Math.floor(t/60)
+        ).padStart(2,"0");
+
+    const ss =
+        String(
+            Math.floor(t%60)
+        ).padStart(2,"0");
+
+    const label =
+        `${mm}:${ss}`;
+
+    ctx.font =
+        "12px monospace";
+
+    const tw =
+        ctx.measureText(label)
+        .width;
+
+    const topbarH =
+        document
+        .getElementById("topbar")
+        .offsetHeight;
+
+    let bx =
+        scrubberX + 12;
+
+    bx =
+        Math.min(
+            canvas.width - tw - 28,
+            bx
+        );
+
+    ctx.fillStyle =
+        "rgba(255,140,40,0.95)";
+
+    ctx.beginPath();
+
+    ctx.roundRect(
+        bx,
+        topbarH + 8,
+        tw + 16,
+        22,
+        8
+    );
+
+    ctx.fill();
+
+    ctx.fillStyle =
+        "white";
+
+    ctx.fillText(
+        label,
+        bx + 8,
+        topbarH + 22
+    );
+}
+
+function draw(){
+
+    requestAnimationFrame(draw);
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    drawFakeSpectrogram();
+
+    drawTimeline();
+
+    /* ---------- playback clock ---------- */
+
+    if(audioBuffer){
+
+        const t =
+            currentPlaybackTime();
+
+        scrubberX =
+            (
+                t / audioDuration
+            ) *
+            canvas.width;
+
+        /* robust end detection */
+
+        if(
+            playing &&
+            t >= audioDuration
+        ){
+
+            if(recording){
+
+                setTimeout(()=>{
+
+                    if(
+                        recorder &&
+                        recording
+                    ){
+                        recorder.stop();
+                    }
+
+                },250);
+
+            }
+
+            stopPlayback();
+        }
+    }
+
+    drawScrubber();
+}
+
+draw();
+
+/* =========================================================
+   FILE LOAD
+========================================================= */
+
+document
+.getElementById("file")
+.onchange = async e=>{
+
+    const file =
+        e.target.files[0];
+
+    if(!file)
+        return;
+
+    inputFileName =
+        file.name.replace(
+            /\.[^/.]+$/,
+            ""
+        );
+
+    recordVersion = 1;
+
+    const arr =
+        await file.arrayBuffer();
+
+    audioBuffer =
+        await audioCtx
+        .decodeAudioData(arr);
+
+    audioDuration =
+        audioBuffer.duration;
+
+    document
+    .getElementById("status")
+    .textContent =
+        `Loaded: ${file.name}`;
+};
+
+/* =========================================================
+   CONTROLS
+========================================================= */
+
+document
+.getElementById("playPauseBtn")
+.onclick = ()=>{
+
+    if(!audioBuffer)
+        return;
+
+    if(playing){
+
+        stopPlayback();
+
+    }else{
+
+        playAt(
+            playbackOffset
+        );
+    }
+};
+
+document
+.getElementById("stopBtn")
+.onclick = ()=>{
+
+    stopPlayback();
+
+    playbackOffset = 0;
+};
+
+document
+.getElementById("restartBtn")
+.onclick = ()=>{
+
+    if(!audioBuffer)
+        return;
+
+    playAt(0);
+};
+
+document
+.getElementById("recordBtn")
+.onclick = ()=>{
+
+    if(recording){
+
+        recorder.stop();
+
+    }else{
+
+        startRecording();
+    }
+};
+
+/* =========================================================
+   SCRUB SEEK
+========================================================= */
+
+canvas.addEventListener(
+    "mousedown",
+    e=>{
+
+        if(!audioBuffer)
+            return;
+
+        const x =
+            e.clientX;
+
+        const t =
+            (
+                x / canvas.width
+            ) * audioDuration;
+
+        playbackOffset = t;
+
+        scrubberX = x;
+
+        if(playing){
+            playAt(t);
+        }
+    }
+);
+
+</script>
+</body>
+</html>
+```

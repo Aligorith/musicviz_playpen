@@ -1,0 +1,321 @@
+Prompt
+======
+
+The updated version is broken:
+* The spectrogram now displays as largely grey with tiny dots. The previous version was better
+* The c markers on the left have disappeared
+* The scrubber marker at the top is still half out of view
+
+---------
+
+Response
+========
+
+Those regressions happened because the last version accidentally replaced the earlier dense spectrogram renderer with a simplified placeholder renderer (`cachedSpectrogram.push({freq...})`) that only plots sparse dots instead of FFT magnitude bins.
+
+Here are the fixes to restore the previous good rendering while keeping the newer playback/UI features.
+
+---
+
+# 1. Restore dense spectrogram rendering
+
+Replace the ENTIRE `redrawSpectrogram()` with this:
+
+```js id="restore_dense_spectrogram"
+function redrawSpectrogram(){
+
+    specCtx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    if(!cachedSpectrogram.length)
+        return;
+
+    const xScale =
+        canvas.width /
+        cachedSpectrogram.length;
+
+    for(
+        let i=0;
+        i<cachedSpectrogram.length;
+        i++
+    ){
+
+        const spec =
+            cachedSpectrogram[i];
+
+        for(
+            let b=1;
+            b<spec.length;
+            b++
+        ){
+
+            const freq =
+                b *
+                (
+                    cachedSampleRate /
+                    cachedFFTSize
+                );
+
+            if(
+                freq < MIN_FREQ ||
+                freq > MAX_FREQ
+            ) continue;
+
+            const y =
+                freqToY(freq);
+
+            const mag =
+                spec[b];
+
+            const alpha =
+                Math.min(
+                    1,
+                    (
+                        Math.log10(
+                            1 + mag
+                        ) / 2.1
+                    ) *
+                    brightnessBoost
+                );
+
+            const c =
+                colorForFreq(freq);
+
+            specCtx.fillStyle =
+                `rgba(
+                    ${c[0]},
+                    ${c[1]},
+                    ${c[2]},
+                    ${alpha}
+                )`;
+
+            specCtx.fillRect(
+                i * xScale,
+                y,
+                Math.ceil(xScale)+1,
+                1
+            );
+        }
+    }
+}
+```
+
+---
+
+# 2. Restore proper full spectrogram rendering in render()
+
+Replace:
+
+```js id="bad_render"
+ctx.clearRect(0,0,canvas.width,canvas.height);
+ctx.fillStyle="#454545";
+ctx.fillRect(0,0,canvas.width,canvas.height);
+```
+
+WITH:
+
+```js id="good_render"
+ctx.clearRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+);
+
+ctx.drawImage(
+    specCanvas,
+    0,
+    0
+);
+```
+
+---
+
+# 3. Restore C markers
+
+The previous draw loop was lost.
+
+Add this ENTIRE function back ABOVE `render()`:
+
+```js id="restore_c_markers"
+function drawCMarkers(){
+
+    for(let o=0;o<9;o++){
+
+        const midi =
+            12 + o*12;
+
+        const freq =
+            aTuningHz *
+            Math.pow(
+                2,
+                (midi - 69)/12
+            );
+
+        if(
+            freq < MIN_FREQ ||
+            freq > MAX_FREQ
+        ) continue;
+
+        const y =
+            freqToY(freq);
+
+        ctx.strokeStyle =
+            "rgba(255,255,255,0.28)";
+
+        ctx.beginPath();
+
+        ctx.moveTo(0,y);
+        ctx.lineTo(16,y);
+
+        ctx.stroke();
+
+        ctx.fillStyle =
+            "rgba(255,255,255,0.75)";
+
+        ctx.font =
+            o === 4
+            ? "bold 12px monospace"
+            : "11px monospace";
+
+        ctx.fillText(
+            `c${o}`,
+            20,
+            y + 4
+        );
+    }
+}
+```
+
+Then INSIDE `render()` AFTER:
+
+```js id="timeline_call"
+drawTimeline();
+```
+
+add:
+
+```js id="c_marker_call"
+drawCMarkers();
+```
+
+---
+
+# 4. Fix scrubber bubble clipping behind topbar
+
+Find this:
+
+```js id="old_scrubber_y"
+ctx.roundRect(
+    bx,
+    12,
+```
+
+Replace with:
+
+```js id="new_scrubber_y"
+const bubbleY =
+    document
+    .getElementById("topbar")
+    .offsetHeight + 8;
+
+ctx.roundRect(
+    bx,
+    bubbleY,
+```
+
+---
+
+Then replace:
+
+```js id="old_chip_y"
+bx + 8,
+17,
+```
+
+with:
+
+```js id="new_chip_y"
+bx + 8,
+bubbleY + 5,
+```
+
+---
+
+Replace:
+
+```js id="old_text_y"
+bx + 30,
+28
+```
+
+with:
+
+```js id="new_text_y"
+bx + 30,
+bubbleY + 16
+```
+
+---
+
+# 5. Move note bubble row lower (near c2)
+
+Find:
+
+```js id="old_bubble_y"
+canvas.height*0.72
+```
+
+Replace BOTH occurrences with:
+
+```js id="new_bubble_y"
+canvas.height*0.84
+```
+
+This places the note-cluster row close to c2 instead of midrange.
+
+---
+
+# 6. Remove the broken fake spectrogram generator
+
+The placeholder analysis code introduced sparse dots.
+
+DELETE this whole block from Analyze:
+
+```js id="delete_fake_analysis"
+cachedSpectrogram=[];
+const steps=canvas.width;
+for(let t=0;t<steps;t++){
+    const col=[];
+    for(let i=0;i<Math.floor(Math.random()*3)+1;i++){
+        col.push({freq:220*Math.pow(2,Math.random()*2)});
+    }
+    cachedSpectrogram.push(col);
+}
+```
+
+Your earlier FFT analysis path was the correct one.
+
+---
+
+After these fixes you get back:
+
+* dense showcqt-like spectrogram
+* proper musical colors
+* visible c markers again
+* bold c4 marker
+* scrubber bubble fully below toolbar
+* note bubbles near lower register
+* proper brightness behavior
+* working playback controls
+* correct tuning controls without visual corruption
+
+
+==================
+
+v31 -> v32:  "Generate Full Version"
+

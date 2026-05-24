@@ -1,0 +1,157 @@
+Prompt
+======
+
+I can't see the text labels. They should be overlaid near the bottom third of the screen, in white text (with rounded rects around each cluster of notes, blue shaded)
+
+--------------------
+
+Response
+========
+
+Replace the existing label drawing section inside generateSpectrogram() with this version.
+
+Find this block:
+
+if (labels !== previousLabels) {
+
+    previousLabels = labels;
+
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.font = "12px monospace";
+
+    ctx.fillText(
+        labels,
+        frame * xScale + 4,
+        30 + (frame % 5) * 14
+    );
+}
+
+And replace it with:
+
+if (labels !== previousLabels) {
+
+    previousLabels = labels;
+
+    const x =
+        frame * xScale + 8;
+
+    // bottom third of screen
+    const y =
+        canvas.height * 0.72;
+
+    ctx.font = "16px monospace";
+
+    const paddingX = 10;
+    const paddingY = 6;
+
+    const textMetrics =
+        ctx.measureText(labels);
+
+    const textWidth =
+        textMetrics.width;
+
+    const textHeight = 18;
+
+    const rectWidth =
+        textWidth + paddingX * 2;
+
+    const rectHeight =
+        textHeight + paddingY * 2;
+
+    /*
+        Rounded blue rectangle
+    */
+    ctx.beginPath();
+
+    const radius = 8;
+
+    ctx.moveTo(x + radius, y);
+
+    ctx.lineTo(
+        x + rectWidth - radius,
+        y
+    );
+
+    ctx.quadraticCurveTo(
+        x + rectWidth,
+        y,
+        x + rectWidth,
+        y + radius
+    );
+
+    ctx.lineTo(
+        x + rectWidth,
+        y + rectHeight - radius
+    );
+
+    ctx.quadraticCurveTo(
+        x + rectWidth,
+        y + rectHeight,
+        x + rectWidth - radius,
+        y + rectHeight
+    );
+
+    ctx.lineTo(
+        x + radius,
+        y + rectHeight
+    );
+
+    ctx.quadraticCurveTo(
+        x,
+        y + rectHeight,
+        x,
+        y + rectHeight - radius
+    );
+
+    ctx.lineTo(
+        x,
+        y + radius
+    );
+
+    ctx.quadraticCurveTo(
+        x,
+        y,
+        x + radius,
+        y
+    );
+
+    ctx.closePath();
+
+    /*
+        Blue shaded background
+    */
+    ctx.fillStyle =
+        "rgba(40, 80, 180, 0.75)";
+
+    ctx.fill();
+
+    /*
+        Border
+    */
+    ctx.strokeStyle =
+        "rgba(180, 220, 255, 0.85)";
+
+    ctx.lineWidth = 1.5;
+
+    ctx.stroke();
+
+    /*
+        White label text
+    */
+    ctx.fillStyle =
+        "rgba(255,255,255,0.96)";
+
+    ctx.fillText(
+        labels,
+        x + paddingX,
+        y + rectHeight - paddingY - 4
+    );
+}
+
+This changes the labels to:
+
+large white monospace text
+positioned in the lower third of the display
+grouped into translucent blue rounded rectangles
+outlined with a lighter blue border
+much more visible against bright spectrogram regions

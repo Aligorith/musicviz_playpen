@@ -1,0 +1,204 @@
+Prompt
+======
+
+Spectrogram drawing broken / doesn't draw
+
+
+----------
+
+
+Response
+========
+
+The issue is caused by the spectrogram Y mapping becoming inconsistent after introducing `MIN_FREQ`, while some parts of the renderer still use the old logarithmic range (`20 → 8000`) and others use the new one (`49 → 8000`).
+
+That mismatch causes:
+
+* compressed/partial vertical rendering
+* incorrect spectrogram scaling
+* visual timing distortion because rows overlap more densely
+* redraw inconsistencies between cached and live rendering
+
+You need to unify ALL frequency→Y calculations.
+
+---
+
+Add this helper function ABOVE all spectrogram drawing code:
+
+```js id="freq_to_y_helper"
+function freqToY(freq){
+
+    return (
+        canvas.height -
+        40 -
+        (
+            Math.log2(
+                freq / MIN_FREQ
+            ) /
+            Math.log2(
+                MAX_FREQ / MIN_FREQ
+            )
+        ) *
+        (
+            canvas.height - 180
+        )
+    );
+}
+```
+
+---
+
+Now replace EVERY occurrence of this entire block:
+
+```js id="old_y_mapping"
+const y =
+    canvas.height -
+    40 -
+    (
+        Math.log2(freq / 20) /
+        Math.log2(8000 / 20)
+    ) *
+    (
+        canvas.height - 180
+    );
+```
+
+AND every occurrence of:
+
+```js id="mixed_mapping"
+const y =
+    canvas.height -
+    40 -
+    (
+        Math.log2(
+            freq / MIN_FREQ
+        ) /
+        Math.log2(
+            MAX_FREQ / MIN_FREQ
+        )
+    ) *
+    (
+        canvas.height - 180
+    );
+```
+
+with simply:
+
+```js id="new_mapping"
+const y = freqToY(freq);
+```
+
+---
+
+Then inside BOTH:
+
+* `process()`
+* `redrawSpectrogram()`
+
+replace:
+
+```js id="bad_alpha"
+const alpha =
+    Math.min(
+        1,
+        Math.pow(
+            (
+                mag / 55
+            ) *
+            brightnessBoost,
+            0.8
+        )
+    );
+```
+
+with:
+
+```js id="better_alpha"
+const alpha =
+    Math.min(
+        1,
+        (
+            Math.log10(
+                1 + mag
+            ) / 2.2
+        ) *
+        brightnessBoost
+    );
+```
+
+The old exponent scaling is what caused the horizontal smearing / compressed look after trimming the low range.
+
+The logarithmic amplitude scaling restores:
+
+* proper spectral density
+* stable vertical rendering
+* correct temporal spacing
+* more showcqt-like appearance
+
+---
+
+Also replace this line in `process()`:
+
+```js id="old_progress"
+renderProgressX =
+    i * xScale;
+```
+
+with:
+
+```js id="progress_fix"
+renderProgressX =
+    (i + 1) * xScale;
+```
+
+Otherwise the last FFT column never gets rendered, causing apparent truncation.
+
+---
+
+Finally, in `render()`, replace:
+
+```js id="partial_draw"
+ctx.drawImage(
+    specCanvas,
+
+    0,
+    0,
+
+    renderProgressX,
+    canvas.height,
+
+    0,
+    0,
+
+    renderProgressX,
+    canvas.height
+);
+```
+
+with:
+
+```js id="safe_draw"
+ctx.drawImage(
+    specCanvas,
+    0,
+    0
+);
+```
+
+The partial blit optimization is now invalid because redraws can happen asynchronously from slider changes and cached redraws.
+
+That optimization is what caused:
+
+* incorrect horizontal timing
+* clipped redraws
+* partial spectrogram repainting
+
+After these fixes:
+
+* spectrogram geometry becomes stable again
+* redraws work correctly
+* tuning changes remain aligned
+* scrub playback remains synchronized
+* low-frequency cutoff behaves properly
+* showcqt-like rendering returns properly
+

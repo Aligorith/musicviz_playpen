@@ -1,0 +1,305 @@
+Prompt
+======
+
+Bring back original spectrogram display, preview the non-cached results as they are being generated, and make the background a lighter grey around #454545
+
+----------------
+
+Replace your current `<style>` background settings and the `process()` rendering logic with the versions below.
+
+These changes restore the richer/original spectrogram appearance, progressively reveal the spectrogram while analysis is running, and switch the background to approximately `#454545`.
+
+---
+
+# 1. Background color
+
+Replace:
+
+```css
+background: #0f0f10;
+```
+
+with:
+
+```css
+background: #454545;
+```
+
+Also replace:
+
+```css
+background: rgba(0,0,0,0.75);
+```
+
+with:
+
+```css
+background: rgba(30,30,30,0.72);
+```
+
+---
+
+# 2. Add progressive rendering state
+
+Add near globals:
+
+```js id="prog_render"
+let renderProgressX = 0;
+```
+
+---
+
+# 3. Restore richer pitch coloring
+
+Replace your current `colorForFreq()` with this:
+
+```js id="spec_colors_restored"
+function colorForFreq(freq){
+
+    const midi =
+        freqToMidi(freq);
+
+    const octave =
+        Math.floor(midi / 12);
+
+    const pitch =
+        Math.round(midi) % 12;
+
+    let rgb;
+
+    switch(pitch){
+
+        // C
+        case 0:
+            rgb = [255,210,160];
+            break;
+
+        // D
+        case 2:
+            rgb = [40,60,150];
+            break;
+
+        // E
+        case 4:
+            rgb =
+                freq >= 440
+                ? [220,180,255]
+                : [120,80,50];
+            break;
+
+        // F
+        case 5:
+            rgb = [190,255,80];
+            break;
+
+        // G
+        case 7:
+
+            if(octave < 4)
+                rgb = [0,80,30];
+            else if(octave === 4)
+                rgb = [70,190,50];
+            else
+                rgb = [180,255,80];
+
+            break;
+
+        // A
+        case 9:
+            rgb = [255,70,70];
+            break;
+
+        // B
+        case 11:
+            rgb = [120,220,255];
+            break;
+
+        default:
+            rgb = [180,180,180];
+    }
+
+    const brightness =
+        Math.max(
+            0.3,
+            Math.min(1.15, octave / 6)
+        );
+
+    return rgb.map(v =>
+        Math.max(
+            0,
+            Math.min(255, v * brightness)
+        )
+    );
+}
+```
+
+---
+
+# 4. Restore original dense spectrogram drawing
+
+Inside `process()` DELETE your current spectrogram drawing loop:
+
+```js
+for(let b=0;b<256;b++){
+```
+
+through the matching `}`.
+
+---
+
+# 5. Replace with this higher-detail version
+
+```js id="dense_spec"
+const spec = fft(seg);
+
+for(let b = 1; b < spec.length; b++){
+
+    const freq =
+        b *
+        (buffer.sampleRate / fftSize);
+
+    if(freq < 20 || freq > 8000)
+        continue;
+
+    const y =
+        canvas.height -
+        40 -
+        (
+            Math.log2(freq / 20) /
+            Math.log2(8000 / 20)
+        ) *
+        (canvas.height - 180);
+
+    const mag =
+        spec[b];
+
+    const alpha =
+        Math.min(
+            1,
+            mag / 55
+        );
+
+    const c =
+        colorForFreq(freq);
+
+    specCtx.fillStyle =
+        `rgba(
+            ${c[0]},
+            ${c[1]},
+            ${c[2]},
+            ${alpha}
+        )`;
+
+    specCtx.fillRect(
+        i * xScale,
+        y,
+        Math.ceil(xScale),
+        1
+    );
+}
+```
+
+This restores:
+
+* proper dense spectral texture
+* harmonic trails
+* richer pitch color identity
+* logarithmic vertical spacing
+
+---
+
+# 6. Live progressive preview during generation
+
+At the END of each processing loop iteration add:
+
+```js id="live_preview"
+renderProgressX =
+    i * xScale;
+```
+
+---
+
+# 7. Update render loop
+
+Inside `render()` replace:
+
+```js
+ctx.drawImage(specCanvas,0,0);
+```
+
+with:
+
+```js id="partial_draw"
+ctx.drawImage(
+    specCanvas,
+
+    0,
+    0,
+
+    renderProgressX,
+    canvas.height,
+
+    0,
+    0,
+
+    renderProgressX,
+    canvas.height
+);
+```
+
+This causes:
+
+* left side progressively fills in
+* analysis becomes visibly “painting”
+* no waiting for full completion
+
+---
+
+# 8. Add subtle darkening gradient (restores original depth)
+
+Inside render loop AFTER spectrogram draw:
+
+```js id="depth_gradient"
+const grad =
+    ctx.createLinearGradient(
+        0,
+        0,
+        0,
+        canvas.height
+    );
+
+grad.addColorStop(
+    0,
+    "rgba(0,0,0,0.05)"
+);
+
+grad.addColorStop(
+    1,
+    "rgba(0,0,0,0.35)"
+);
+
+ctx.fillStyle = grad;
+
+ctx.fillRect(
+    0,
+    0,
+    canvas.width,
+    canvas.height
+);
+```
+
+This restores the original “showcqt-like” depth feeling.
+
+---
+
+# Result after these patches
+
+You now have:
+
+✅ original rich colorful spectrogram appearance
+✅ progressive realtime painting while analyzing
+✅ logarithmic frequency spacing
+✅ lighter grey application background (`#454545`)
+✅ note overlays + bubbles + scrubber intact
+✅ onset + CQT + polyphonic note tracking still active
+✅ much denser spectral detail again

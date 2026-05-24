@@ -1,0 +1,265 @@
+Prompt
+======
+
+Why are the bubbles still now smaller and more frequent than before?
+What fixes are needed to change that back to how it was earlier?
+
+-------------
+
+Response
+========
+
+The bubbles are now smaller and more frequent because two separate regressions were introduced compared to the earlier “good” version.
+
+# 1. Too many note events are being generated
+
+Earlier versions clustered nearby detections into larger musical regions.
+
+The current version generates one event roughly every:
+
+```js
+t - previous.start > 0.35
+```
+
+which creates:
+
+* many closely spaced bubbles
+* repetitive note markers
+* tiny intervals between markers
+
+Earlier versions instead:
+
+* merged nearby identical pitches
+* suppressed repeated detections
+* only emitted bubbles when harmonic content materially changed
+
+That produced:
+
+* fewer bubbles
+* larger spacing
+* more meaningful note regions
+
+---
+
+# 2. Inactive markers were changed from rounded mini-bubbles into tiny dots
+
+Earlier versions used:
+
+```js
+ctx.roundRect(...)
+```
+
+with widths around:
+
+* 10–18 px
+
+Current version uses:
+
+```js
+ctx.arc(... radius 3.2 ...)
+```
+
+which visually shrinks them substantially.
+
+---
+
+# 3. Active width became text-dependent
+
+Earlier versions used a fixed wider active bubble:
+
+```js
+const w = 150–180
+```
+
+Current version uses:
+
+```js
+const w = tw + 22
+```
+
+So:
+
+* short note names create tiny active bubbles
+* overall bubble row looks sparse/tiny
+
+Earlier versions felt more “showcqt label overlay”-like because:
+
+* active bubbles were intentionally oversized
+* inactive markers retained rectangular presence
+* event density was lower
+
+---
+
+# EXACT FIXES NEEDED
+
+## A. Reduce event frequency
+
+Inside `processAudio()`:
+
+REPLACE:
+
+```js
+if(
+    !midiEvents.length ||
+    (
+        t -
+        midiEvents[
+            midiEvents.length-1
+        ].start
+    ) > 0.35
+)
+```
+
+WITH:
+
+```js
+const prev =
+    midiEvents[
+        midiEvents.length - 1
+    ];
+
+const note =
+    midiToLabel(
+        tunedMidi(freq)
+    );
+
+if(
+    !prev ||
+
+    (
+        t - prev.start
+    ) > 1.1 ||
+
+    prev.label !== note
+)
+```
+
+This restores:
+
+* larger spacing
+* fewer repeated bubbles
+* phrase-like clustering
+* less visual noise
+
+---
+
+## B. Restore inactive mini-bubbles instead of dots
+
+Replace:
+
+```js
+ctx.arc(
+    x,
+    bubbleY,
+    3.2,
+    0,
+    Math.PI * 2
+);
+```
+
+WITH:
+
+```js
+ctx.beginPath();
+
+ctx.roundRect(
+    x - 6,
+    bubbleY - 4,
+    12,
+    8,
+    4
+);
+
+ctx.fill();
+```
+
+This restores:
+
+* visible small rounded markers
+* earlier visual weight
+* proper “collapsed bubble” appearance
+
+---
+
+## C. Restore wider active bubbles
+
+Replace:
+
+```js
+const w =
+    tw + 22;
+```
+
+WITH:
+
+```js
+const w =
+    Math.max(
+        120,
+        tw + 34
+    );
+```
+
+This restores:
+
+* stronger highlighted regions
+* easier hover targeting
+* earlier showcqt-like appearance
+
+---
+
+## D. Restore earlier bubble row positioning
+
+Current:
+
+```js
+canvas.height * 0.84
+```
+
+Earlier visually better version sat closer to:
+
+* C2 marker region
+* lower-third overlay
+
+Use:
+
+```js
+canvas.height * 0.89
+```
+
+instead.
+
+---
+
+# Result after all four fixes
+
+You get back:
+
+* sparse meaningful bubbles
+* larger bubble regions
+* collapsed rounded mini-bubbles
+* less clutter
+* smoother hover interaction
+* much closer to the earlier successful version
+
+without losing:
+
+* playback controls
+* scrub preview
+* export
+* tuning
+* brightness
+* transport syncing
+* timeline
+* C markers
+
+==================
+
+v42: Show full html
+
+=============
+
+v42: Write out a design doc with the current requirements implemented, and details of how the design works
+
+--> "v42_design_doc.md"
+

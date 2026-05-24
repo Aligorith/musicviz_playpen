@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spectrogram Recorder (Stable)</title>
+
+<style>
+html, body{
+    margin:0;
+    padding:0;
+    overflow:hidden;
+    background:#454545;
+    font-family:sans-serif;
+    color:white;
+}
+
+#canvas{
+    position:absolute;
+    inset:0;
+    width:100vw;
+    height:100vh;
+}
+
+#topbar{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    z-index:10;
+    background:rgba(30,30,30,0.85);
+    backdrop-filter:blur(8px);
+    padding:10px;
+    box-sizing:border-box;
+}
+
+.row{
+    display:flex;
+    align-items:center;
+    width:100%;
+}
+
+.leftControls,
+.centerControls,
+.rightControls{
+    flex:1;
+    display:flex;
+    align-items:center;
+    gap:10px;
+}
+
+.centerControls{
+    justify-content:center;
+}
+
+.rightControls{
+    justify-content:flex-end;
+}
+
+button{
+    cursor:pointer;
+}
+
+#status{
+    font-size:12px;
+    margin-top:6px;
+    color:#ccc;
+}
+</style>
+</head>
+
+<body>
+
+<div id="topbar">
+    <div class="row">
+
+        <div class="leftControls">
+            <input type="file" id="file">
+            <button id="analyzeBtn">Analyze</button>
+        </div>
+
+        <div class="centerControls">
+            <button id="playPauseBtn">▶ Play</button>
+            <button id="stopBtn">Stop</button>
+            <button id="restartBtn">Restart</button>
+            <button id="recordBtn">⬤ Record</button>
+        </div>
+
+        <div class="rightControls">
+            <button id="exportBtn">Export</button>
+        </div>
+
+    </div>
+
+    <div id="status">Load audio file</div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+function resize(){
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+}
+addEventListener("resize", resize);
+resize();
+
+/* ================= AUDIO ================= */
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+let audioBuffer = null;
+let audioDuration = 0;
+
+let playbackSource = null;
+let playbackStart = 0;
+let playbackOffset = 0;
+let playing = false;
+
+let mouseX = -9999;
+
+/* ================= RECORDING ================= */
+
+let recorder = null;
+let chunks = [];
+let recording = false;
+
+let inputFileName = "audio";
+let recordVersion = 1;
+
+const recordDest = audioCtx.createMediaStreamDestination();
+
+/* ================= PLAYBACK ================= */
+
+function stopPlayback(){
+
+    if(playbackSource){
+        try{ playbackSource.stop(); }catch(e){}
+        playbackSource.disconnect();
+    }
+
+    playbackSource = null;
+    playing = false;
+
+    document.getElementById("playPauseBtn").textContent = "▶ Play";
+}
+
+function playAt(t){
+
+    if(!audioBuffer) return;
+
+    stopPlayback();
+
+    playbackSource = audioCtx.createBufferSource();
+    playbackSource.buffer = audioBuffer;
+
+    playbackSource.connect(audioCtx.destination);
+    playbackSource.connect(recordDest);
+
+    playbackOffset = t;
+    playbackStart = audioCtx.currentTime;
+
+    playbackSource.start(0, t);
+
+    playing = true;
+
+    document.getElementById("playPauseBtn").textContent = "⏸ Pause";
+
+    playbackSource.onended = () => {
+
+        if(recording){
+            setTimeout(()=>{
+                if(recorder && recording){
+                    recorder.stop();
+                }
+            }, 250);
+        } else {
+            stopPlayback();
+        }
+    };
+}
+
+/* ================= RECORDING ================= */
+
+async function startRecording(){
+
+    if(!audioBuffer) return;
+
+    chunks = [];
+
+    const canvasStream = canvas.captureStream(60);
+
+    const combined = new MediaStream([
+        ...canvasStream.getVideoTracks(),
+        ...recordDest.stream.getAudioTracks()
+    ]);
+
+    const mime =
+        MediaRecorder.isTypeSupported("video/mp4")
+        ? "video/mp4"
+        : "video/webm";
+
+    recorder = new MediaRecorder(combined, { mimeType: mime });
+
+    recorder.ondataavailable = e => {
+        if(e.data.size > 0) chunks.push(e.data);
+    };
+
+    recorder.onstop = () => {
+
+        // IMPORTANT: flush audio stream cleanly
+        recordDest.stream.getTracks().forEach(t => t.stop());
+
+        const blob = new Blob(chunks, { type: mime });
+        const url = URL.createObjectURL(blob);
+
+        const a = document.createElement("a");
+        a.href = url;
+
+        const ext = mime.includes("mp4") ? "mp4" : "webm";
+
+        const filename =
+            `${inputFileName}_spectrogram_v${recordVersion}.${ext}`;
+
+        recordVersion++;
+
+        a.download = filename;
+        a.click();
+
+        URL.revokeObjectURL(url);
+
+        recording = false;
+        document.getElementById("recordBtn").textContent = "⬤ Record";
+    };
+
+    recorder.start();
+    recording = true;
+
+    document.getElementById("recordBtn").textContent = "■ Recording";
+
+    // always start from beginning
+    playAt(0);
+}
+
+/* ================= VISUALS ================= */
+
+function draw(){
+
+    requestAnimationFrame(draw);
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    if(audioBuffer && playing){
+
+        const t =
+            playbackOffset +
+            (audioCtx.currentTime - playbackStart);
+
+        mouseX = (t / audioDuration) * canvas.width;
+
+        // fake spectrogram background
+        ctx.fillStyle = "#1a1a1a";
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+
+        ctx.strokeStyle = "orange";
+        ctx.beginPath();
+        ctx.moveTo(mouseX,0);
+        ctx.lineTo(mouseX,canvas.height);
+        ctx.stroke();
+    }
+}
+
+draw();
+
+/* ================= FILE LOAD ================= */
+
+document.getElementById("file").onchange = async e => {
+
+    const file = e.target.files[0];
+    if(!file) return;
+
+    inputFileName = file.name.replace(/\.[^/.]+$/, "");
+    recordVersion = 1;
+
+    const arr = await file.arrayBuffer();
+    audioBuffer = await audioCtx.decodeAudioData(arr);
+    audioDuration = audioBuffer.duration;
+
+    document.getElementById("status").textContent =
+        "Loaded: " + file.name;
+};
+
+/* ================= UI ================= */
+
+document.getElementById("playPauseBtn").onclick = () => {
+    if(playing) stopPlayback();
+    else playAt(0);
+};
+
+document.getElementById("stopBtn").onclick = stopPlayback;
+
+document.getElementById("restartBtn").onclick = () => {
+    playAt(0);
+};
+
+document.getElementById("recordBtn").onclick = () => {
+    if(recording){
+        recorder.stop();
+    } else {
+        startRecording();
+    }
+};
+
+</script>
+</body>
+</html>

@@ -1,0 +1,274 @@
+Prompt
+======
+
+Now the spectrograph looks wrong compared to previous versions, and it is still not being plotted correctly anymore. Also, the bubbles have all merged into a single long line now.
+
+
+-----------
+
+Response
+========
+
+The regression is coming from two separate issues:
+
+1. The spectrogram renderer is now drawing 1-pixel FFT bins directly without vertical interpolation/smoothing, which creates sparse grey dots instead of dense coloured harmonic bands.
+
+2. The bubble renderer is drawing one bubble for every FFT frame/onset without clustering, so the active widths overlap and visually merge into a continuous strip.
+
+Here are the fixes to restore the earlier behaviour while keeping the new progressive rendering.
+
+---
+
+# 1. Fix spectrogram appearance
+
+The current renderer:
+
+```js
+specCtx.fillRect(
+    i * fixedColumnWidth,
+    y,
+    Math.ceil(fixedColumnWidth)+1,
+    1
+);
+```
+
+is too sparse vertically.
+
+Replace the ENTIRE inner drawing section inside `redrawSpectrogram()` with this:
+
+```js
+const mag =
+    spec[b];
+
+const intensity =
+    Math.min(
+        1,
+        (
+            Math.log10(1 + mag)
+            / 2.2
+        ) * brightnessBoost
+    );
+
+if(intensity < 0.02)
+    continue;
+
+const c =
+    colorForFreq(freq);
+
+const glow =
+    1.5 + intensity * 4.5;
+
+const grad =
+    specCtx.createLinearGradient(
+        0,
+        y - glow,
+        0,
+        y + glow
+    );
+
+grad.addColorStop(
+    0,
+    `rgba(${c[0]},${c[1]},${c[2]},0)`
+);
+
+grad.addColorStop(
+    0.5,
+    `rgba(${c[0]},${c[1]},${c[2]},${intensity})`
+);
+
+grad.addColorStop(
+    1,
+    `rgba(${c[0]},${c[1]},${c[2]},0)`
+);
+
+specCtx.fillStyle = grad;
+
+specCtx.fillRect(
+    i * fixedColumnWidth,
+    y - glow,
+    Math.max(
+        1,
+        fixedColumnWidth + 0.5
+    ),
+    glow * 2
+);
+```
+
+This restores:
+
+* dense harmonic bands
+* proper colour blending
+* showcqt-like glow
+* continuous appearance
+* octave colour variation
+* non-grey rendering
+
+while still preserving:
+
+* progressive left→right reveal
+
+---
+
+# 2. Prevent bubble merging
+
+The problem is here:
+
+```js
+const w =
+    active ? 180 : 10;
+```
+
+Every nearby active bubble expands to 180px and overlaps adjacent ones.
+
+---
+
+Replace the ENTIRE `drawBubbles()` function with this:
+
+```js
+function drawBubbles(){
+
+    let activeFound = false;
+
+    for(const e of midiEvents){
+
+        const x =
+            (
+                e.start /
+                audioDuration
+            ) *
+            canvas.width;
+
+        const dist =
+            Math.abs(x - mouseX);
+
+        const active =
+            dist < 36 &&
+            !activeFound;
+
+        if(active)
+            activeFound = true;
+
+        const bubbleY =
+            canvas.height * 0.88;
+
+        if(active){
+
+            const label =
+                e.label;
+
+            ctx.font =
+                "bold 12px monospace";
+
+            const tw =
+                ctx.measureText(label)
+                .width;
+
+            const w =
+                tw + 22;
+
+            let bx =
+                x - w * 0.5;
+
+            bx =
+                Math.max(
+                    4,
+                    Math.min(
+                        canvas.width - w - 4,
+                        bx
+                    )
+                );
+
+            ctx.fillStyle =
+                "rgba(255,140,40,0.92)";
+
+            ctx.beginPath();
+
+            ctx.roundRect(
+                bx,
+                bubbleY - 12,
+                w,
+                22,
+                10
+            );
+
+            ctx.fill();
+
+            ctx.fillStyle =
+                "white";
+
+            ctx.fillText(
+                label,
+                bx + 11,
+                bubbleY + 3
+            );
+
+        }else{
+
+            ctx.fillStyle =
+                "rgba(80,120,255,0.65)";
+
+            ctx.beginPath();
+
+            ctx.arc(
+                x,
+                bubbleY,
+                3.2,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fill();
+        }
+    }
+}
+```
+
+This restores:
+
+* individual note dots
+* only ONE expanded bubble at a time
+* proper hover behaviour
+* no merged blue strip
+* stable clustered appearance
+
+---
+
+# 3. Optional but highly recommended
+
+Your FFT is currently raw rectangular-windowed data, causing noisy frequency spikes.
+
+Inside `process(buffer)` BEFORE FFT:
+
+Replace:
+
+```js
+const spec =
+    fft(seg);
+```
+
+with:
+
+```js
+for(let j=0;j<seg.length;j++){
+
+    seg[j] *=
+        0.5 *
+        (
+            1 -
+            Math.cos(
+                2*Math.PI*j /
+                (seg.length - 1)
+            )
+        );
+}
+
+const spec =
+    fft(seg);
+```
+
+This restores:
+
+* smoother spectral lines
+* cleaner harmonics
+* less noisy speckling
+* closer showcqt visual character

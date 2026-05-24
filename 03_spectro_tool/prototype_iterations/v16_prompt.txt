@@ -1,0 +1,294 @@
+Prompt
+======
+
+Include note onset stuff
+
+---------
+
+
+Response
+========
+
+Good—this is the missing piece that turns your current “frame-based note soup” into something that behaves like a real musical analyzer.
+
+We’ll add **onset detection + note segmentation + true note events (start/end)**.
+
+This gives you:
+
+* note start time
+* note end time
+* stable note blocks (instead of repeated frames)
+* much cleaner MIDI export
+
+---
+
+# 🔥 1. Add onset detector (energy + spectral change)
+
+Add this helper:
+
+```js id="onset1"
+function computeEnergy(frame) {
+    let e = 0;
+    for (let i = 0; i < frame.length; i++) {
+        e += frame[i] * frame[i];
+    }
+    return e;
+}
+```
+
+---
+
+# 🔥 2. Track previous frame state
+
+Add globals:
+
+```js id="onset_globals"
+let prevEnergy = 0;
+let activeNotes = new Map(); 
+```
+
+`activeNotes` will store:
+
+```js
+freq -> { startTime, midi, label }
+```
+
+---
+
+# 🔥 3. Add onset detection logic
+
+We detect an onset when:
+
+* energy rises sharply
+* AND spectral change is significant
+
+Add:
+
+```js id="onset_detect"
+function isOnset(currEnergy, prevEnergy) {
+
+    const ratio =
+        currEnergy /
+        (prevEnergy + 1e-6);
+
+    return ratio > 1.6;
+}
+```
+
+---
+
+# 🔥 4. Replace MIDI event logging logic in `process()`
+
+Inside your `process()` loop, FIND:
+
+```js
+const cqt=analyzeCQT(...)
+const notes=extractNotes(...)
+midiEvents.push(...)
+```
+
+---
+
+## ❌ DELETE that block completely
+
+---
+
+## ✅ REPLACE WITH THIS:
+
+```js id="note_segmentation"
+const energy = computeEnergy(seg);
+const onset = isOnset(energy, prevEnergy);
+
+const cqt = analyzeCQT(seg, audioBuffer.sampleRate);
+const notes = extractNotes(cqt);
+
+const time = (i * hop) / audioBuffer.sampleRate;
+
+/*
+    ONSET START
+*/
+if (onset) {
+
+    // close old notes
+    for (const [key, note] of activeNotes) {
+
+        midiEvents.push({
+            type: "note",
+            start: note.startTime,
+            end: time,
+            midi: note.midi,
+            label: note.label
+        });
+    }
+
+    activeNotes.clear();
+
+    // start new notes
+    for (const n of notes) {
+
+        activeNotes.set(n.freq, {
+            startTime: time,
+            midi: n.midi,
+            label: n.label
+        });
+    }
+}
+
+/*
+    sustain update (no onset)
+*/
+else {
+
+    // update active notes if still present
+    const currentFreqs = new Set(notes.map(n => n.freq));
+
+    for (const [freq, note] of activeNotes) {
+
+        if (!currentFreqs.has(freq)) {
+
+            midiEvents.push({
+                type: "note",
+                start: note.startTime,
+                end: time,
+                midi: note.midi,
+                label: note.label
+            });
+
+            activeNotes.delete(freq);
+        }
+    }
+}
+
+prevEnergy = energy;
+```
+
+---
+
+# 🔥 5. Flush remaining notes at end
+
+At end of `process()` add:
+
+```js id="flush_notes"
+const endTime = audioDuration;
+
+for (const [_, note] of activeNotes) {
+
+    midiEvents.push({
+        type: "note",
+        start: note.startTime,
+        end: endTime,
+        midi: note.midi,
+        label: note.label
+    });
+}
+
+activeNotes.clear();
+```
+
+---
+
+# 🔥 6. Upgrade MIDI export (now real note events)
+
+Replace export function with:
+
+```js id="midi_export_notes"
+function exportMidiLog() {
+
+    let txt = "NOTE EVENTS\nstart\tend\tnote\n\n";
+
+    for (const e of midiEvents) {
+
+        if (e.type !== "note") continue;
+
+        txt +=
+            `${e.start.toFixed(2)}\t` +
+            `${e.end.toFixed(2)}\t` +
+            `${e.label}\n`;
+    }
+
+    const blob =
+        new Blob([txt], { type: "text/plain" });
+
+    const url =
+        URL.createObjectURL(blob);
+
+    const a =
+        document.createElement("a");
+
+    a.href = url;
+    a.download = "note_events.txt";
+    a.click();
+}
+```
+
+---
+
+# 🔥 7. Optional: visualize note blocks (huge improvement)
+
+Inside render loop, replace bubble creation with duration-aware blocks:
+
+```js id="block_ui"
+for (const e of midiEvents) {
+
+    if (e.type !== "note") continue;
+
+    const x =
+        (e.start / audioDuration) * canvas.width;
+
+    const w =
+        ((e.end - e.start) / audioDuration) * canvas.width;
+
+    ctx.fillStyle = "rgba(80,140,255,0.25)";
+
+    ctx.fillRect(
+        x,
+        canvas.height * 0.65,
+        Math.max(2, w),
+        20
+    );
+
+    ctx.fillStyle = "white";
+
+    ctx.fillText(
+        e.label,
+        x,
+        canvas.height * 0.65 - 4
+    );
+}
+```
+
+---
+
+# 🚀 What you now get
+
+## 🎵 BEFORE
+
+* frame-by-frame note guesses
+* noisy repetition
+* no real note duration
+
+## 🎵 AFTER
+
+* true note **onset detection**
+* real **note start/end segmentation**
+* stable polyphonic “events”
+* MIDI-like structure
+* DAW-style block visualization possible
+
+---
+
+# ⚠️ Reality check (important)
+
+This onset method is:
+
+* energy + heuristic based
+* NOT full spectral flux detector (yet)
+
+If you want next-level accuracy, I can upgrade it to:
+
+* spectral flux onset detection (proper)
+* adaptive thresholding
+* beat-synchronous note grouping
+* real MIDI (.mid binary export)
+
+Just say 👍

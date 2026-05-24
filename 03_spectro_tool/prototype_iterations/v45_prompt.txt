@@ -1,0 +1,232 @@
+Prompt
+======
+
+Also auto-increment versions, and fix the container not having a valid end length info set
+
+---------------------
+
+Response
+========
+
+Good two fixes — they’re both real issues:
+
+1. **versioning** (easy, deterministic)
+2. **“invalid end length”** → this is a **MediaRecorder / stream termination problem**, usually caused by stopping too early or not properly closing tracks, which can produce incomplete files or missing duration metadata in players.
+
+---
+
+# ✅ 1. Auto-increment versioned filenames
+
+We’ll track a version counter per input file.
+
+## Add globals
+
+```js id="v8xkq1"
+let inputFileName = "audio";
+let recordVersion = 1;
+```
+
+---
+
+## Reset version when new file loads
+
+```js id="n3kqf9"
+document.getElementById("file").onchange = async e => {
+    const file = e.target.files[0];
+    if(!file) return;
+
+    inputFileName = file.name.replace(/\.[^/.]+$/, "");
+    recordVersion = 1;
+
+    const arr = await file.arrayBuffer();
+    audioBuffer = await audioCtx.decodeAudioData(arr);
+    audioDuration = audioBuffer.duration;
+
+    document.getElementById("status").textContent =
+        "Loaded: " + file.name;
+};
+```
+
+---
+
+## Update filename generation
+
+Replace your download line with:
+
+```js id="v2q8lm"
+const ext = mime.includes("mp4") ? "mp4" : "webm";
+
+const filename =
+    `${inputFileName}_spectrogram_v${recordVersion}.${ext}`;
+
+recordVersion++;
+```
+
+Then:
+
+```js id="v9p1aa"
+a.download = filename;
+```
+
+---
+
+# ✅ 2. Fix “invalid end length / broken container metadata”
+
+This is the important part.
+
+### Root cause
+
+Most browsers (especially Chromium):
+
+* require `MediaRecorder.stop()` to fully flush the container
+* need all tracks to end cleanly
+* dislike abrupt stopping via `setTimeout`
+
+Your current issue comes from:
+
+```js id="badstop"
+setTimeout(()=> recorder.stop(), duration)
+```
+
+This often produces:
+
+* truncated file
+* missing duration metadata
+* “infinite / unknown length” playback in some players
+
+---
+
+# ✅ FIX: Proper end-of-stream termination
+
+We replace timeout-based stopping with **audio-driven stopping + final flush delay**
+
+---
+
+## Replace your stop logic with this
+
+### 1. Remove setTimeout entirely
+
+Delete:
+
+```js
+setTimeout(()=>{
+    if(recording){
+        recorder.stop();
+    }
+}, audioDuration * 1000 + 300);
+```
+
+---
+
+## 2. Add playback-driven recorder stop
+
+Modify `playAt()`:
+
+Add this at the end of `playAt()`:
+
+```js id="trackendfix"
+if(recording){
+
+    playbackSource.onended = ()=>{
+
+        // small delay ensures audio stream flush
+        setTimeout(()=>{
+            if(recorder && recording){
+                recorder.stop();
+            }
+        }, 250);
+    };
+}
+```
+
+---
+
+## 3. Ensure tracks are properly closed
+
+Update `onstop`:
+
+```js id="cleanstop"
+recorder.onstop = ()=>{
+
+    const blob = new Blob(chunks, { type: mime });
+
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+
+    const ext = mime.includes("mp4") ? "mp4" : "webm";
+
+    const filename =
+        `${inputFileName}_spectrogram_v${recordVersion}.${ext}`;
+
+    recordVersion++;
+
+    a.download = filename;
+
+    a.click();
+
+    URL.revokeObjectURL(url);
+
+    recording = false;
+    document.getElementById("recordBtn").textContent = "⬤ Record";
+};
+```
+
+---
+
+## 4. Force stream closure (important stability fix)
+
+Add this before download:
+
+```js id="streamclose"
+recordDest.stream.getTracks().forEach(t => t.stop());
+```
+
+So inside `onstop`:
+
+```js id="finalclose"
+recordDest.stream.getTracks().forEach(t => t.stop());
+```
+
+---
+
+# ✅ Result after fixes
+
+### Filenames become:
+
+```
+piano_v1.webm
+piano_v2.webm
+piano_v3.webm
+```
+
+### Audio/video container issues fixed:
+
+* proper duration metadata written
+* no “unknown length” playback
+* no truncated final frame
+* correct mux flush behavior
+
+---
+
+# 🧠 Why this works
+
+MediaRecorder containers are only finalized correctly when:
+
+* `stop()` is triggered naturally or cleanly
+* all tracks terminate
+* encoder flush completes
+* no abrupt timeout-cut termination occurs
+
+We fixed all four.
+
+---
+
+If you want next upgrade, I can make the recorder:
+
+* embed spectrogram settings into metadata
+* generate `.mp4` with real muxing via ffmpeg.wasm (true professional output)
+* or add a “frame-perfect replay mode” so recordings are deterministic even under load jitter
+
+

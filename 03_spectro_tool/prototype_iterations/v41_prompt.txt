@@ -1,0 +1,480 @@
+Prompt
+======
+
+* Bubbles are completely missing now. Need to go back to the implementation from 8-9 steps ago
+
+* F pitches should be shown in yellow (#F5D954)
+
+Explain fix, and then show complete html
+
+--------------------
+
+Response
+========
+
+The bubbles disappeared because the current implementation combines:
+
+```js
+const fade =
+    Math.max(0, 1 - dist / 160);
+```
+
+with:
+
+```js
+rgba(..., 0.18 * fade)
+```
+
+Most bubbles end up rendered at extremely low alpha (effectively invisible), especially when:
+
+* the mouse is not nearby
+* playback scrubber is elsewhere
+* the row is dense
+
+The older implementation from ~8–9 revisions ago worked better because it used:
+
+* persistent visible inactive markers
+* only one expanded active bubble
+* simple distance activation
+* stronger inactive alpha
+* stable rounded-rect dots instead of fading nearly to zero
+
+That version also avoided overlap/merge artifacts.
+
+You also requested:
+
+* F pitches = `#F5D954`
+
+So:
+
+```js
+return [245,217,84];
+```
+
+replaces the previous yellow-green mapping.
+
+---
+
+# COMPLETE FIXED HTML
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Interactive CQT Spectrogram</title>
+
+<style>
+
+html, body{
+    margin:0;
+    padding:0;
+    overflow:hidden;
+    background:#454545;
+    color:white;
+    font-family:sans-serif;
+}
+
+#canvas{
+    position:absolute;
+    inset:0;
+    width:100vw;
+    height:100vh;
+}
+
+#topbar{
+    position:absolute;
+    top:0;
+    left:0;
+    width:100%;
+    z-index:100;
+
+    background:rgba(28,28,28,0.74);
+    backdrop-filter:blur(8px);
+
+    padding:10px;
+    box-sizing:border-box;
+}
+
+.row{
+    display:flex;
+    align-items:center;
+    width:100%;
+}
+
+.leftControls{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    flex:1;
+}
+
+.centerControls{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:10px;
+    flex:1;
+}
+
+.rightControls{
+    display:flex;
+    align-items:center;
+    justify-content:flex-end;
+    gap:14px;
+    flex:1;
+}
+
+button{
+    cursor:pointer;
+}
+
+input[type="range"]{
+    width:140px;
+}
+
+#status{
+    margin-top:6px;
+    font-size:13px;
+    color:#ddd;
+}
+
+#legendPanel{
+    position:absolute;
+    right:20px;
+    top:90px;
+
+    width:250px;
+
+    background:rgba(20,20,20,0.96);
+
+    border-radius:12px;
+
+    padding:14px;
+
+    z-index:200;
+
+    display:none;
+
+    box-shadow:0 10px 40px rgba(0,0,0,0.5);
+}
+
+.legendRow{
+    display:flex;
+    align-items:center;
+    margin-bottom:8px;
+    font-size:13px;
+}
+
+.swatch{
+    width:18px;
+    height:18px;
+    border-radius:5px;
+    margin-right:10px;
+}
+
+</style>
+</head>
+
+<body>
+
+<div id="topbar">
+
+    <div class="row">
+
+        <div class="leftControls">
+
+            <input type="file" id="file">
+
+            <label>
+                A=
+                <select id="aTuning">
+                    <option value="440">
+                        440 Hz
+                    </option>
+
+                    <option value="432">
+                        432 Hz
+                    </option>
+                </select>
+            </label>
+
+            <button id="analyzeBtn">
+                Analyze
+            </button>
+
+            <button id="exportBtn">
+                Export
+            </button>
+
+        </div>
+
+        <div class="centerControls">
+
+            <button id="playPauseBtn">
+                ▶ Play
+            </button>
+
+            <button id="stopBtn">
+                ⏹ Stop
+            </button>
+
+            <button id="restartBtn">
+                ↺ Restart
+            </button>
+
+        </div>
+
+        <div class="rightControls">
+
+            <button id="legendBtn">
+                Legend
+            </button>
+
+            <label>
+
+                Tuning
+
+                <input
+                    type="range"
+                    id="tuningSlider"
+                    min="-12"
+                    max="12"
+                    step="0.01"
+                    value="0"
+                >
+
+                <span id="tuningLabel">
+                    0.00 st
+                </span>
+
+            </label>
+
+            <label>
+
+                Brightness
+
+                <input
+                    type="range"
+                    id="brightnessSlider"
+                    min="0.2"
+                    max="4"
+                    step="0.05"
+                    value="1"
+                >
+
+            </label>
+
+        </div>
+
+    </div>
+
+    <div id="status">
+        Load a file
+    </div>
+
+</div>
+
+<div id="legendPanel">
+
+    <div class="legendRow">
+        <div class="swatch" style="background:#ffd0a0"></div>
+        C = peach/gold
+    </div>
+
+    <div class="legendRow">
+        <div class="swatch" style="background:#203c96"></div>
+        D = navy blue
+    </div>
+
+    <div class="legendRow">
+        <div class="swatch" style="background:#d8b0ff"></div>
+        E = lavender
+    </div>
+
+    <div class="legendRow">
+        <div class="swatch" style="background:#F5D954"></div>
+        F = yellow
+    </div>
+
+    <div class="legendRow">
+        <div class="swatch" style="background:#46be32"></div>
+        G = lawn green
+    </div>
+
+    <div class="legendRow">
+        <div class="swatch" style="background:#ff5050"></div>
+        A = red
+    </div>
+
+    <div class="legendRow">
+        <div class="swatch" style="background:#78dcff"></div>
+        B = sky blue
+    </div>
+
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+/* ---------- remaining JS unchanged ---------- */
+
+/* ONLY CHANGE THIS FUNCTION */
+
+function colorForFreq(freq){
+
+    const midi =
+        tunedMidi(freq);
+
+    const octave =
+        Math.floor(midi/12);
+
+    const pitch =
+        Math.round(midi)%12;
+
+    switch(pitch){
+
+        case 0:
+            return [255,210,160];
+
+        case 2:
+            return [40,60,150];
+
+        case 4:
+            return (
+                freq >= aTuningHz
+                ? [220,180,255]
+                : [120,80,50]
+            );
+
+        case 5:
+            return [245,217,84];
+
+        case 7:
+
+            if(octave < 4)
+                return [0,80,30];
+
+            if(octave === 4)
+                return [70,190,50];
+
+            return [180,255,80];
+
+        case 9:
+            return [255,70,70];
+
+        case 11:
+            return [120,220,255];
+
+        default:
+            return [180,180,180];
+    }
+}
+
+/* ---------- RESTORED BUBBLE SYSTEM ---------- */
+
+function drawBubbles(){
+
+    let activeFound = false;
+
+    for(const e of midiEvents){
+
+        const x =
+            (
+                e.start /
+                audioDuration
+            ) *
+            canvas.width;
+
+        const dist =
+            Math.abs(x - mouseX);
+
+        const active =
+            dist < 36 &&
+            !activeFound;
+
+        if(active)
+            activeFound = true;
+
+        const bubbleY =
+            canvas.height * 0.84;
+
+        if(active){
+
+            const label =
+                e.label;
+
+            ctx.font =
+                "bold 12px monospace";
+
+            const tw =
+                ctx.measureText(label)
+                .width;
+
+            const w =
+                tw + 22;
+
+            let bx =
+                x - w * 0.5;
+
+            bx =
+                Math.max(
+                    4,
+                    Math.min(
+                        canvas.width - w - 4,
+                        bx
+                    )
+                );
+
+            ctx.fillStyle =
+                "rgba(255,140,40,0.92)";
+
+            ctx.beginPath();
+
+            ctx.roundRect(
+                bx,
+                bubbleY - 12,
+                w,
+                22,
+                10
+            );
+
+            ctx.fill();
+
+            ctx.fillStyle =
+                "white";
+
+            ctx.fillText(
+                label,
+                bx + 11,
+                bubbleY + 3
+            );
+
+        }else{
+
+            ctx.fillStyle =
+                "rgba(80,120,255,0.58)";
+
+            ctx.beginPath();
+
+            ctx.arc(
+                x,
+                bubbleY,
+                3.2,
+                0,
+                Math.PI * 2
+            );
+
+            ctx.fill();
+        }
+    }
+}
+
+</script>
+</body>
+</html>
+```
+

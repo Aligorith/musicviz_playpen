@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+
+<title>Interactive Pitch Spectrogram</title>
+
+<style>
+
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #111;
+    color: white;
+    font-family: sans-serif;
+}
+
+#canvas {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+#topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 20;
+
+    background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(8px);
+
+    padding: 10px;
+    box-sizing: border-box;
+
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+#controlsRow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+#status {
+    margin-top: 8px;
+    font-size: 14px;
+    color: #ccc;
+}
+
+#libSection {
+    margin-top: 8px;
+}
+
+#libToggle {
+    cursor: pointer;
+    font-size: 13px;
+    color: #9ecbff;
+    user-select: none;
+}
+
+#libContent {
+    margin-top: 8px;
+    font-size: 12px;
+    color: #aaa;
+
+    max-height: 300px;
+    overflow: hidden;
+
+    transition: max-height 0.25s ease, opacity 0.25s ease;
+    opacity: 1;
+}
+
+#libContent.collapsed {
+    max-height: 0;
+    opacity: 0;
+}
+
+#freezeHint {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #aaa;
+}
+
+a { color: #9ecbff; }
+
+</style>
+</head>
+<body>
+
+<div id="topbar">
+
+    <div id="controlsRow">
+        <input type="file" id="fileInput" accept=".mp3,.wav,.flac,audio/*"/>
+        <button id="analyzeBtn">Analyze</button>
+    </div>
+
+    <div id="status">
+        Load a sound file to generate a spectrogram.
+    </div>
+
+    <div id="freezeHint">
+        SPACE = freeze overlay for screenshots
+    </div>
+
+    <div id="libSection">
+        <div id="libToggle">▼ Library suggestions</div>
+        <div id="libContent">
+            • MP3/WAV: WebAudio decodeAudioData()<br><br>
+            • FLAC:
+            <a href="https://github.com/mmig/libflac.js" target="_blank">libflac.js</a>
+            or
+            <a href="https://github.com/eshaz/wasm-audio-decoders" target="_blank">wasm-audio-decoders</a>
+            <br><br>
+            • FFT:
+            <a href="https://github.com/indutny/fft.js/" target="_blank">fft.js</a>
+            <br><br>
+            • Constant-Q:
+            <a href="https://github.com/sebpiq/essentia.js/" target="_blank">Essentia.js</a>
+        </div>
+    </div>
+
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const spectrogramCanvas = document.createElement("canvas");
+const spectrogramCtx = spectrogramCanvas.getContext("2d");
+
+function resize() {
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+    spectrogramCanvas.width = canvas.width;
+    spectrogramCanvas.height = canvas.height;
+}
+addEventListener("resize", resize);
+resize();
+
+const statusEl = document.getElementById("status");
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+const bubbles = [];
+
+let mouseX = -9999;
+let audioDuration = 0;
+let spectrogramReady = false;
+
+let overlayFrozen = false;
+let frozenMouseX = -9999;
+let frozenBubble = null;
+
+/* ---------------- Pitch mapping ---------------- */
+
+const NOTE_COLORS = {
+    c:[255,210,150],
+    d:[30,40,120],
+    e_high:[220,180,255],
+    e_low:[110,70,40],
+    f:[190,255,70],
+    g:[0,255,0],
+    a:[255,60,60],
+    b:[120,220,255]
+};
+
+const NOTE_NAMES = ["c","cis","d","ees","e","f","fis","g","gis","a","bes","b"];
+
+function freqToMidi(f){ return 69 + 12*Math.log2(f/440); }
+
+function midiToLily(m){
+    const r=Math.round(m);
+    const n=NOTE_NAMES[((r%12)+12)%12];
+    const o=Math.floor(r/12)-1;
+    return n + (o>=3?"'".repeat(o-3):",".repeat(3-o));
+}
+
+function formatTime(s){
+    s=Math.max(0,s);
+    return String(Math.floor(s/60)).padStart(2,"0")+":"+String(Math.floor(s%60)).padStart(2,"0");
+}
+
+function getPitchClass(m){
+    const pc=((Math.round(m)%12)+12)%12;
+    return ["c","c","d","d","e","f","f","g","g","a","a","b"][pc];
+}
+
+function getPitchColor(f){
+    const m=freqToMidi(f);
+    const o=Math.floor(m/12);
+    const pc=getPitchClass(m);
+
+    let rgb;
+
+    switch(pc){
+        case "c": rgb=NOTE_COLORS.c; break;
+        case "d": rgb=NOTE_COLORS.d; break;
+        case "e": rgb=f>=440?NOTE_COLORS.e_high:NOTE_COLORS.e_low; break;
+        case "f": rgb=NOTE_COLORS.f; break;
+        case "g":
+            rgb=o<4?[0,90,20]:o===4?[80,200,50]:[160,255,60];
+            break;
+        case "a": rgb=NOTE_COLORS.a; break;
+        case "b": rgb=NOTE_COLORS.b; break;
+        default: rgb=[180,180,180];
+    }
+
+    const b=Math.max(0.25,Math.min(1.2,o/6));
+    return rgb.map(v=>Math.max(0,Math.min(255,v*b)));
+}
+
+/* ---------------- FFT ---------------- */
+
+function naiveFFT(sig){
+    const N=sig.length;
+    const out=new Float32Array(N/2);
+
+    for(let k=0;k<N/2;k++){
+        let re=0,im=0;
+        for(let n=0;n<N;n++){
+            const p=(2*Math.PI*k*n)/N;
+            re+=sig[n]*Math.cos(p);
+            im-=sig[n]*Math.sin(p);
+        }
+        out[k]=Math.sqrt(re*re+im*im);
+    }
+    return out;
+}
+
+/* ---------------- Audio ---------------- */
+
+async function decodeFile(f){
+    return audioCtx.decodeAudioData(await f.arrayBuffer());
+}
+
+function peaks(spec, sr, fft){
+    const p=[];
+    for(let i=1;i<spec.length-1;i++){
+        if(spec[i]>spec[i-1]&&spec[i]>spec[i+1]){
+            p.push({
+                freq:i*sr/fft,
+                mag:spec[i]
+            });
+        }
+    }
+    return p.sort((a,b)=>b.mag-a.mag).slice(0,6)
+        .map(x=>({
+            label:midiToLily(freqToMidi(x.freq)),
+            mag:x.mag
+        }));
+}
+
+/* ---------------- Spectrogram ---------------- */
+
+async function generateSpectrogram(audioBuffer){
+
+    bubbles.length=0;
+    spectrogramReady=false;
+    audioDuration=audioBuffer.duration;
+
+    const w=spectrogramCanvas.width;
+    const h=spectrogramCanvas.height;
+
+    spectrogramCtx.fillStyle="#000";
+    spectrogramCtx.fillRect(0,0,w,h);
+
+    const data=audioBuffer.getChannelData(0);
+    const fftSize=1024, hop=512;
+    const total=Math.floor((data.length-fftSize)/hop);
+    const xScale=w/total;
+
+    let prev="";
+
+    for(let f=0;f<total;f++){
+
+        if(f%5===0){
+            statusEl.textContent=`Analyzing ${f}/${total}`;
+            await new Promise(r=>setTimeout(r,0));
+        }
+
+        const seg=data.slice(f*hop,f*hop+fftSize);
+
+        for(let i=0;i<seg.length;i++){
+            seg[i]*=0.5*(1-Math.cos((2*Math.PI*i)/(seg.length-1)));
+        }
+
+        const spec=naiveFFT(seg);
+
+        for(let b=0;b<spec.length;b++){
+
+            const freq=b*audioBuffer.sampleRate/fftSize;
+            if(freq<20||freq>8000) continue;
+
+            const y =
+                120 +
+                (h-160) -
+                (Math.log2(freq/20)/Math.log2(8000/20))*(h-160);
+
+            const c=getPitchColor(freq);
+            const a=Math.min(1,spec[b]/60);
+
+            spectrogramCtx.fillStyle=
+                `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+
+            spectrogramCtx.fillRect(f*xScale,y,Math.ceil(xScale),1);
+        }
+
+        const dom=peaks(spec,audioBuffer.sampleRate,fftSize);
+        const label=dom.map(d=>d.label).join(" ");
+
+        if(label!==prev){
+            prev=label;
+
+            bubbles.push({
+                x:f*xScale,
+                y:h*0.72,
+                labels:label,
+                dominant:dom[0]?.label||"",
+                currentWidth:10,
+                opacity:0,
+                targetOpacity:0,
+                active:false
+            });
+        }
+    }
+
+    spectrogramReady=true;
+    statusEl.textContent="Ready";
+}
+
+/* ---------------- Drawing ---------------- */
+
+function rounded(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.lineTo(x+w-r,y);
+    ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+    ctx.lineTo(x+w,y+h-r);
+    ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+    ctx.lineTo(x+r,y+h);
+    ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+    ctx.lineTo(x,y+r);
+    ctx.quadraticCurveTo(x,y,x+r,y);
+}
+
+function drawBubble(b){
+
+    const active=b.active;
+    const w=active?240:b.currentWidth;
+
+    b.currentWidth += (w-b.currentWidth)*0.14;
+
+    const h=active?38:10;
+    let x=b.x;
+
+    if(x+w>innerWidth-12) x=innerWidth-w-12;
+    if(x<12) x=12;
+
+    ctx.fillStyle=active?"rgba(255,140,40,.92)":"rgba(40,80,180,.65)";
+    rounded(x,b.y,w,h,10);
+    ctx.fill();
+
+    if(!active) return;
+
+    let tx=x+12;
+    for(const n of b.labels.split(" ")){
+        ctx.font=(n===b.dominant)?"bold 16px monospace":"16px monospace";
+        ctx.fillStyle="white";
+        ctx.fillText(n,tx,b.y+24);
+        tx+=ctx.measureText(n+" ").width;
+    }
+}
+
+/* ---------------- Timeline ---------------- */
+
+function drawTimelineTicks(){
+
+    if(!audioDuration) return;
+
+    const y=innerHeight-34;
+    const px=innerWidth/audioDuration;
+
+    ctx.fillStyle="rgba(255,255,255,.1)";
+    ctx.fillRect(0,y,innerWidth,1);
+
+    for(let s=0;s<=audioDuration;s++){
+
+        const x=s*px;
+        const major=s%10===0;
+
+        ctx.strokeStyle="rgba(255,255,255,.85)";
+        ctx.lineWidth=major?1.5:1;
+
+        ctx.beginPath();
+        ctx.moveTo(x,y);
+        ctx.lineTo(x,y-(major?26:14));
+        ctx.stroke();
+
+        if(major){
+            ctx.fillStyle="white";
+            ctx.font="12px monospace";
+            ctx.fillText(formatTime(s),x+4,y-30);
+        }
+    }
+}
+
+/* ---------------- Render loop ---------------- */
+
+function render(){
+
+    requestAnimationFrame(render);
+    ctx.clearRect(0,0,innerWidth,innerHeight);
+
+    if(spectrogramReady)
+        ctx.drawImage(spectrogramCanvas,0,0);
+
+    drawTimelineTicks();
+
+    const mx = overlayFrozen ? frozenMouseX : mouseX;
+
+    if(mx>=0){
+
+        ctx.strokeStyle="rgba(200,90,20,.72)";
+        ctx.beginPath();
+        ctx.moveTo(mx,0);
+        ctx.lineTo(mx,innerHeight);
+        ctx.stroke();
+
+        const t=(mx/innerWidth)*audioDuration;
+        const text=formatTime(t);
+
+        ctx.font="bold 13px monospace";
+        const w=ctx.measureText(text).width+20;
+
+        let bx=mx+12;
+        if(bx+w>innerWidth) bx=mx-w-12;
+
+        rounded(bx,8,w,28,8);
+        ctx.fillStyle="rgba(255,140,40,.92)";
+        ctx.fill();
+
+        ctx.fillStyle="white";
+        ctx.fillText(text,bx+10,27);
+    }
+
+    let active=null;
+
+    if(overlayFrozen){
+        active=frozenBubble;
+    } else {
+        let best=99999;
+        for(const b of bubbles){
+            const d=Math.abs(mx-b.x);
+            if(d<40&&d<best){active=b;best=d;}
+        }
+        frozenBubble=active;
+    }
+
+    for(const b of bubbles){
+        b.active=(b===active);
+        drawBubble(b);
+    }
+}
+
+addEventListener("mousemove",e=>{
+    mouseX=e.clientX;
+});
+
+addEventListener("mouseleave",()=>{
+    mouseX=-9999;
+});
+
+addEventListener("keydown",e=>{
+    if(e.code==="Space"){
+        e.preventDefault();
+        overlayFrozen=!overlayFrozen;
+        frozenMouseX=mouseX;
+    }
+});
+
+document.getElementById("analyzeBtn").onclick=async()=>{
+    const f=document.getElementById("fileInput").files[0];
+    if(!f) return alert("Pick a file");
+
+    statusEl.textContent="Decoding...";
+    const buf=await decodeFile(f);
+
+    statusEl.textContent="Processing...";
+    await generateSpectrogram(buf);
+};
+
+render();
+
+</script>
+
+</body>
+</html>

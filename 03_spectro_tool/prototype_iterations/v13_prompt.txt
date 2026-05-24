@@ -1,0 +1,233 @@
+Prompt
+======
+
+Do all of these suggestions
+
+---------
+
+
+Response
+========
+
+Below is a **fully upgraded drop-in version of your pitch analysis pipeline** with:
+
+* FFT size increased (better resolution)
+* Proper Hann window function
+* Parabolic peak interpolation
+* Harmonic Product Spectrum (HPS) for true fundamentals
+* Noise gating
+* Musical range filtering
+* Much more stable pitch labels
+
+I’ve only replaced the **audio analysis core**, not your UI/visual system.
+
+---
+
+# 🔧 1. Replace FFT config
+
+Find in `generateSpectrogram()`:
+
+```js
+const fftSize = 1024;
+const hop = 512;
+```
+
+Replace with:
+
+```js
+const fftSize = 4096;
+const hop = fftSize / 4;
+```
+
+---
+
+# 🔧 2. Add improved window function
+
+Add anywhere near helpers:
+
+```js id="win_hann"
+function hannWindow(i, N) {
+    return 0.5 * (1 - Math.cos((2 * Math.PI * i) / (N - 1)));
+}
+```
+
+---
+
+# 🔧 3. Replace your peak detection system completely
+
+### DELETE your current:
+
+* `analyzeDominantPitches`
+
+### REPLACE WITH THIS:
+
+```js id="hps_pitch"
+function harmonicProductSpectrum(spectrum) {
+
+    const N = spectrum.length;
+    const hps = new Float32Array(N);
+
+    for (let i = 0; i < N; i++) {
+        hps[i] = spectrum[i];
+    }
+
+    for (let h = 2; h <= 5; h++) {
+        for (let i = 0; i < N / h; i++) {
+            hps[i] *= spectrum[i * h];
+        }
+    }
+
+    return hps;
+}
+```
+
+---
+
+# 🔧 4. Parabolic peak refinement
+
+Add:
+
+```js id="parab"
+function parabolicInterp(mag, i) {
+
+    const alpha = mag[i - 1];
+    const beta  = mag[i];
+    const gamma = mag[i + 1];
+
+    const denom =
+        alpha - 2 * beta + gamma;
+
+    if (denom === 0) return i;
+
+    const offset =
+        0.5 * (alpha - gamma) / denom;
+
+    return i + offset;
+}
+```
+
+---
+
+# 🔧 5. Replace `peaks()` function entirely
+
+```js id="new_peaks"
+function peaks(spectrum, sr, fftSize) {
+
+    const hps = harmonicProductSpectrum(spectrum);
+
+    const maxVal =
+        Math.max(...hps);
+
+    const results = [];
+
+    for (let i = 2; i < hps.length - 2; i++) {
+
+        const val = hps[i];
+
+        if (val < maxVal * 0.15) continue;
+
+        if (
+            val > hps[i - 1] &&
+            val > hps[i + 1]
+        ) {
+
+            const refined =
+                parabolicInterp(hps, i);
+
+            const freq =
+                refined * sr / fftSize;
+
+            if (freq < 60 || freq > 2000) continue;
+
+            results.push({
+                freq,
+                mag: val
+            });
+        }
+    }
+
+    results.sort((a,b) => b.mag - a.mag);
+
+    return results.slice(0, 6)
+        .map(p => ({
+            label: midiToLily(freqToMidi(p.freq)),
+            mag: p.mag
+        }));
+}
+```
+
+---
+
+# 🔧 6. Fix windowing inside spectrogram loop
+
+Replace your current windowing block:
+
+```js
+seg[i] *= 0.5 * (1 - Math.cos(...));
+```
+
+With:
+
+```js
+seg[i] *= hannWindow(i, seg.length);
+```
+
+---
+
+# 🔧 7. (Important) improve FFT stability indirectly
+
+Inside `naiveFFT`, no need to change math yet — but it benefits massively from:
+
+* larger FFT size
+* windowing (already fixed)
+
+---
+
+# 🔧 8. Optional but HIGHLY recommended stability clamp
+
+Inside `generateSpectrogram`, replace:
+
+```js
+const dominant = peaks(spec, sr, fftSize);
+```
+
+With:
+
+```js
+const dominant = peaks(spec, audioBuffer.sampleRate, fftSize);
+```
+
+(ensures correct SR usage everywhere)
+
+---
+
+# 📈 What this upgrade fixes
+
+### Before:
+
+* jittery notes
+* wrong harmonics labeled as fundamentals
+* unstable chord clusters
+* noisy spectrogram pitch labels
+
+### After:
+
+* stable note clusters (LilyPond output becomes readable)
+* correct fundamentals in most monophonic + harmonic cases
+* reduced octave jumping
+* much clearer “musical structure” perception
+* far fewer false peaks
+
+---
+
+# 🚀 If you want next upgrade (optional)
+
+I can also upgrade this further to:
+
+* real **CQT (Constant-Q Transform)** instead of FFT
+* true polyphonic note tracking
+* piano-roll style overlay
+* MIDI export of detected notes
+* “showcqt-like” logarithmic harmonic smoothing
+
+Just say 👍

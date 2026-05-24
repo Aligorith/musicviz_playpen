@@ -1,0 +1,281 @@
+Prompt
+======
+
+* The in-progress spectrogram behaviour still hasn't been fixed
+* The time estimates disappeared from the processing progress text
+* The middle-c border should be better centered around the text. There's too much space on the top and right sides.
+
+--------------
+
+Response
+========
+
+Apply these three fixes to the current version:
+
+---
+
+# 1. Fix progressive spectrogram reveal
+
+The current version still rescales all existing columns every frame because this line is wrong:
+
+```js
+const xScale =
+    canvas.width /
+    cachedSpectrogram.length;
+```
+
+That causes compression as more FFT columns arrive.
+
+Instead, compute a FIXED column width once at analysis start.
+
+---
+
+## ADD global:
+
+```js
+let fixedColumnWidth = 1;
+```
+
+---
+
+## Inside `process(buffer)` AFTER:
+
+```js
+const total =
+    Math.floor(
+        (
+            data.length -
+            fftSize
+        ) / hop
+    );
+```
+
+ADD:
+
+```js
+fixedColumnWidth =
+    canvas.width / total;
+```
+
+---
+
+## Then REPLACE inside `redrawSpectrogram()`:
+
+REMOVE:
+
+```js
+const xScale =
+    canvas.width /
+    cachedSpectrogram.length;
+```
+
+---
+
+And REPLACE:
+
+```js
+i * xScale
+```
+
+WITH:
+
+```js
+i * fixedColumnWidth
+```
+
+---
+
+Replace:
+
+```js
+Math.ceil(xScale)+1
+```
+
+WITH:
+
+```js
+Math.ceil(fixedColumnWidth)+1
+```
+
+---
+
+This now:
+
+* reveals left→right correctly
+* keeps previous columns fixed in position
+* prevents shrinking/compression
+* behaves like proper showcqt rendering
+
+---
+
+# 2. Restore elapsed + remaining time estimates
+
+Inside `process(buffer)` ADD near the start:
+
+```js
+const processingStart =
+    performance.now();
+```
+
+---
+
+Then REPLACE:
+
+```js
+statusEl.textContent =
+    `Processing ${
+        i
+    } / ${
+        total
+    }`;
+```
+
+WITH:
+
+```js
+const elapsed =
+    (
+        performance.now() -
+        processingStart
+    ) / 1000;
+
+const progress =
+    (i + 1) / total;
+
+const estimate =
+    elapsed / progress;
+
+const remaining =
+    Math.max(
+        0,
+        estimate - elapsed
+    );
+
+statusEl.textContent =
+    `Processing ${
+        i + 1
+    }/${
+        total
+    }  •  elapsed ${
+        elapsed.toFixed(1)
+    }s  •  remaining ≈ ${
+        remaining.toFixed(1)
+    }s`;
+```
+
+---
+
+# 3. Better centered rounded rect around c4
+
+Replace the ENTIRE special c4 block inside `drawCMarkers()`.
+
+REMOVE:
+
+```js
+ctx.fillStyle =
+    "rgba(255,255,255,0.12)";
+
+ctx.beginPath();
+
+ctx.roundRect(
+    18,
+    y - 10,
+    30,
+    16,
+    6
+);
+
+ctx.fill();
+
+ctx.strokeStyle =
+    "rgba(255,255,255,0.6)";
+
+ctx.stroke();
+
+ctx.fillStyle =
+    "white";
+
+ctx.font =
+    "bold 12px monospace";
+```
+
+---
+
+REPLACE WITH:
+
+```js
+ctx.font =
+    "bold 12px monospace";
+
+const label = `c${o}`;
+
+const tw =
+    ctx.measureText(label)
+    .width;
+
+const bx = 18;
+const by = y - 8;
+const bw = tw + 10;
+const bh = 14;
+
+ctx.fillStyle =
+    "rgba(255,255,255,0.10)";
+
+ctx.beginPath();
+
+ctx.roundRect(
+    bx,
+    by,
+    bw,
+    bh,
+    5
+);
+
+ctx.fill();
+
+ctx.strokeStyle =
+    "rgba(255,255,255,0.55)";
+
+ctx.lineWidth = 1;
+
+ctx.stroke();
+
+ctx.fillStyle =
+    "white";
+```
+
+---
+
+Then REPLACE:
+
+```js
+ctx.fillText(
+    `c${o}`,
+    24,
+    y + 3
+);
+```
+
+WITH:
+
+```js
+ctx.fillText(
+    `c${o}`,
+    o === 4 ? 23 : 24,
+    o === 4 ? y + 2 : y + 3
+);
+```
+
+---
+
+That produces:
+
+* visually centered border
+* equal top/bottom padding
+* proper width
+* cleaner showcqt-style middle-C marker
+
+
+==============
+
+v34 -> v35:  Generate this full version

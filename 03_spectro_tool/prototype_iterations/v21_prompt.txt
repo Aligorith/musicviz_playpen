@@ -1,0 +1,7 @@
+Prompt
+======
+
+Add controls to the top bar giving:
+* Abillity tune the pitch mapping (e.g. by a semitone or so) to match tuning differences. When adjusted, all the pitches identified need to be updated to work with the new tuning.
+* Display info about how long the processing took (in seconds), and if possible, an estimate of how long it's going to take (after the processing process has started)
+* Add a popup panel that shows a legend for the colour mappings. Include a control to boost the brightness / strength of the frequencies displayed on the spectrogram as part of this panel

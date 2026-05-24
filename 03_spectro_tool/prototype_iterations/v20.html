@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CQT Spectrogram + Onsets + UI</title>
+
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background: #454545;
+    font-family: sans-serif;
+    color: white;
+}
+
+#canvas {
+    position: absolute;
+    inset: 0;
+    width: 100vw;
+    height: 100vh;
+}
+
+#topbar {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 20;
+    background: rgba(30,30,30,0.72);
+    backdrop-filter: blur(8px);
+    padding: 10px;
+    box-sizing: border-box;
+}
+
+#status {
+    margin-top: 6px;
+    font-size: 13px;
+    color: #ddd;
+}
+
+button {
+    cursor: pointer;
+}
+</style>
+</head>
+
+<body>
+
+<div id="topbar">
+    <input type="file" id="file"/>
+    <button id="analyze">Analyze</button>
+    <button id="export">Export Note Events</button>
+    <div id="status">Load file</div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const specCanvas = document.createElement("canvas");
+const specCtx = specCanvas.getContext("2d");
+
+function resize(){
+    canvas.width = innerWidth;
+    canvas.height = innerHeight;
+
+    specCanvas.width = innerWidth;
+    specCanvas.height = innerHeight;
+}
+addEventListener("resize", resize);
+resize();
+
+const audioCtx =
+    new (window.AudioContext || window.webkitAudioContext)();
+
+const statusEl =
+    document.getElementById("status");
+
+let audioDuration = 0;
+let ready = false;
+
+let renderProgressX = 0;
+
+let mouseX = -9999;
+let frozen = false;
+let frozenX = -9999;
+
+const midiEvents = [];
+const activeNotes = new Map();
+
+let prevEnergy = 0;
+
+/* ------------------------------------------------ */
+/* helpers */
+/* ------------------------------------------------ */
+
+function freqToMidi(f){
+    return 69 + 12 * Math.log2(f / 440);
+}
+
+function midiToLabel(m){
+    const n = ((Math.round(m) % 12) + 12) % 12;
+
+    return [
+        "c","c#","d","d#",
+        "e","f","f#","g",
+        "g#","a","a#","b"
+    ][n];
+}
+
+function formatTime(s){
+    return (
+        String(Math.floor(s / 60)).padStart(2,"0")
+        + ":" +
+        String(Math.floor(s % 60)).padStart(2,"0")
+    );
+}
+
+/* ------------------------------------------------ */
+/* CQT */
+/* ------------------------------------------------ */
+
+const CQT = (() => {
+
+    const min = 55;
+    const max = 1760;
+    const bpo = 36;
+
+    const bins = [];
+
+    const oct =
+        Math.log2(max / min);
+
+    const total =
+        oct * bpo;
+
+    for(let i = 0; i < total; i++){
+
+        bins.push(
+            min *
+            Math.pow(2, i / bpo)
+        );
+    }
+
+    return bins;
+})();
+
+function cqt(frame, f, sr){
+
+    let sum = 0;
+
+    for(let i=0;i<frame.length;i++){
+
+        const w =
+            0.5 * (
+                1 -
+                Math.cos(
+                    2 * Math.PI * i /
+                    (frame.length - 1)
+                )
+            );
+
+        sum +=
+            frame[i] *
+            Math.cos(
+                2 * Math.PI * f * i / sr
+            ) *
+            w;
+    }
+
+    return Math.abs(sum);
+}
+
+function analyzeCQT(frame, sr){
+
+    const out = [];
+    let max = 0;
+
+    for(const f of CQT){
+
+        const m =
+            cqt(frame, f, sr);
+
+        out.push({
+            freq: f,
+            mag: m
+        });
+
+        max = Math.max(max, m);
+    }
+
+    for(let i=1;i<out.length-1;i++){
+
+        out[i].mag =
+            (
+                out[i-1].mag +
+                out[i].mag +
+                out[i+1].mag
+            ) / 3;
+    }
+
+    return out
+        .filter(x => x.mag > max * 0.25)
+        .sort((a,b)=>b.mag-a.mag);
+}
+
+function extractNotes(cqt){
+
+    const max =
+        Math.max(
+            ...cqt.map(x=>x.mag)
+        );
+
+    return cqt
+        .filter(x=>x.mag > max * 0.4)
+        .slice(0,6)
+        .map(x=>({
+
+            freq: x.freq,
+
+            midi:
+                freqToMidi(x.freq),
+
+            label:
+                midiToLabel(
+                    freqToMidi(x.freq)
+                )
+        }));
+}
+
+/* ------------------------------------------------ */
+/* onset */
+/* ------------------------------------------------ */
+
+function energy(frame){
+
+    let e = 0;
+
+    for(const x of frame)
+        e += x*x;
+
+    return e;
+}
+
+function onset(curr, prev){
+
+    return (
+        curr /
+        (prev + 1e-6)
+    ) > 1.6;
+}
+
+/* ------------------------------------------------ */
+/* FFT */
+/* ------------------------------------------------ */
+
+function fft(sig){
+
+    const N = sig.length;
+
+    const out =
+        new Float32Array(N/2);
+
+    for(let k=0;k<N/2;k++){
+
+        let re = 0;
+        let im = 0;
+
+        for(let n=0;n<N;n++){
+
+            const p =
+                2 * Math.PI *
+                k * n / N;
+
+            re +=
+                sig[n] *
+                Math.cos(p);
+
+            im -=
+                sig[n] *
+                Math.sin(p);
+        }
+
+        out[k] =
+            Math.sqrt(
+                re*re +
+                im*im
+            );
+    }
+
+    return out;
+}
+
+/* ------------------------------------------------ */
+/* colors */
+/* ------------------------------------------------ */
+
+function colorForFreq(freq){
+
+    const midi =
+        freqToMidi(freq);
+
+    const octave =
+        Math.floor(midi / 12);
+
+    const pitch =
+        Math.round(midi) % 12;
+
+    let rgb;
+
+    switch(pitch){
+
+        case 0:
+            rgb = [255,210,160];
+            break;
+
+        case 2:
+            rgb = [40,60,150];
+            break;
+
+        case 4:
+            rgb =
+                freq >= 440
+                ? [220,180,255]
+                : [120,80,50];
+            break;
+
+        case 5:
+            rgb = [190,255,80];
+            break;
+
+        case 7:
+
+            if(octave < 4)
+                rgb = [0,80,30];
+            else if(octave === 4)
+                rgb = [70,190,50];
+            else
+                rgb = [180,255,80];
+
+            break;
+
+        case 9:
+            rgb = [255,70,70];
+            break;
+
+        case 11:
+            rgb = [120,220,255];
+            break;
+
+        default:
+            rgb = [180,180,180];
+    }
+
+    const brightness =
+        Math.max(
+            0.3,
+            Math.min(
+                1.15,
+                octave / 6
+            )
+        );
+
+    return rgb.map(v =>
+        Math.max(
+            0,
+            Math.min(
+                255,
+                v * brightness
+            )
+        )
+    );
+}
+
+/* ------------------------------------------------ */
+/* audio */
+/* ------------------------------------------------ */
+
+async function decode(f){
+
+    return audioCtx.decodeAudioData(
+        await f.arrayBuffer()
+    );
+}
+
+/* ------------------------------------------------ */
+/* process */
+/* ------------------------------------------------ */
+
+async function process(buffer){
+
+    ready = false;
+
+    audioDuration =
+        buffer.duration;
+
+    renderProgressX = 0;
+
+    midiEvents.length = 0;
+    activeNotes.clear();
+
+    const data =
+        buffer.getChannelData(0);
+
+    const fftSize = 4096;
+    const hop = 1024;
+
+    const total =
+        Math.floor(
+            (data.length - fftSize) / hop
+        );
+
+    const xScale =
+        canvas.width / total;
+
+    specCtx.clearRect(
+        0,0,
+        canvas.width,
+        canvas.height
+    );
+
+    prevEnergy = 0;
+
+    for(let i=0;i<total;i++){
+
+        const seg =
+            data.slice(
+                i*hop,
+                i*hop+fftSize
+            );
+
+        for(let j=0;j<seg.length;j++){
+
+            seg[j] *=
+                0.5 * (
+                    1 -
+                    Math.cos(
+                        2*Math.PI*j /
+                        (seg.length-1)
+                    )
+                );
+        }
+
+        const currE =
+            energy(seg);
+
+        const isOn =
+            onset(currE, prevEnergy);
+
+        const cqtData =
+            analyzeCQT(
+                seg,
+                buffer.sampleRate
+            );
+
+        const notes =
+            extractNotes(cqtData);
+
+        const t =
+            i * hop /
+            buffer.sampleRate;
+
+        /* note tracking */
+
+        if(isOn){
+
+            for(const [k,n] of activeNotes){
+
+                midiEvents.push({
+                    start: n.start,
+                    end: t,
+                    label: n.label
+                });
+            }
+
+            activeNotes.clear();
+
+            for(const n of notes){
+
+                activeNotes.set(
+                    n.freq,
+                    {
+                        start: t,
+                        label: n.label
+                    }
+                );
+            }
+        }
+        else {
+
+            const set =
+                new Set(
+                    notes.map(n=>n.freq)
+                );
+
+            for(const [f,n] of activeNotes){
+
+                if(!set.has(f)){
+
+                    midiEvents.push({
+                        start: n.start,
+                        end: t,
+                        label: n.label
+                    });
+
+                    activeNotes.delete(f);
+                }
+            }
+        }
+
+        prevEnergy = currE;
+
+        /* spectrogram */
+
+        const spec = fft(seg);
+
+        for(let b=1;b<spec.length;b++){
+
+            const freq =
+                b *
+                (
+                    buffer.sampleRate /
+                    fftSize
+                );
+
+            if(freq < 20 || freq > 8000)
+                continue;
+
+            const y =
+                canvas.height -
+                40 -
+                (
+                    Math.log2(freq / 20) /
+                    Math.log2(8000 / 20)
+                ) *
+                (
+                    canvas.height - 180
+                );
+
+            const mag =
+                spec[b];
+
+            const alpha =
+                Math.min(
+                    1,
+                    mag / 55
+                );
+
+            const c =
+                colorForFreq(freq);
+
+            specCtx.fillStyle =
+                `rgba(
+                    ${c[0]},
+                    ${c[1]},
+                    ${c[2]},
+                    ${alpha}
+                )`;
+
+            specCtx.fillRect(
+                i * xScale,
+                y,
+                Math.ceil(xScale),
+                1
+            );
+        }
+
+        renderProgressX =
+            i * xScale;
+
+        if(i % 10 === 0){
+
+            statusEl.textContent =
+                `Processing ${i}/${total}`;
+
+            await new Promise(
+                r=>setTimeout(r,0)
+            );
+        }
+    }
+
+    const end =
+        audioDuration;
+
+    for(const [k,n] of activeNotes){
+
+        midiEvents.push({
+            start: n.start,
+            end,
+            label: n.label
+        });
+    }
+
+    activeNotes.clear();
+
+    ready = true;
+
+    statusEl.textContent =
+        "Ready";
+}
+
+/* ------------------------------------------------ */
+/* timeline */
+/* ------------------------------------------------ */
+
+function drawTimeline(){
+
+    if(!audioDuration)
+        return;
+
+    const y =
+        canvas.height - 28;
+
+    const px =
+        canvas.width /
+        audioDuration;
+
+    ctx.strokeStyle =
+        "rgba(255,255,255,0.2)";
+
+    ctx.beginPath();
+
+    ctx.moveTo(0,y);
+    ctx.lineTo(canvas.width,y);
+
+    ctx.stroke();
+
+    for(let s=0;s<=audioDuration;s++){
+
+        const x = s * px;
+
+        const major =
+            s % 10 === 0;
+
+        ctx.strokeStyle =
+            "white";
+
+        ctx.lineWidth =
+            major ? 2 : 1;
+
+        ctx.beginPath();
+
+        ctx.moveTo(x,y);
+
+        ctx.lineTo(
+            x,
+            y - (
+                major ? 25 : 12
+            )
+        );
+
+        ctx.stroke();
+
+        if(major){
+
+            ctx.fillStyle =
+                "white";
+
+            ctx.font =
+                "11px monospace";
+
+            ctx.fillText(
+                formatTime(s),
+                x + 3,
+                y - 30
+            );
+        }
+    }
+}
+
+/* ------------------------------------------------ */
+/* bubbles */
+/* ------------------------------------------------ */
+
+function drawBubbles(){
+
+    const mx =
+        frozen
+        ? frozenX
+        : mouseX;
+
+    for(const e of midiEvents){
+
+        const x =
+            (e.start / audioDuration) *
+            canvas.width;
+
+        const active =
+            Math.abs(x - mx) < 40;
+
+        const w =
+            active ? 180 : 10;
+
+        const h = 18;
+
+        ctx.fillStyle =
+            active
+            ? "rgba(255,140,40,0.92)"
+            : "rgba(80,120,255,0.55)";
+
+        ctx.beginPath();
+
+        ctx.roundRect(
+            x,
+            canvas.height * 0.72,
+            w,
+            h,
+            8
+        );
+
+        ctx.fill();
+
+        if(active){
+
+            ctx.fillStyle =
+                "white";
+
+            ctx.font =
+                "12px monospace";
+
+            ctx.fillText(
+                e.label,
+                x + 8,
+                canvas.height * 0.72 + 13
+            );
+        }
+    }
+}
+
+/* ------------------------------------------------ */
+/* render */
+/* ------------------------------------------------ */
+
+function render(){
+
+    requestAnimationFrame(render);
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    ctx.drawImage(
+        specCanvas,
+
+        0,
+        0,
+
+        renderProgressX,
+        canvas.height,
+
+        0,
+        0,
+
+        renderProgressX,
+        canvas.height
+    );
+
+    const grad =
+        ctx.createLinearGradient(
+            0,
+            0,
+            0,
+            canvas.height
+        );
+
+    grad.addColorStop(
+        0,
+        "rgba(0,0,0,0.05)"
+    );
+
+    grad.addColorStop(
+        1,
+        "rgba(0,0,0,0.35)"
+    );
+
+    ctx.fillStyle = grad;
+
+    ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    drawTimeline();
+    drawBubbles();
+
+    const mx =
+        frozen
+        ? frozenX
+        : mouseX;
+
+    if(mx > 0){
+
+        ctx.strokeStyle =
+            "rgba(255,140,40,0.85)";
+
+        ctx.lineWidth = 2;
+
+        ctx.beginPath();
+
+        ctx.moveTo(mx,0);
+        ctx.lineTo(mx,canvas.height);
+
+        ctx.stroke();
+
+        const t =
+            (
+                mx /
+                canvas.width
+            ) *
+            audioDuration;
+
+        const label =
+            formatTime(t);
+
+        const pad = 8;
+
+        ctx.font =
+            "12px monospace";
+
+        const tw =
+            ctx.measureText(label).width;
+
+        const bx =
+            Math.min(
+                canvas.width - tw - 30,
+                mx + 10
+            );
+
+        ctx.fillStyle =
+            "rgba(255,140,40,0.95)";
+
+        ctx.beginPath();
+
+        ctx.roundRect(
+            bx,
+            12,
+            tw + pad*2,
+            22,
+            8
+        );
+
+        ctx.fill();
+
+        ctx.fillStyle =
+            "white";
+
+        ctx.fillText(
+            label,
+            bx + pad,
+            27
+        );
+    }
+}
+
+/* ------------------------------------------------ */
+/* export */
+/* ------------------------------------------------ */
+
+function exportNotes(){
+
+    let txt =
+        "NOTE EVENTS\n" +
+        "start\tend\tnote\n\n";
+
+    for(const e of midiEvents){
+
+        txt +=
+            `${e.start.toFixed(2)}\t` +
+            `${e.end.toFixed(2)}\t` +
+            `${e.label}\n`;
+    }
+
+    const blob =
+        new Blob(
+            [txt],
+            {type:"text/plain"}
+        );
+
+    const url =
+        URL.createObjectURL(blob);
+
+    const a =
+        document.createElement("a");
+
+    a.href = url;
+    a.download = "notes.txt";
+
+    a.click();
+}
+
+/* ------------------------------------------------ */
+/* interaction */
+/* ------------------------------------------------ */
+
+addEventListener(
+    "mousemove",
+    e=>mouseX=e.clientX
+);
+
+addEventListener(
+    "mouseleave",
+    ()=>mouseX=-9999
+);
+
+addEventListener(
+    "keydown",
+    e=>{
+
+        if(e.code==="Space"){
+
+            frozen =
+                !frozen;
+
+            frozenX =
+                mouseX;
+        }
+    }
+);
+
+document
+.getElementById("analyze")
+.onclick = async ()=>{
+
+    const f =
+        document
+        .getElementById("file")
+        .files[0];
+
+    if(!f) return;
+
+    const buf =
+        await decode(f);
+
+    await process(buf);
+};
+
+document
+.getElementById("export")
+.onclick = exportNotes;
+
+/* ------------------------------------------------ */
+
+render();
+
+</script>
+
+</body>
+</html>

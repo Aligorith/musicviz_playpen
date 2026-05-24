@@ -1,0 +1,195 @@
+Prompt
+======
+
+How to stop the bubble and scrubber disappearing when taking a screenshot
+
+--------------
+
+
+Response
+========
+
+Add a “freeze overlay” mode so the scrubber and active bubble stay visible while you take a screenshot.
+
+The cleanest interaction is:
+
+* press `Space`
+* current scrubber + active bubble lock in place
+* move mouse away freely
+* press `Space` again to unfreeze
+
+Add these changes.
+
+---
+
+# 1. Add freeze state globals
+
+Near your other globals:
+
+```js id="e3tx6n"
+let overlayFrozen = false;
+
+let frozenMouseX = -9999;
+let frozenBubble = null;
+```
+
+---
+
+# 2. Add keyboard toggle
+
+Place near the bottom of the script:
+
+```js id="s8v4rc"
+window.addEventListener(
+    "keydown",
+    e => {
+
+        if (e.code !== "Space") return;
+
+        e.preventDefault();
+
+        overlayFrozen =
+            !overlayFrozen;
+
+        if (overlayFrozen) {
+
+            frozenMouseX = mouseX;
+            frozenBubble = activeBubble;
+        }
+    }
+);
+```
+
+---
+
+# 3. Modify scrubber rendering
+
+Inside `renderScene()` replace:
+
+```js id="uq9s0r"
+if (mouseX >= 0) {
+```
+
+with:
+
+```js id="u5k1ya"
+const displayMouseX =
+    overlayFrozen
+    ? frozenMouseX
+    : mouseX;
+
+if (displayMouseX >= 0) {
+```
+
+---
+
+# 4. Replace ALL remaining scrubber references
+
+Inside the scrubber section replace every:
+
+```js id="j4ey9t"
+mouseX
+```
+
+with:
+
+```js id="b1k7dn"
+displayMouseX
+```
+
+That includes:
+
+* line drawing
+* timestamp bubble
+* time calculations
+* edge handling
+
+---
+
+# 5. Freeze active bubble
+
+Replace this section:
+
+```js id="x5f8ab"
+activeBubble = null;
+
+let bestDist = Infinity;
+
+for (const bubble of bubbles) {
+
+    const dist =
+        Math.abs(mouseX - bubble.x);
+
+    if (
+        dist < 40 &&
+        dist < bestDist
+    ) {
+
+        activeBubble = bubble;
+        bestDist = dist;
+    }
+}
+```
+
+with:
+
+```js id="h2d7wr"
+if (overlayFrozen) {
+
+    activeBubble = frozenBubble;
+}
+else {
+
+    activeBubble = null;
+
+    let bestDist = Infinity;
+
+    for (const bubble of bubbles) {
+
+        const dist =
+            Math.abs(mouseX - bubble.x);
+
+        if (
+            dist < 40 &&
+            dist < bestDist
+        ) {
+
+            activeBubble = bubble;
+            bestDist = dist;
+        }
+    }
+}
+```
+
+---
+
+# 6. Optional visual indicator
+
+Inside the topbar HTML add:
+
+```html id="f6q8zn"
+<div id="freezeHint">
+    SPACE = freeze overlay for screenshots
+</div>
+```
+
+And CSS:
+
+```css id="v4n8mp"
+#freezeHint {
+    margin-top: 6px;
+    font-size: 11px;
+    color: #aaa;
+}
+```
+
+---
+
+Result:
+
+* scrubber remains visible
+* active orange bubble remains expanded
+* timestamp remains visible
+* mouse can leave canvas
+* perfect static screenshots
+* toggleable live/frozen inspection mode with Space key
