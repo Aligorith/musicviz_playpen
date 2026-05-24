@@ -21,6 +21,8 @@ Spectrochrome Roadmap
 
 * Fix scrubbing crackling issues (i.e. need gain-fading on the pipeline) - see "v53_prompt"
 
+* Fix bug where processing pauses if/when the tab loses focus, and then completely dies when we come back and look at it (or start interacting with it)
+
 
 == Enhancements ==
 * Add ability to select per color (in the legend) using popup swatches, and then have these changes be reflected in the overall visualisation
@@ -29,8 +31,15 @@ Spectrochrome Roadmap
   * NOTE: Do this and see how this affects the handling of all those currently "grey" lines
 
 * Option to hide the scrubber for taking a screenshot of the overall colourful spectrogram.  (Also include option for disabling the other axes)
+  * Dismiss also if dragging fast to the very start or very end?
 
 * Move all the tweaks under a popup panel (as they're not really that relevant anymore)
+
+* Fix sizing of the lower orange bubble (too wide)
+
+* Look into bringing back the identification of the other dominant alternative frequencies, sorted by strength (in addition to keeping the current dominant display)
+
+* Include the other strong-pitches info into the exported table (with the relative weights also), as well as note on/off/duration type info  
 
 * Optionally use an external FFT library  (i.e. "FFT.js" instead of the slow O(n^2) naive one included)
 
@@ -43,7 +52,7 @@ Spectrochrome Roadmap
   
   * Glow / 3D effects?
   
-  * Look into automatically de-emphasizing the "soundscape clutter" high up from the overlapping harmonics, or maybe even allowing that to be split out for other handling (e.g. maybe prototyping a technique for future visualisation engines)
+  * Look into automatically de-emphasizing the "soundscape clutter" high up from the overlapping harmonics (i.e. the "c7 -> c8" band), or maybe even allowing that to be split out for other handling (e.g. maybe prototyping a technique for future visualisation engines)
   
   * Melodic-line following / tracing: Figure out an algorithm for that, and draw an overlay tracking those?
 
