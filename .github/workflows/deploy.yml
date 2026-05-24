@@ -34,7 +34,7 @@ jobs:
           cat > gh-pages/index.html <<EOF
           <html>
           <body>
-            <h1>Available Pages</h1>
+            <h1>[MusicViz Playpen] Available Pages</h1>
             <ul>
               <li><a href="spectrochrome.html"><b>SpectroChrome</b></a> - Simple spectogram visualisation for short music sound files</li>
             </ul>
