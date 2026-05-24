@@ -1,0 +1,40 @@
+FFMPEG
+======
+
+# abitscope - https://hhsprings.bitbucket.io/docs/programming/examples/ffmpeg/audio_visualization/_abitscope_.html
+--------------------------------------------------------------------------------------------------------------
+
+ffmpeg -y -i 20230803-v02.flac -filter_complex "[0:a]abitscope=s=1920x1080[v]" -map "[v]" -map "0:a" -c:a mp3 "abitscope_demo.mp4"
+
+
+# showspectrum rainbow - https://hhsprings.bitbucket.io/docs/programming/examples/ffmpeg/audio_visualization/_showspectrum_color_rainbow_legend_1_.html
+--------------------------------------------------------------------------------------------------------------
+
+ffmpeg -y -i 20230803-v02.flac -filter_complex "[0:a]showspectrum=s=1920x1080:color=rainbow:legend=1[v]" -map "[v]" -map "0:a" -c:a mp3 "spectrum_rainbow_demo.mp4"
+
+
+# showcqt - https://hhsprings.bitbucket.io/docs/programming/examples/ffmpeg/audio_visualization/_showcqt_.html
+--------------------------------------------------------------------------------------------------------------
+
+ffmpeg -y -i 20230803-v02.flac -filter_complex "[0:a]showcqt=s=1920x1080[v]" -map "[v]" -map "0:a" -c:a mp3 "showcqt_demo.mp4"
+
+
+# showcqt (crop between A0(21) and C8(108))
+# https://hhsprings.bitbucket.io/docs/programming/examples/ffmpeg/audio_visualization/_showcqt_crop_between_a0_21_and_c8_108_.html
+---------------------------------------------------------------------------------------------------------------
+
+ffmpeg -y -i 20230803-v02.flac -filter_complex "[0:a]showcqt=s=1920x1080,crop=1392:1080:88:0,setsar=1[v]" -map "[v]" -map "0:a" -c:a mp3 "showcqt_cropped_demo.mp4"
+
+
+--------------------------------------
+
+# First attempts at rotating showcqt
+------------------------------------
+
+ffmpeg -y -i 20200301-01-Radar.flac -filter_complex "[0:a]showcqt=s=1080x1920,crop=1080:1392:0:4000,setsar=1,transpose=2[v]" -map "[v]" -map "0:a" -c:a mp3 "showcqt_radar_demo.mp4"
+
+
+ffmpeg -y -i 20230803-v02.flac -filter_complex "[0:a]showcqt=s=1080x1920,crop=1080:1392:0:4000,setsar=1,transpose=2[v]" -map "[v]" -map "0:a" -c:a mp3 "showcqt_rotated.mp4"
+
+
+# ... moved to render_vid.bat
