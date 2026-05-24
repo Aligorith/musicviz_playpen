@@ -1,0 +1,53 @@
+Spectrochrome Roadmap
+=====================
+
+== Refactoring ==
+* Perform a round of code cleanup to tidy up the crazy formatting
+
+* Introduce docstrings for each of the methods
+
+
+== High Priority Defect Fixes ==
+* Fix bug where the playback doesn't work anymore after each time the whole track has been read. In particular:
+  * Currently, there is no playback at all initially, as the audiocontext is already at the end due to the analysis pass... The only way to fix is to recreate the context?
+  * Doing "Play" should just always restart from the start (?), dropping the ability to start playing from where we last plonked the scrub head
+  * Maybe we don't need the "Restart" button anymore then
+
+* Ensure the canvas does not overlap the C-marker gutter on the left (as musescore tracks start immediately, instead of having some blank space up front) - see "v50_prompt"
+
+* Fix bad resizing behaviour (i.e. requires refactoring the drawing to draw to a cache buffer, instead of directly to a frame buffer that can get corrupted) - see "v51_prompt"
+
+* Make the recording "progressively reveal" the full display (requiring / depending on 51 refactor) - see "v52_prompt"
+
+* Fix scrubbing crackling issues (i.e. need gain-fading on the pipeline) - see "v53_prompt"
+
+
+== Enhancements ==
+* Add ability to select per color (in the legend) using popup swatches, and then have these changes be reflected in the overall visualisation
+
+* Add Sharp/Flat colour variant of each main pitches currently defined. Then add a control about whether to prefer the "Sharp" or "Flat" accidentals, if/when those are needed.
+  * NOTE: Do this and see how this affects the handling of all those currently "grey" lines
+
+* Option to hide the scrubber for taking a screenshot of the overall colourful spectrogram.  (Also include option for disabling the other axes)
+
+* Move all the tweaks under a popup panel (as they're not really that relevant anymore)
+
+* Optionally use an external FFT library  (i.e. "FFT.js" instead of the slow O(n^2) naive one included)
+
+* Identify ways to make the graphics fancier
+  * Play with per-octave colour variations   --> Check on whether the per octave brightness shading actually works
+  
+  * Try to fix the thin-grating artifacts?
+  
+  * Allow tweaking of the processing windowing?
+  
+  * Glow / 3D effects?
+  
+  * Look into automatically de-emphasizing the "soundscape clutter" high up from the overlapping harmonics, or maybe even allowing that to be split out for other handling (e.g. maybe prototyping a technique for future visualisation engines)
+  
+  * Melodic-line following / tracing: Figure out an algorithm for that, and draw an overlay tracking those?
+
+* Composition / Analysis Tools:
+  * Tool for detecting the rhythmic configuration
+  * Tool for figuring out the harmonic signature at each moment (i.e. analyse the harmonic clusters / chords being implied)
+  * Identify the overall key of each piece - Requires figuring out the chords / actual notes played vs just the harmonics

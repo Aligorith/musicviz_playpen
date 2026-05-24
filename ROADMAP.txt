@@ -1,0 +1,10 @@
+Overall Roadmap
+===============
+
+* 1) Spectrochrome - Finish addressing the remaining todo's (i.e. bug fixes, followed by new features still to be implemented)
+
+* 2) Radial Spectrogram Viz - This one is a specialist visualisation dedicated to the "Radar" track
+
+* 3) More testing with Spectrochrome to figure out how far we can push that approach
+
+* 4) Figure out next steps to better capture the "background soundscape" painting method, vs extracting polyphonic melodies

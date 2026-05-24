@@ -1,0 +1,404 @@
+Prompt
+======
+
+How to implement ability to click on a color indicator in the legend, get a floating color picker, which when confirmed will update that color indicator and trigger the spectrogram to get re-rendered using that color value?
+
+-------------
+
+Request
+=======
+
+The correct way to implement this is to separate:
+
+1. **pitch→color mapping data**
+2. **legend UI**
+3. **spectrogram rendering**
+4. **re-render invalidation**
+
+Right now your colors are probably hardcoded directly into rendering logic, which makes live editing difficult.
+
+The clean architecture is:
+
+```text
+legend click
+    ↓
+edit pitch color map
+    ↓
+invalidate spectrogram cache
+    ↓
+re-render offscreen spectrogram
+    ↓
+visible canvas updates automatically
+```
+
+---
+
+# Recommended Architecture
+
+You should store all note colors in a single mutable object:
+
+```js
+const NOTE_COLORS = {
+    c: "#E6B87D",
+    d: "#1E3A5F",
+    e: "#B57EDC",
+    f: "#F5D954",
+    g: "#48C552",
+    a: "#D14B4B",
+    b: "#7FD6FF"
+};
+```
+
+This becomes:
+
+```text
+single source of truth
+```
+
+for:
+
+* legend display
+* spectrogram rendering
+* bubble note indicators
+* scrubber note chip
+
+---
+
+# 1. Build Legend Dynamically
+
+Instead of hardcoded HTML, generate legend items from `NOTE_COLORS`.
+
+Example:
+
+```js
+const legend = document.getElementById("legend");
+
+Object.entries(NOTE_COLORS).forEach(([note,color])=>{
+
+    const swatch = document.createElement("div");
+
+    swatch.className = "legendSwatch";
+
+    swatch.style.background = color;
+
+    swatch.dataset.note = note;
+
+    legend.appendChild(swatch);
+});
+```
+
+---
+
+# 2. Add Click Handling
+
+Each swatch opens a floating color picker.
+
+Simplest approach:
+
+* hidden `<input type="color">`
+* positioned near clicked swatch
+
+Example HTML:
+
+```html
+<input type="color" id="colorPicker" hidden>
+```
+
+---
+
+# 3. Open Floating Picker
+
+On swatch click:
+
+```js
+const picker =
+    document.getElementById("colorPicker");
+
+swatch.onclick = e => {
+
+    const note =
+        swatch.dataset.note;
+
+    picker.value =
+        NOTE_COLORS[note];
+
+    picker.style.position = "fixed";
+
+    picker.style.left =
+        e.clientX + "px";
+
+    picker.style.top =
+        e.clientY + "px";
+
+    picker.hidden = false;
+
+    picker.oninput = ()=>{
+
+        NOTE_COLORS[note] =
+            picker.value;
+
+        swatch.style.background =
+            picker.value;
+
+        invalidateSpectrogram();
+    };
+
+    picker.onchange = ()=>{
+        picker.hidden = true;
+    };
+};
+```
+
+---
+
+# Why `oninput` Matters
+
+`oninput`:
+
+```text
+updates continuously while dragging picker
+```
+
+instead of waiting until close.
+
+This gives:
+
+```text
+live recoloring preview
+```
+
+which feels dramatically better.
+
+---
+
+# 4. Spectrogram Re-rendering
+
+The key architectural piece:
+
+You MUST NOT mutate the already-rendered bitmap directly.
+
+Instead:
+
+```js
+invalidateSpectrogram();
+```
+
+should:
+
+1. clear offscreen spectrogram canvas
+2. regenerate spectrogram columns
+3. redraw using updated NOTE_COLORS
+
+---
+
+# Example
+
+```js
+function invalidateSpectrogram(){
+
+    spectrogramDirty = true;
+}
+```
+
+Then render loop:
+
+```js
+if(spectrogramDirty){
+
+    renderSpectrogram();
+
+    spectrogramDirty = false;
+}
+```
+
+---
+
+# 5. Render Uses Dynamic Colors
+
+Where you currently have:
+
+BAD:
+
+```js
+ctx.fillStyle = "#48C552";
+```
+
+replace with:
+
+```js
+ctx.fillStyle =
+    NOTE_COLORS[noteClass];
+```
+
+where:
+
+```js
+noteClass
+```
+
+is:
+
+```text
+c,d,e,f,g,a,b
+```
+
+derived from pitch.
+
+---
+
+# 6. Important: Preserve Brightness Logic
+
+You currently also vary brightness by octave.
+
+Do NOT replace that system.
+
+Instead:
+
+* keep hue from NOTE_COLORS
+* apply octave scaling separately
+
+Example:
+
+```js
+const base =
+    NOTE_COLORS[note];
+
+const rgb =
+    hexToRgb(base);
+
+const brightness =
+    octaveBrightness(octave);
+
+ctx.fillStyle =
+    `rgba(
+        ${rgb.r},
+        ${rgb.g},
+        ${rgb.b},
+        ${brightness}
+    )`;
+```
+
+This preserves:
+
+* musical color identity
+* octave shading
+
+---
+
+# 7. Optional Better Picker UI
+
+Native color pickers are limited.
+
+Better approach:
+
+* floating popup panel
+* hue wheel
+* saturation slider
+* recent colors
+
+Libraries:
+
+* Pickr
+* iro.js
+* Vanilla Picker
+
+Example entity references:
+
+* iro.js
+* Pickr
+
+---
+
+# 8. Important Performance Optimization
+
+DO NOT fully recompute FFT/CQT when recoloring.
+
+Instead:
+
+* cache spectrogram intensity data separately
+* rerender colors from cached amplitudes
+
+Architecture:
+
+```text
+audio analysis cache
+    ↓
+spectrogram intensity matrix
+    ↓
+color mapping pass
+```
+
+Then recoloring becomes:
+
+```text
+very fast
+```
+
+instead of rerunning DSP.
+
+---
+
+# Ideal Data Structure
+
+```js
+spectrogramData[x][y] = {
+    note: "g",
+    octave: 4,
+    intensity: 0.82
+};
+```
+
+Then rendering becomes:
+
+```text
+pure visualization pass
+```
+
+which is exactly what you want for interactive recoloring.
+
+---
+
+# 9. Final UX Flow
+
+User:
+
+1. clicks legend swatch
+2. floating picker appears
+3. drags color
+4. spectrogram updates live
+5. picker closes on confirm
+
+Result:
+
+* instant feedback
+* customizable pitch palette
+* no re-analysis delay
+* smooth UI feel
+
+---
+
+# 10. Recommended Final Enhancement
+
+Add:
+
+```text
+Save / Load Palette
+```
+
+using:
+
+```js
+localStorage
+```
+
+Then users can create:
+
+* “warm orchestral”
+* “neon synth”
+* “dark DAW”
+* “pastel analysis”
+
+themes.
+
+That becomes surprisingly powerful for long-form spectrogram work.
+
