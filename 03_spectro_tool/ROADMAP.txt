@@ -60,3 +60,8 @@ Spectrochrome Roadmap
   * Tool for detecting the rhythmic configuration
   * Tool for figuring out the harmonic signature at each moment (i.e. analyse the harmonic clusters / chords being implied)
   * Identify the overall key of each piece - Requires figuring out the chords / actual notes played vs just the harmonics
+
+* Other complex stuff:
+  * Allow zoom in/out and/or horizontal scrolling
+  * Waveform display / overlay - Mono vs Stereo
+  * Play more with representing stereo placement stuff...
