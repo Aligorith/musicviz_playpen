@@ -8,10 +8,9 @@ Spectrochrome Roadmap
 
 
 == High Priority Defect Fixes ==
-* Fix bug where the playback doesn't work anymore after each time the whole track has been read. In particular:
-  * Currently, there is no playback at all initially, as the audiocontext is already at the end due to the analysis pass... The only way to fix is to recreate the context?
-  * Doing "Play" should just always restart from the start (?), dropping the ability to start playing from where we last plonked the scrub head
-  * Maybe we don't need the "Restart" button anymore then
+* Clicking somewhere while playback is running stops the playback, and then it needs
+  to be manually resumed again. Instead, it should just adjust time to that point
+  and continue on.
 
 * Ensure the canvas does not overlap the C-marker gutter on the left (as musescore tracks start immediately, instead of having some blank space up front) - see "v50_prompt"
 

@@ -957,10 +957,7 @@ function stopPlayback(){
 }
 
 function playAt(offset){
-
-    if(!audioBuffer)
-        return;
-
+    
     stopPlayback();
 
     playbackSource = audioCtx.createBufferSource();
@@ -970,7 +967,7 @@ function playAt(offset){
     playbackSource.connect(recordDest);
 
     playbackOffset = offset;
-    playbackStart = audioCtx.currentTime;
+    playbackStartTime = audioCtx.currentTime;
 
     playbackSource.start(0, offset);
 
@@ -1041,8 +1038,6 @@ function previewAt(time){
 
 // Recording...
 async function startRecording(){
-
-    if(!audioBuffer) return;
 
     chunks = [];
 
@@ -1180,10 +1175,10 @@ function render(){
             ) *
             canvas.width;
 
-        if(current >= audioDuration){
+        // if(current >= audioDuration){
 
-            stopPlayback();
-        }
+        //     stopPlayback();
+        // }
     }
 
     if(mouseX > 0){
