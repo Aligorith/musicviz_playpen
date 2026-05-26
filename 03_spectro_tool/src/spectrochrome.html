@@ -716,7 +716,7 @@ function drawBubbles()
             const tw = ctx.measureText(label) .width;
             
             const w =
-                Math.max(
+                Math.min(
                     120,
                     tw + 34
                 );
