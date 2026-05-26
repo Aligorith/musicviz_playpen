@@ -216,7 +216,9 @@ input[type="range"] {
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-// TODO: Are "specCanvas" + "specCtx" really needed?
+// NOTE: "specCanvas" is the spectrogram cache canvas that gets drawn to
+// while we are processing the audio. Without having this, nothing gets
+// shown until the whole lot is done.
 const specCanvas = document.createElement("canvas");
 const specCtx = specCanvas.getContext("2d");
 
