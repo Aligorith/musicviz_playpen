@@ -384,7 +384,7 @@ function dominantPitchAtTime(t)
 
 function redrawSpectrogramColumn(i, spec)
 {
-    for (let b=1;b<spec.length;b++) {
+    for (let b = 1; b < spec.length; b++) {
         const freq =
             b * (
                 audioCtx.sampleRate /
@@ -1113,8 +1113,7 @@ document.getElementById("analyzeBtn").onclick = async () => {
     await processAudio(buf);
 };
 
-document.getElementById("brightnessSlider")
-.addEventListener(
+document.getElementById("brightnessSlider").addEventListener(
     "input",
     e => {
         brightnessBoost = parseFloat(e.target.value);
