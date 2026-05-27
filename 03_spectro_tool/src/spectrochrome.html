@@ -256,12 +256,13 @@ let recordVersion = 1;
 
 const recordDest = audioCtx.createMediaStreamDestination();
 
-// ============== Viz / Tweaks ===============
+// Tweaks =======================================
 
 let brightnessBoost = 1;
 let tuningOffset = 0;
 let aTuningHz = 440;
 
+// Viz State ==================================
 
 const MIN_FREQ = 49;
 const MAX_FREQ = 8000;
@@ -338,20 +339,29 @@ function formatTime(s)
 	);
 }
 
-// ============== Audio Processing Logic ====================
+// Audio Processing Constants =================================
+
+const TWO_PI = 2 * Math.PI;
 
 const semitonesPerOctave = 12;
 const midiRefPitch = 69;
-const TWO_PI = 2 * Math.PI;
+
+const fftSize = 4096;
+const hop = 1024;
+
+// Audio Processing Logic =====================================
 
 function tunedMidi(freq)
 {
-	return (midiRefPitch + semitonesPerOctave * Math.log2(freq / aTuningHz)) + tuningOffset;
+	return ((semitonesPerOctave * Math.log2(freq / aTuningHz)) + 
+	        midiRefPitch + 
+	        tuningOffset);
 }
 
 function midiToLabel(m)
 {
-	const n = (Math.round(m) % semitonesPerOctave  +  semitonesPerOctave) % semitonesPerOctave;
+	const n = 
+		(Math.round(m) % semitonesPerOctave  +  semitonesPerOctave) % semitonesPerOctave;
 	
 	// TODO: Whether we use sharps of flats here should depend on a flag
 	return [
@@ -456,10 +466,6 @@ async function processAudio(buffer)
 	cachedSpectrogram = [];
 	
 	const data = buffer.getChannelData(0);
-	
-	const fftSize = 4096;
-	const hop = 1024;
-	
 	const total = Math.floor((data.length - fftSize) / hop);
 	
 	fixedColumnWidth = canvas.width / total;
@@ -545,11 +551,7 @@ async function processAudio(buffer)
 function redrawSpectrogramColumn(i, spec)
 {
 	for (let b = 1; b < spec.length; b++) {
-		const freq =
-			b * (
-				audioCtx.sampleRate /
-				4096
-			);
+		const freq = b * (audioCtx.sampleRate / fftSize);
 		
 		if (freq < MIN_FREQ || freq > MAX_FREQ) {
 			continue;
@@ -572,7 +574,6 @@ function redrawSpectrogramColumn(i, spec)
 		}
 		
 		const c = colorForFreq(freq);
-		
 		const glow = 1.5 + intensity * 4.5;
 		
 		const grad =
@@ -622,7 +623,7 @@ function drawTimeline()
 	
 	for (let s = 0; s <= audioDuration; s++) {
 		const x = s * px;
-		const major = s % 10 === 0;
+		const major = (s % 10 === 0);
 		
 		ctx.strokeStyle = "white";
 		
@@ -729,7 +730,7 @@ function drawBubbles()
 			
 			ctx.font = "bold 12px monospace";
 			
-			const tw = ctx.measureText(label) .width;
+			const tw = ctx.measureText(label).width;
 			
 			const w =
 				Math.min(
@@ -820,10 +821,8 @@ function render()
 		ctx.lineWidth = 2;
 		
 		ctx.beginPath();
-		
-		ctx.moveTo(mouseX,0);
-		ctx.lineTo(mouseX,canvas.height);
-		
+		ctx.moveTo(mouseX, 0);
+		ctx.lineTo(mouseX, canvas.height);
 		ctx.stroke();
 		
 		const t = xToTime(mouseX);
@@ -832,12 +831,8 @@ function render()
 		const bubbleY =
 			document.getElementById("topbar").offsetHeight + 8;
 		
-		const label =
-			`${formatTime(t)} ${
-				pitch
-				? pitch.label
-				: "--"
-			}`;
+		const pitchNameForLabel = (pitch) ? pitch.label : "--";
+		const label =`${formatTime(t)} ${pitchNameForLabel}`;
 		
 		ctx.font = "12px monospace";
 		
@@ -886,9 +881,12 @@ function render()
 
 // Audio Playback Functions =========================
 
+// Stop current audio playback
 function stopPlayback()
 {
 	if (playbackSource != null) {
+		// NOTE: Need to stop and disconnect any running audio-streams,
+		//       otherwise they can build up and keep overlapping.
 		try {
 			playbackSource.stop();
 		}
@@ -905,6 +903,7 @@ function stopPlayback()
 	// constantly running this.
 	requestAnimationFrame(render);
 	
+	// Reset UI state
 	playbackRunning = false;
 	setPlayButtonState();
 }
@@ -912,20 +911,28 @@ function stopPlayback()
 // Playback
 function playAt(offset)
 {
+	// Need to stop anything already playing, otherwise we could have 
+	// overlapping audio (with the older one then unstoppable).
 	stopPlayback();
 	
+	// Create a new playbackSource object, since the old one got destroyed
 	playbackSource = audioCtx.createBufferSource();
 	playbackSource.buffer = audioBuffer;
 	
 	playbackSource.connect(audioCtx.destination);
 	playbackSource.connect(recordDest);
 	
+	// Reset relative offsets, as audioCtx.currentTime is a readonly
+	// monotonically increasing internal timers, and we use the time
+	// offset from that to determine where we are in the audio.
 	playbackOffset = offset;
 	playbackStartTime = audioCtx.currentTime;
 	
+	// Start running playback
 	playbackSource.start(0, offset);
 	playbackRunning = true;
 	
+	// Update UI to indicate running state...
 	setPauseButtonState();
 	
 	playbackSource.onended = () => {
@@ -948,14 +955,15 @@ function playAt(offset)
 	};
 }
 
-// Scrubbing
+// Scrubbing - Play audio when timeline scrubbed to this timestamp (in secs)
+// < time: (float :: secs) Seconds since start of the clip to preview the sound at
 function previewAt(time)
 {
 	// XXX: Is this needed / valid?
 	if (!audioBuffer) {
 		return;
 	}
-
+	
 	if (Math.abs(time -lastScrubPreviewTime) < 0.03) {
 		return;
 	}
@@ -974,10 +982,10 @@ function previewAt(time)
 
 	const gain = audioCtx.createGain();
 	gain.gain.value = 0.28;
-
+	
 	scrubPreviewSource.connect(gain);
 	gain.connect(audioCtx.destination);
-
+	
 	scrubPreviewSource.start(
 		0,
 		Math.max(0, time),
@@ -985,7 +993,45 @@ function previewAt(time)
 	);
 }
 
-// Recording...
+// Scrubbing - Interaction handler. Place scrubber + preview the sound
+// < x: (int) X-coordinate to move the scrubber to
+function scrubAt(x)
+{
+	// Set new position of the scrubber
+	mouseX = x;
+	
+	// Trigger preview of soundbyte under scrubber
+	const t = xToTime(mouseX);
+	previewAt(t);
+	
+	// Resume playing from this point, if playback was engaged
+	if (playbackRunning) {
+		playAt(t);
+	}
+}
+
+// =========================
+
+// Entrypoint for starting the audio analysis process
+async function analyseAudio()
+{
+	const f = document.getElementById("file").files[0];
+	if (!f) {
+		return;
+	}
+	
+	// Save filename into variable used for making export file
+	inputFileName = f.name;
+	
+	// Read the audio-file buffer
+	const arr = await f.arrayBuffer();
+	const buf = await audioCtx.decodeAudioData(arr);
+	
+	// Trigger processing of it...
+	await processAudio(buf);
+}
+
+// Video Recording  (Screen Capture)
 async function startRecording()
 {
 	chunks = [];
@@ -1051,6 +1097,7 @@ async function startRecording()
 	playAt(0);
 }
 
+// Export detected note timing info
 function exportDetectedNotes()
 {
 	if (!midiEvents.length) {
@@ -1067,7 +1114,7 @@ function exportDetectedNotes()
 		new Blob(
 			[txt],
 			{
-				type:"text/csv"
+				type: "text/csv"
 			}
 		);
 	
@@ -1082,56 +1129,11 @@ function exportDetectedNotes()
 	URL.revokeObjectURL(url);
 }
 
-// Event Hooks ==========================================
-
-canvas.addEventListener(
-	"mousedown",
-	e => {
-		scrubbing = true;
-		mouseX = e.clientX;
-		
-		const t = xToTime(mouseX);
-		previewAt(t);
-		
-		if (playbackRunning) {
-			playAt(t);
-		}
-	}
-);
-
-canvas.addEventListener(
-	"mousemove",
-	e => {
-		// Only handle when not recording
-		if (recording) {
-			return;
-		}
-		
-		if (scrubbing) {
-			// Don't update mouseX if not already scrubbing
-			// TODO: Deduplciate this logic with the mousedown event above
-			mouseX = e.clientX;
-			
-			const t = xToTime(mouseX);
-			previewAt(t);
-			
-			if (playbackRunning) {
-				playAt(t);
-			}
-		}
-	}
-);
-
-addEventListener(
-	"mouseup",
-	() => {
-		scrubbing = false;
-	}
-);
-
-
 // =========== Window Resize Handling ==============
 
+// Handle window resizing
+// TODO: Canvas gets blanked for the portions not using this scale. 
+//       Need to trigger recalculation
 function resize()
 {
 	canvas.width = innerWidth;
@@ -1145,21 +1147,6 @@ addEventListener("resize", resize);
 resize();
 
 // ============ Button Event Handlers ==============
-
-document.getElementById("analyzeBtn").onclick = async () => {
-	const f = document.getElementById("file").files[0];
-	if (!f) {
-		return;
-	}
-	
-	// Save filename into variable used for making export file
-	inputFileName = f.name;
-	
-	const arr = await f.arrayBuffer();
-	const buf = await audioCtx.decodeAudioData(arr);
-	
-	await processAudio(buf);
-};
 
 document.getElementById("brightnessSlider").addEventListener(
 	"input",
@@ -1201,6 +1188,43 @@ document.getElementById("legendBtn").onclick = () => {
 		: "block";
 };
 
+
+// Mouse Event Handlers =====================================
+
+canvas.addEventListener(
+	"mousedown",
+	e => {
+		scrubbing = true;
+		scrubAt(e.clientX);
+	}
+);
+
+canvas.addEventListener(
+	"mousemove",
+	e => {
+		// Only handle when not recording
+		if (recording) {
+			return;
+		}
+		
+		// Don't update scrubber position if not already scrubbing
+		// (i.e. don't do anything unless mouse-button is held down)
+		if (scrubbing) {
+			scrubAt(e.clientX);
+		}
+	}
+);
+
+addEventListener(
+	"mouseup",
+	() => {
+		scrubbing = false;
+	}
+);
+
+
+// Playback Button Event Handlers ===========================
+
 document.getElementById("playPauseBtn").onclick = () => {
 	if (playbackRunning) {
 		stopPlayback();
@@ -1235,8 +1259,11 @@ document.getElementById("recordBtn").onclick = () => {
 	}
 };
 
-document.getElementById("exportBtn").onclick =
-	exportDetectedNotes;
+// Main Project-Level Buttons ==============================
+
+document.getElementById("analyzeBtn").onclick = analyseAudio;
+
+document.getElementById("exportBtn").onclick = exportDetectedNotes;
 
 
 // ============== Main Entrypoint ======================
