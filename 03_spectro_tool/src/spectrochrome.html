@@ -285,31 +285,36 @@ let cachedSpectrogram = [];
 
 let fixedColumnWidth = 1;
 
-// ============== Analysis / Rendering Logic ==============
+// =============== UI Constants ====================
 
-function formatTime(s)
+const playStateTxt = "▶ Play";
+const pauseStateTxt = "⏸ Pause";
+
+function setPlayButtonState()
 {
-    return (
-        String(Math.floor(s / 60)).padStart(2, "0")
-        + ":" +
-        String(Math.floor(s % 60)).padStart(2, "0")
-    );
+    document.getElementById("playPauseBtn").textContent = playStateTxt;
 }
 
-function tunedMidi(freq)
+function setPauseButtonState()
 {
-    return (69 + 12 * Math.log2(freq / aTuningHz)) + tuningOffset;
+    document.getElementById("playPauseBtn").textContent = pauseStateTxt;
 }
 
-function midiToLabel(m)
+function updateStatusText(text)
 {
-    const n = (Math.round(m) % 12  +  12) % 12;
+    document.getElementById("status").textContent = text;
+}
 
-    return [
-        "c","c#","d","d#",
-        "e","f","f#","g",
-        "g#","a","a#","b"
-    ][n];
+// ============= Coordinate Conversion Utils ==============
+
+function xToTime(x)
+{
+    return (x / canvas.width) * audioDuration;
+}
+
+function timeToX(t)
+{
+    return (t / audioDuration) * canvas.width;
 }
 
 function freqToY(freq)
@@ -328,6 +333,40 @@ function freqToY(freq)
     );
 }
 
+// ============== Analysis / Rendering Logic ==============
+
+function elapsedTime(startTime)
+{
+    const msPerSecond = 1000;
+    return (performance.now() - startTime) / msPerSecond;
+}
+
+function formatTime(s)
+{
+    return (
+        String(Math.floor(s / 60)).padStart(2, "0")
+        + ":" +
+        String(Math.floor(s % 60)).padStart(2, "0")
+    );
+}
+
+function tunedMidi(freq)
+{
+    return (69 + 12 * Math.log2(freq / aTuningHz)) + tuningOffset;
+}
+
+function midiToLabel(m)
+{
+    const n = (Math.round(m) % 12  +  12) % 12;
+    
+    // TODO: Whether we use sharps of flats here should depend on a flag
+    return [
+        "c","c#","d","d#",
+        "e","f","f#","g",
+        "g#","a","a#","b"
+    ][n];
+}
+
 function colorForFreq(freq)
 {
     const midi = tunedMidi(freq);
@@ -335,7 +374,7 @@ function colorForFreq(freq)
     const octave = Math.floor(midi / 12);
     const pitch = Math.round(midi) % 12;
     
-    switch(pitch) {
+    switch (pitch) {
         case 0:
             return [255,210,160];
         
@@ -456,11 +495,11 @@ function fft(sig)
     const N = sig.length;
     const out = new Float32Array(N/2);
 
-    for (let k=0; k < N/2; k++) {
+    for (let k = 0; k < N/2; k++) {
         let re = 0;
         let im = 0;
         
-        for (let n=0; n < N; n++) {
+        for (let n = 0; n < N; n++) {
             const p = 2*Math.PI * k * n/N;
             
             re += sig[n] * Math.cos(p);
@@ -557,14 +596,12 @@ async function processAudio(buffer)
             });
         }
         
-        const elapsed = (performance.now() - processingStart) / 1000;
+        const elapsed = elapsedTime(processingStart);
         const progress = (i + 1) / total;
         const estimate = elapsed / progress;
         const remaining = estimate - elapsed;
         
-        document
-            .getElementById("status")
-            .textContent =
+        let statusText =
                 `Processing ${
                     i+1
                 }/${
@@ -574,6 +611,7 @@ async function processAudio(buffer)
                 }s • remaining ≈ ${
                     remaining.toFixed(1)
                 }s`;
+        updateStatusText(statusText);
         
         // FIXME: This breaks if the tab loses focus
         await new Promise(
@@ -581,14 +619,9 @@ async function processAudio(buffer)
         );
     }
     
-    // TODO: Deduplicate this "elapsed time" calculation logic
-    const totalTimeElapsed = (performance.now() - processingStart) / 1000;
-    
-    // TODO: Extract to a function?
-    document
-        .getElementById("status")
-        .textContent =
-            `Ready.   Processing took ${totalTimeElapsed.toFixed(1)}s`;
+    const totalTimeElapsed = elapsedTime(processingStart);
+    updateStatusText(
+        `Ready.   Processing took ${totalTimeElapsed.toFixed(1)}s`);
 }
 
 function drawTimeline()
@@ -695,20 +728,18 @@ function drawBubbles()
 {
     let activeFound = false;
     for (const e of midiEvents) {
-        // TODO: Abstract this math out
-        const x =
-            (e.start / audioDuration) * canvas.width;
-
+        const x = timeToX(e.start);
+        
         const dist = Math.abs(x - mouseX);
-
+        
         const active = dist < 36 && !activeFound;
-
+        
         if (active) {
             activeFound = true;
         }
-
+        
         const bubbleY = canvas.height * 0.89;
-
+        
         if (active) {
             // Orange / "Active" Bubble
             const label = e.label;
@@ -787,10 +818,7 @@ function stopPlayback()
     
     playbackRunning = false;
     
-    document
-    .getElementById("playPauseBtn")
-    .textContent =
-        "▶ Play";
+    setPlayButtonState();
 }
 
 function playAt(offset)
@@ -799,21 +827,19 @@ function playAt(offset)
     
     playbackSource = audioCtx.createBufferSource();
     playbackSource.buffer = audioBuffer;
-
+    
     playbackSource.connect(audioCtx.destination);
     playbackSource.connect(recordDest);
-
+    
     playbackOffset = offset;
     playbackStartTime = audioCtx.currentTime;
-
+    
     playbackSource.start(0, offset);
-
     playbackRunning = true;
-
-    document.getElementById("playPauseBtn").textContent = "⏸ Pause";
-
+    
+    setPauseButtonState();
+    
     playbackSource.onended = () => {
-
         if (recording) {
             setTimeout(() => {
                 if (recorder && recording) {
@@ -922,8 +948,8 @@ async function startRecording()
     playAt(0);
 }
 
-function exportDetectedNotes(){
-
+function exportDetectedNotes()
+{
     if (!midiEvents.length) {
         return;
     }
@@ -982,8 +1008,7 @@ function render()
             playbackOffset +
             (audioCtx.currentTime - playbackStartTime);
         
-        mouseX =
-            (current / audioDuration) * canvas.width;
+        mouseX = timeToX(current);
     }
 
     if (mouseX > 0) {
@@ -997,7 +1022,7 @@ function render()
         
         ctx.stroke();
         
-        const t = (mouseX / canvas.width ) * audioDuration;
+        const t = xToTime(mouseX);
         const pitch = dominantPitchAtTime(t);
 
         const bubbleY =
