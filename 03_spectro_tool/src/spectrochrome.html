@@ -222,20 +222,6 @@ const ctx = canvas.getContext("2d");
 const specCanvas = document.createElement("canvas");
 const specCtx = specCanvas.getContext("2d");
 
-// =========== Window Resize Handling ==============
-
-function resize()
-{
-	canvas.width = innerWidth;
-	canvas.height = innerHeight;
-	
-	specCanvas.width = innerWidth;
-	specCanvas.height = innerHeight;
-}
-
-addEventListener("resize", resize);
-resize();
-
 // ================ Audio ==========================
 
 const audioCtx =
@@ -285,7 +271,7 @@ let cachedSpectrogram = [];
 
 let fixedColumnWidth = 1;
 
-// =============== UI Constants ====================
+// =============== UI Defines / Utils ====================
 
 const playStateTxt = "▶ Play";
 const pauseStateTxt = "⏸ Pause";
@@ -333,7 +319,7 @@ function freqToY(freq)
 	);
 }
 
-// ============== Analysis / Rendering Logic ==============
+// ============== Audio Processing Logic ==============
 
 function elapsedTime(startTime)
 {
@@ -423,78 +409,11 @@ function dominantPitchAtTime(t)
 	return null;
 }
 
-function redrawSpectrogramColumn(i, spec)
-{
-	for (let b = 1; b < spec.length; b++) {
-		const freq =
-			b * (
-				audioCtx.sampleRate /
-				4096
-			);
-		
-		if (freq < MIN_FREQ || freq > MAX_FREQ) {
-			continue;
-		}
-		
-		const y = freqToY(freq);
-		const mag = spec[b];
-		
-		const intensity =
-			Math.min(
-				1,
-				(
-					Math.log10(1 + mag)
-					/ 2.2
-				) * brightnessBoost
-			);
-		
-		if (intensity < 0.02) {
-			continue;
-		}
-		
-		const c = colorForFreq(freq);
-		
-		const glow = 1.5 + intensity * 4.5;
-		
-		const grad =
-			specCtx.createLinearGradient(
-				0,
-				y - glow,
-				0,
-				y + glow
-			);
-		
-		grad.addColorStop(
-			0,
-			`rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`
-		);
-		
-		grad.addColorStop(
-			0.5,
-			`rgba(${c[0]}, ${c[1]}, ${c[2]}, ${intensity})`
-		);
-		
-		grad.addColorStop(
-			1,
-			`rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`
-		);
-		
-		specCtx.fillStyle = grad;
-		
-		specCtx.fillRect(
-			i * fixedColumnWidth,
-			y - glow,
-			fixedColumnWidth + 1,
-			glow * 2
-		);
-	}
-}
-
 function fft(sig)
 {
 	const N = sig.length;
 	const out = new Float32Array(N/2);
-
+	
 	for (let k = 0; k < N/2; k++) {
 		let re = 0;
 		let im = 0;
@@ -624,12 +543,81 @@ async function processAudio(buffer)
 		`Ready.   Processing took ${totalTimeElapsed.toFixed(1)}s`);
 }
 
+// =========================== Rendering ============================
+
+function redrawSpectrogramColumn(i, spec)
+{
+	for (let b = 1; b < spec.length; b++) {
+		const freq =
+			b * (
+				audioCtx.sampleRate /
+				4096
+			);
+		
+		if (freq < MIN_FREQ || freq > MAX_FREQ) {
+			continue;
+		}
+		
+		const y = freqToY(freq);
+		const mag = spec[b];
+		
+		const intensity =
+			Math.min(
+				1,
+				(
+					Math.log10(1 + mag)
+					/ 2.2
+				) * brightnessBoost
+			);
+		
+		if (intensity < 0.02) {
+			continue;
+		}
+		
+		const c = colorForFreq(freq);
+		
+		const glow = 1.5 + intensity * 4.5;
+		
+		const grad =
+			specCtx.createLinearGradient(
+				0,
+				y - glow,
+				0,
+				y + glow
+			);
+		
+		grad.addColorStop(
+			0,
+			`rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`
+		);
+		
+		grad.addColorStop(
+			0.5,
+			`rgba(${c[0]}, ${c[1]}, ${c[2]}, ${intensity})`
+		);
+		
+		grad.addColorStop(
+			1,
+			`rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`
+		);
+		
+		specCtx.fillStyle = grad;
+		
+		specCtx.fillRect(
+			i * fixedColumnWidth,
+			y - glow,
+			fixedColumnWidth + 1,
+			glow * 2
+		);
+	}
+}
+
 function drawTimeline()
 {
 	if (!audioDuration) {
 		return;
 	}
-
+	
 	// TODO: Define that size as a constant
 	const y = canvas.height - 28;
 	
@@ -640,7 +628,7 @@ function drawTimeline()
 		const major = s % 10 === 0;
 		
 		ctx.strokeStyle = "white";
-
+		
 		ctx.beginPath();
 		
 		ctx.moveTo(x,y);
@@ -649,7 +637,7 @@ function drawTimeline()
 			y - (major ? 24 : 12)
 		);
 		ctx.stroke();
-
+		
 		if (major) {
 			ctx.fillStyle = "white";
 			
@@ -798,6 +786,106 @@ function drawBubbles()
 			);
 			ctx.fill();
 		}
+	}
+}
+
+function render()
+{
+	requestAnimationFrame(render);
+	
+	// Use fillRect so that the exported video will have the same background as the viewport one does.
+	ctx.fillStyle = '#454545';
+	ctx.fillRect(
+		0,
+		0,
+		canvas.width,
+		canvas.height
+	);
+	
+	ctx.drawImage(
+		specCanvas,
+		0,
+		0
+	);
+	
+	drawTimeline();
+	drawCMarkers();
+	drawBubbles();
+	
+	if (playbackRunning) {
+		const current =
+			playbackOffset +
+			(audioCtx.currentTime - playbackStartTime);
+		
+		mouseX = timeToX(current);
+	}
+	
+	if (mouseX > 0) {
+		ctx.strokeStyle = "rgba(255,140,40,0.85)";
+		ctx.lineWidth = 2;
+		
+		ctx.beginPath();
+		
+		ctx.moveTo(mouseX,0);
+		ctx.lineTo(mouseX,canvas.height);
+		
+		ctx.stroke();
+		
+		const t = xToTime(mouseX);
+		const pitch = dominantPitchAtTime(t);
+		
+		const bubbleY =
+			document.getElementById("topbar").offsetHeight + 8;
+		
+		const label =
+			`${formatTime(t)} ${
+				pitch
+				? pitch.label
+				: "--"
+			}`;
+		
+		ctx.font = "12px monospace";
+		
+		const tw = ctx.measureText(label).width;
+		const bx =
+			Math.min(
+				canvas.width - tw - 58,
+				mouseX + 10
+			);
+		
+		ctx.fillStyle = "rgba(255,140,40,0.95)";
+		
+		ctx.beginPath();
+		ctx.roundRect(
+			bx,
+			bubbleY,
+			tw + 44,
+			24,
+			8
+		);
+		ctx.fill();
+		
+		if (pitch) {
+			const c = colorForFreq(pitch.freq);
+			ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+			
+			ctx.beginPath();
+			ctx.roundRect(
+				bx+8,
+				bubbleY+5,
+				14,
+				14,
+				4
+			);
+			ctx.fill();
+		}
+		
+		ctx.fillStyle = "white";
+		ctx.fillText(
+			label,
+			bx+30,
+			bubbleY+16
+		);
 	}
 }
 
@@ -986,105 +1074,7 @@ function exportDetectedNotes()
 	URL.revokeObjectURL(url);
 }
 
-function render()
-{
-	requestAnimationFrame(render);
-	
-	// Use fillRect so that the exported video will have the same background as the viewport one does.
-	ctx.fillStyle = '#454545';
-	ctx.fillRect(
-		0,
-		0,
-		canvas.width,
-		canvas.height
-	);
 
-	ctx.drawImage(
-		specCanvas,
-		0,
-		0
-	);
-
-	drawTimeline();
-	drawCMarkers();
-	drawBubbles();
-	
-	if (playbackRunning) {
-		const current =
-			playbackOffset +
-			(audioCtx.currentTime - playbackStartTime);
-		
-		mouseX = timeToX(current);
-	}
-
-	if (mouseX > 0) {
-		ctx.strokeStyle = "rgba(255,140,40,0.85)";
-		ctx.lineWidth = 2;
-		
-		ctx.beginPath();
-		
-		ctx.moveTo(mouseX,0);
-		ctx.lineTo(mouseX,canvas.height);
-		
-		ctx.stroke();
-		
-		const t = xToTime(mouseX);
-		const pitch = dominantPitchAtTime(t);
-
-		const bubbleY =
-			document.getElementById("topbar").offsetHeight + 8;
-
-		const label =
-			`${formatTime(t)} ${
-				pitch
-				? pitch.label
-				: "--"
-			}`;
-		
-		ctx.font = "12px monospace";
-		
-		const tw = ctx.measureText(label).width;
-		const bx =
-			Math.min(
-				canvas.width - tw - 58,
-				mouseX + 10
-			);
-
-		ctx.fillStyle = "rgba(255,140,40,0.95)";
-
-		ctx.beginPath();
-		ctx.roundRect(
-			bx,
-			bubbleY,
-			tw + 44,
-			24,
-			8
-		);
-		ctx.fill();
-
-		if (pitch) {
-			const c = colorForFreq(pitch.freq);
-			ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
-			
-			ctx.beginPath();
-			ctx.roundRect(
-				bx+8,
-				bubbleY+5,
-				14,
-				14,
-				4
-			);
-			ctx.fill();
-		}
-
-		ctx.fillStyle = "white";
-		ctx.fillText(
-			label,
-			bx+30,
-			bubbleY+16
-		);
-	}
-}
 
 canvas.addEventListener(
 	"mousedown",
@@ -1131,6 +1121,23 @@ addEventListener(
 	}
 );
 
+
+// =========== Window Resize Handling ==============
+
+function resize()
+{
+	canvas.width = innerWidth;
+	canvas.height = innerHeight;
+	
+	specCanvas.width = innerWidth;
+	specCanvas.height = innerHeight;
+}
+
+addEventListener("resize", resize);
+resize();
+
+// ============ Button Event Handlers ==============
+
 document.getElementById("analyzeBtn").onclick = async () => {
 	const f = document.getElementById("file").files[0];
 	if (!f) {
@@ -1156,7 +1163,7 @@ document.getElementById("brightnessSlider").addEventListener(
 			specCanvas.width,
 			specCanvas.height
 		);
-
+		
 		for (let i = 0;
 			 i < cachedSpectrogram.length;
 			 i++)
@@ -1232,6 +1239,10 @@ document.getElementById("recordBtn").onclick = () => {
 document.getElementById("exportBtn").onclick =
 	exportDetectedNotes;
 
+
+// ============== Main Entrypoint ======================
+
+// Start rendering loop
 render();
 
 </script>
