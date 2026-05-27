@@ -933,6 +933,8 @@ function playAt(offset)
 	
 	playbackSource.onended = () => {
 		if (recording) {
+			// Don't terminate immediately, to try to ensure the
+			// stream end-length gets encoded properly
 			setTimeout(() => {
 				if (recorder && recording) {
 					recorder.stop();
@@ -940,8 +942,12 @@ function playAt(offset)
 			}, 250);
 		}
 		else {
+			// Just stop
 			stopPlayback();
 		}
+		
+		// Hide the scrubber
+		mouseX = INVALID_HIDDEN_SCRUBBER_IDX;
 	};
 }
 
