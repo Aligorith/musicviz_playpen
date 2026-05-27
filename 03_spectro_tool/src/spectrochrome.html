@@ -754,7 +754,7 @@ function drawBubbles()
 			ctx.beginPath();
 			ctx.roundRect(
 				bx,
-				bubbleY - 12,
+				bubbleY - 25, //bubbleY - 12,
 				w,
 				22,
 				10
@@ -766,7 +766,7 @@ function drawBubbles()
 			ctx.fillText(
 				label,
 				bx + 16,
-				bubbleY + 3
+				bubbleY - 10 //bubbleY + 3
 			);
 		}
 		else {
