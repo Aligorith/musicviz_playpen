@@ -242,7 +242,8 @@ let scrubPreviewSource = null;
 let scrubbing = false;
 let lastScrubPreviewTime = -1;
 
-let mouseX = -9999;
+const INVALID_HIDDEN_SCRUBBER_IDX = -9999;
+let mouseX = INVALID_HIDDEN_SCRUBBER_IDX;
 
 // =============== Recording ====================
 
@@ -319,7 +320,7 @@ function freqToY(freq)
 	);
 }
 
-// ============== Audio Processing Logic ==============
+// ================ Time Utils ==========================
 
 function elapsedTime(startTime)
 {
@@ -329,21 +330,28 @@ function elapsedTime(startTime)
 
 function formatTime(s)
 {
+	const secsPerMinute = 60;
 	return (
-		String(Math.floor(s / 60)).padStart(2, "0")
+		String(Math.floor(s / secsPerMinute)).padStart(2, "0")
 		+ ":" +
-		String(Math.floor(s % 60)).padStart(2, "0")
+		String(Math.floor(s % secsPerMinute)).padStart(2, "0")
 	);
 }
 
+// ============== Audio Processing Logic ====================
+
+const semitonesPerOctave = 12;
+const midiRefPitch = 69;
+const TWO_PI = 2 * Math.PI;
+
 function tunedMidi(freq)
 {
-	return (69 + 12 * Math.log2(freq / aTuningHz)) + tuningOffset;
+	return (midiRefPitch + semitonesPerOctave * Math.log2(freq / aTuningHz)) + tuningOffset;
 }
 
 function midiToLabel(m)
 {
-	const n = (Math.round(m) % 12  +  12) % 12;
+	const n = (Math.round(m) % semitonesPerOctave  +  semitonesPerOctave) % semitonesPerOctave;
 	
 	// TODO: Whether we use sharps of flats here should depend on a flag
 	return [
@@ -357,8 +365,8 @@ function colorForFreq(freq)
 {
 	const midi = tunedMidi(freq);
 
-	const octave = Math.floor(midi / 12);
-	const pitch = Math.round(midi) % 12;
+	const octave = Math.floor(midi / semitonesPerOctave);
+	const pitch  = Math.round(midi) % semitonesPerOctave;
 	
 	switch (pitch) {
 		case 0:
@@ -412,14 +420,14 @@ function dominantPitchAtTime(t)
 function fft(sig)
 {
 	const N = sig.length;
-	const out = new Float32Array(N/2);
+	const out = new Float32Array(N / 2);
 	
 	for (let k = 0; k < N/2; k++) {
 		let re = 0;
 		let im = 0;
 		
 		for (let n = 0; n < N; n++) {
-			const p = 2*Math.PI * k * n/N;
+			const p = TWO_PI * k * n/N;
 			
 			re += sig[n] * Math.cos(p);
 			im -= sig[n] * Math.sin(p);
@@ -466,17 +474,7 @@ async function processAudio(buffer)
 			);
 		
 		for (let j = 0; j < seg.length; j++) {
-			seg[j] *=
-				0.5 *
-				(
-					1 -
-					Math.cos(
-						2*Math.PI*j /
-						(
-							seg.length-1
-						)
-					)
-				);
+			seg[j] *= 0.5 * ( 1 - Math.cos(TWO_PI * j / (seg.length - 1)) );
 		}
 		
 		const spec = fft(seg);
@@ -500,8 +498,7 @@ async function processAudio(buffer)
 		const prev = midiEvents[midiEvents.length - 1];
 		const t = i * hop / audioCtx.sampleRate;
 		
-		if (
-			!prev ||
+		if (!prev ||
 			(t - prev.start) > 1.1 ||
 			prev.label !== note) 
 		{
@@ -915,6 +912,7 @@ function stopPlayback()
 	setPlayButtonState();
 }
 
+// Playback
 function playAt(offset)
 {
 	stopPlayback();
@@ -947,6 +945,7 @@ function playAt(offset)
 	};
 }
 
+// Scrubbing
 function previewAt(time)
 {
 	// XXX: Is this needed / valid?
@@ -995,12 +994,21 @@ async function startRecording()
 		...recordDest.stream.getAudioTracks()
 	]);
 
-	const mime =
-		MediaRecorder.isTypeSupported("video/mp4")
-		? "video/mp4"
-		: "video/webm";
+	const EXPORT_FORMAT_MP4  = {
+		mime: "video/mp4",
+		extn: "mp4"
+	};
+	const EXPORT_FORMAT_WEBM = {
+		mime: "video/webm",
+		extn: "webm"
+	};
 	
-	recorder = new MediaRecorder(combined, { mimeType: mime });
+	const exportFormat =
+		MediaRecorder.isTypeSupported(EXPORT_FORMAT_MP4.mime)
+		? EXPORT_FORMAT_MP4
+		: EXPORT_FORMAT_WEBM;
+	
+	recorder = new MediaRecorder(combined, { mimeType: exportFormat.mime });
 	recorder.ondataavailable = e => {
 		if (e.data.size > 0) {
 			chunks.push(e.data);
@@ -1011,16 +1019,14 @@ async function startRecording()
 		// IMPORTANT: flush audio stream cleanly
 		recordDest.stream.getTracks().forEach(t => t.stop());
 		
-		const blob = new Blob(chunks, { type: mime });
+		const blob = new Blob(chunks, { type: exportFormat.mime });
 		const url = URL.createObjectURL(blob);
 		
 		const a = document.createElement("a");
 		a.href = url;
 		
-		const ext = mime.includes("mp4") ? "mp4" : "webm";
-		
 		const filename =
-			`${inputFileName}_spectrogram_v${recordVersion}.${ext}`;
+			`${inputFileName}_spectrogram_v${recordVersion}.${exportFormat.extn}`;
 		
 		recordVersion++;
 		
@@ -1049,7 +1055,6 @@ function exportDetectedNotes()
 	}
 	
 	let txt = "time_seconds,note,freq_hz\n";
-	
 	for (const e of midiEvents) {
 		txt +=
 			`${e.start.toFixed(3)},${e.label},${e.freq.toFixed(2)}\n`;
@@ -1062,7 +1067,7 @@ function exportDetectedNotes()
 				type:"text/csv"
 			}
 		);
-
+	
 	const url = URL.createObjectURL(blob);
 	const a = document.createElement("a");
 	a.href = url;
@@ -1074,7 +1079,7 @@ function exportDetectedNotes()
 	URL.revokeObjectURL(url);
 }
 
-
+// Event Hooks ==========================================
 
 canvas.addEventListener(
 	"mousedown",
@@ -1082,7 +1087,7 @@ canvas.addEventListener(
 		scrubbing = true;
 		mouseX = e.clientX;
 		
-		const t = (mouseX / canvas.width) * audioDuration;
+		const t = xToTime(mouseX);
 		previewAt(t);
 		
 		if (playbackRunning) {
@@ -1104,7 +1109,7 @@ canvas.addEventListener(
 			// TODO: Deduplciate this logic with the mousedown event above
 			mouseX = e.clientX;
 			
-			const t = (mouseX / canvas.width) * audioDuration;
+			const t = xToTime(mouseX);
 			previewAt(t);
 			
 			if (playbackRunning) {
@@ -1164,10 +1169,7 @@ document.getElementById("brightnessSlider").addEventListener(
 			specCanvas.height
 		);
 		
-		for (let i = 0;
-			 i < cachedSpectrogram.length;
-			 i++)
-		{
+		for (let i = 0; i < cachedSpectrogram.length; i++) {
 			redrawSpectrogramColumn(
 				i,
 				cachedSpectrogram[i]
@@ -1201,13 +1203,7 @@ document.getElementById("playPauseBtn").onclick = () => {
 		stopPlayback();
 	}
 	else {
-		playAt(
-			(
-				mouseX > 0
-				  ? mouseX / canvas.width
-				  : 0
-			) * audioDuration
-		);
+		playAt(xToTime(Math.max(mouseX, 0)));
 	}
 };
 
@@ -1220,7 +1216,7 @@ document.getElementById("stopBtn").onclick = () => {
 	audioCtx.suspend();
 	
 	// Hide the scrubber
-	mouseX = -9999;
+	mouseX = INVALID_HIDDEN_SCRUBBER_IDX;
 };
 
 document.getElementById("restartBtn").onclick = () => {
