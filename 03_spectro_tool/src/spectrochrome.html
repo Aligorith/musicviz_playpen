@@ -816,6 +816,12 @@ function stopPlayback()
         playbackSource = null;
     }
     
+    // Stop the animation loop when we aren't updating
+    //
+    // Do this to try stopping laptops chewing away 30% CPU
+    // constantly running this.
+    requestAnimationFrame(render);
+    
     playbackRunning = false;
     
     setPlayButtonState();
@@ -1200,6 +1206,13 @@ document.getElementById("playPauseBtn").onclick = () => {
 
 document.getElementById("stopBtn").onclick = () => {
     stopPlayback();
+    
+    // Send the "suspend" signal, so that Firefox on Linux will
+    // stop showing the "playing audio" symbol + consuming CPU
+    // and battery life like crazy
+    audioCtx.suspend();
+    
+    // Hide the scrubber
     mouseX = -9999;
 };
 
