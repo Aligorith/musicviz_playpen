@@ -651,13 +651,13 @@ function drawTimeline()
 
 function drawCMarkers()
 {
-	for (let o = 0; o < 9; o++) {
-		const midi = 12 + o*12;
+	for (let octave = 0; octave < 9; octave++) {
+		const midi = (octave + 1) * semitonesPerOctave;
 		const freq =
 			aTuningHz *
 			Math.pow(
 				2,
-				(midi - 69) / 12
+				(midi - midiRefPitch) / semitonesPerOctave
 			);
 		
 		if (freq < MIN_FREQ || freq > MAX_FREQ)  {
@@ -669,13 +669,11 @@ function drawCMarkers()
 		ctx.strokeStyle = "rgba(255,255,255,0.25)";
 		
 		ctx.beginPath();
-		
 		ctx.moveTo(0, y);
 		ctx.lineTo(16, y);
-		
 		ctx.stroke();
 		
-		if (o === 4) {
+		if (octave === 4) {
 			// C4
 			ctx.font = "bold 12px monospace";
 			
@@ -704,7 +702,7 @@ function drawCMarkers()
 			// All other C's
 			ctx.fillStyle = "rgba(255,255,255,0.75)";
 			ctx.font = "11px monospace";
-			ctx.fillText(`c${o}`, 24, y+3)
+			ctx.fillText(`c${octave}`, 24, y+3)
 		}
 	}
 }
@@ -890,7 +888,7 @@ function render()
 
 function stopPlayback()
 {
-	if (playbackSource) {
+	if (playbackSource != null) {
 		try {
 			playbackSource.stop();
 		}
@@ -908,7 +906,6 @@ function stopPlayback()
 	requestAnimationFrame(render);
 	
 	playbackRunning = false;
-	
 	setPlayButtonState();
 }
 
