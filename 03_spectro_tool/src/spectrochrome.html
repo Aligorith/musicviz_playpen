@@ -79,7 +79,7 @@ input[type="range"] {
 
 #legendPanel {
 	position: absolute;
-	right: 20px;
+	right: 280px;
 	top: 90px;
 	width: 250px;
 	background: rgba(20,20,20,0.96);
@@ -102,6 +102,26 @@ input[type="range"] {
 	height: 18px;
 	border-radius: 5px;
 	margin-right: 10px;
+}
+
+#tweaksPanel {
+    position: absolute;
+	right: 20px;
+	top: 90px;
+	width: 250px;
+	background: rgba(20,20,20,0.96);
+	border-radius: 12px;
+	padding: 14px;
+	z-index: 200;
+	display: none;
+	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+.tweaksRow {
+    display: flex;
+	align-items: center;
+	margin-bottom: 8px;
+	font-size: 13px;
 }
 </style>
 </head>
@@ -135,35 +155,7 @@ input[type="range"] {
 
 		<div class="rightControls">
 			<button id="legendBtn">Legend</button>
-
-			<label>
-				Tuning
-				<input
-					type="range"
-					id="tuningSlider"
-					min="-12"
-					max="12"
-					step="0.01"
-					value="0"
-				>
-
-				<span id="tuningLabel">
-					0.00 st
-				</span>
-			</label>
-
-			<label>
-				Brightness
-
-				<input
-					type="range"
-					id="brightnessSlider"
-					min="0.2"
-					max="4"
-					step="0.05"
-					value="1"
-				>
-			</label>
+			<button id="tweaksBtn">Tweaks</button>
 		</div>
 	</div>
 
@@ -209,7 +201,40 @@ input[type="range"] {
 	</div>
 </div>
 
+<div id="tweaksPanel">
+	<div class="tweaksRow">
+		<label>
+			Tuning
+			<input
+				type="range"
+				id="tuningSlider"
+				min="-12"
+				max="12"
+				step="0.01"
+				value="0"
+			>
+			<span id="tuningLabel">0.00 st</span>
+		</label>
+	</div>
+	
+	<div class="tweaksRow">
+		<label>
+			Brightness
+			<input
+				type="range"
+				id="brightnessSlider"
+				min="0.2"
+				max="4"
+				step="0.05"
+				value="1"
+			>
+		</label>
+	</div>
+</div>
+
+
 <canvas id="canvas"></canvas>
+
 
 <script>
 // ============= Canvas Defines ====================
@@ -258,9 +283,25 @@ const recordDest = audioCtx.createMediaStreamDestination();
 
 // Tweaks =======================================
 
+// Processing Settings ----------
+// Tuning for "A4"
+let aTuningHz = 440;
+
+
+// Popup Panel Visiblity --------
+
+// "Legend" Panel Visible
+let legendVisible = false;
+
+// "Tweaks" Panel Visible
+let tweaksVisible = false;
+
+
+// "Tweaks" Panel Items ---------
+
 let brightnessBoost = 1;
 let tuningOffset = 0;
-let aTuningHz = 440;
+
 
 // Viz State ==================================
 
@@ -1214,13 +1255,24 @@ document.getElementById("tuningSlider").addEventListener(
 );
 
 document.getElementById("legendBtn").onclick = () => {
-	const p = document.getElementById("legendPanel");
+    // Toggle Legend Panel visiblity status
+	legendVisible ^= true;
 	
-	p.style.display =
-		p.style.display === "block"
-		? "none"
-		: "block";
+    // TODO: Don't allow tweaks to stay visible when this is opened
+	
+	const p = document.getElementById("legendPanel");
+	p.style.display = (legendVisible) ? "block" : "none";
 };
+
+document.getElementById("tweaksBtn").onclick = () => {
+    // Toggle Tweak Panel visibility status
+    tweaksVisible ^= true;
+    
+    // TODO: Don't allow legend to stay visible when this is opened
+    
+    const p = document.getElementById("tweaksPanel");
+	p.style.display = (tweaksVisible) ? "block" : "none";
+}
 
 
 // Mouse Event Handlers =====================================

@@ -15,8 +15,6 @@ Spectrochrome Roadmap
 
 
 == High Priority Defect Fixes ==
-* Add a "right side" margin, so clips don't look like they are hard-clipped / running off the screen?
-
 * Fix bad resizing behaviour (i.e. requires refactoring the drawing to draw to a cache buffer, instead of directly to a frame buffer that can get corrupted) - see "v51_prompt"
 
 * Make the recording "progressively reveal" the full display (requiring / depending on 51 refactor) - see "v52_prompt"
@@ -35,8 +33,6 @@ Spectrochrome Roadmap
 
 * Option to hide the scrubber for taking a screenshot of the overall colourful spectrogram.  (Also include option for disabling the other axes)
   * Dismiss also if dragging fast to the very start or very end?
-
-* Move all the tweaks under a popup panel (as they're not really that relevant anymore)
 
 * Look into bringing back the identification of the other dominant alternative frequencies, sorted by strength (in addition to keeping the current dominant display)
 
