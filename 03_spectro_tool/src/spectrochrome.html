@@ -418,6 +418,36 @@ const midiRefPitch = 69;
 const fftSize = 4096;
 const hop = 1024;
 
+// Sharp-Based Pitch Names
+const PITCH_NAMES_SHARPS = [
+	"c","c#","d","d#",
+	"e","f","f#","g",
+	"g#","a","a#","b"
+];
+
+// Flat-Based Pitch Names
+const PITCH_NAMES_FLATS = [
+	"c","d♭","d","e♭",
+	"e","f","g♭","g",
+	"a♭","a","b♭","b"
+];
+
+// Common Useful Sharp/Flat Names
+// NOTE: These are only useful for my typical usages
+// NOTE: A-Flat / G-Sharp is the only ambiguous one...
+const PITCH_NAMES_COMMON = [
+	"c","c#","d","e♭",
+	"e","f","f#","g",
+	"g#","a","b♭","b"
+];
+
+const pitchNameModeOptions = {
+	"Sharps": PITCH_NAMES_SHARPS,
+	"Flats":  PITCH_NAMES_FLATS,
+	"Common": PITCH_NAMES_COMMON
+};
+let pitchNamesMode = "Common";
+
 // Audio Processing Logic =====================================
 
 function tunedMidi(freq)
@@ -432,12 +462,7 @@ function midiToLabel(m)
 	const n = 
 		(Math.round(m) % semitonesPerOctave  +  semitonesPerOctave) % semitonesPerOctave;
 	
-	// TODO: Whether we use sharps of flats here should depend on a flag
-	return [
-		"c","c#","d","d#",
-		"e","f","f#","g",
-		"g#","a","a#","b"
-	][n];
+	return pitchNameModeOptions[pitchNamesMode][n];
 }
 
 function colorForFreq(freq)
