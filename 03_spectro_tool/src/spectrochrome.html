@@ -992,7 +992,7 @@ function stopPlayback()
 	//
 	// Do this to try stopping laptops chewing away 30% CPU
 	// constantly running this.
-	requestAnimationFrame(render);
+	cancelAnimationFrame(render);
 	
 	// Reset UI state
 	playbackRunning = false;
@@ -1005,6 +1005,11 @@ function playAt(offset)
 	// Need to stop anything already playing, otherwise we could have 
 	// overlapping audio (with the older one then unstoppable).
 	stopPlayback();
+	
+	// Resume the audioCtx if it has been stopped for some reason
+	if (audioCtx.state !== "running") {
+		audioCtx.resume();
+	}
 	
 	// Create a new playbackSource object, since the old one got destroyed
 	playbackSource = audioCtx.createBufferSource();
@@ -1022,6 +1027,9 @@ function playAt(offset)
 	// Start running playback
 	playbackSource.start(0, offset);
 	playbackRunning = true;
+	
+	// Trigger rendering again
+	render();
 	
 	// Update UI to indicate running state...
 	setPauseButtonState();
@@ -1358,6 +1366,10 @@ document.getElementById("stopBtn").onclick = () => {
 };
 
 document.getElementById("restartBtn").onclick = () => {
+	// Reset scrubber to the start of the timeline
+	mouseX = LEFT_GUTTER;
+	
+	// Restart playback from the beginning too
 	playAt(0);
 };
 
