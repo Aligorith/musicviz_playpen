@@ -267,8 +267,13 @@ let scrubPreviewSource = null;
 let scrubbing = false;
 let lastScrubPreviewTime = -1;
 
+// ----------------------------------------------
+
+// Placeholder / Invalid Position for scrubber
 const INVALID_HIDDEN_SCRUBBER_IDX = -9999;
-let mouseX = INVALID_HIDDEN_SCRUBBER_IDX;
+
+// Position of the scrubber (in window x-coordinates - pixels)
+let scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
 
 // =============== Recording ====================
 
@@ -806,7 +811,7 @@ function drawBubbles()
 	let activeFound = false;
 	for (const e of midiEvents) {
 		const x = timeToX(e.start);
-		const dist = Math.abs(x - mouseX);
+		const dist = Math.abs(x - scrubberPosition);
 		
 		const active = (dist < 36) && !activeFound;
 		if (active) {
@@ -904,19 +909,19 @@ function render()
 			playbackOffset +
 			(audioCtx.currentTime - playbackStartTime);
 		
-		mouseX = timeToX(current);
+		scrubberPosition = timeToX(current);
 	}
 	
-	if (mouseX > 0) {
+	if (scrubberPosition > 0) {
 		ctx.strokeStyle = "rgba(255,140,40,0.85)";
 		ctx.lineWidth = 2;
 		
 		ctx.beginPath();
-		ctx.moveTo(mouseX, 0);
-		ctx.lineTo(mouseX, canvas.height);
+		ctx.moveTo(scrubberPosition, 0);
+		ctx.lineTo(scrubberPosition, canvas.height);
 		ctx.stroke();
 		
-		const t = xToTime(mouseX);
+		const t = xToTime(scrubberPosition);
 		const pitch = dominantPitchAtTime(t);
 		
 		const bubbleY =
@@ -931,7 +936,7 @@ function render()
 		const bx =
 			Math.min(
 				canvasWidth - tw - 58,
-				mouseX + 10
+				scrubberPosition + 10
 			);
 		
 		ctx.fillStyle = "rgba(255,140,40,0.95)";
@@ -1050,7 +1055,7 @@ function playAt(offset)
 		}
 		
 		// Hide the scrubber
-		mouseX = INVALID_HIDDEN_SCRUBBER_IDX;
+		scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
 	};
 }
 
@@ -1098,10 +1103,10 @@ function scrubAt(x)
 {
 	// Set new position of the scrubber
 	// NOTE: Need to clamp to not go into the gutter
-	mouseX = Math.max(LEFT_GUTTER, x);
+	scrubberPosition = Math.max(LEFT_GUTTER, x);
 	
 	// Trigger preview of soundbyte under scrubber
-	const t = xToTime(mouseX);
+	const t = xToTime(scrubberPosition);
 	previewAt(t);
 	
 	// Resume playing from this point, if playback was engaged
@@ -1349,7 +1354,7 @@ document.getElementById("playPauseBtn").onclick = () => {
 		stopPlayback();
 	}
 	else {
-		playAt(xToTime(Math.max(LEFT_GUTTER, mouseX)));
+		playAt(xToTime(Math.max(LEFT_GUTTER, scrubberPosition)));
 	}
 };
 
@@ -1362,12 +1367,12 @@ document.getElementById("stopBtn").onclick = () => {
 	audioCtx.suspend();
 	
 	// Hide the scrubber
-	mouseX = INVALID_HIDDEN_SCRUBBER_IDX;
+	scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
 };
 
 document.getElementById("restartBtn").onclick = () => {
 	// Reset scrubber to the start of the timeline
-	mouseX = LEFT_GUTTER;
+	scrubberPosition = LEFT_GUTTER;
 	
 	// Restart playback from the beginning too
 	playAt(0);

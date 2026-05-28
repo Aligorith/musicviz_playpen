@@ -4,7 +4,6 @@ Spectrochrome Roadmap
 == Refactoring ==
 * Perform a round of code cleanup to tidy up the crazy formatting + bad code
   * Properly figure out all those magic numbers for the layouts
-  * Rename "mouseX"
 
 * Make wrapper for all the drawing logic
   * Abstract filled-rounded-rect-with-text drawing
