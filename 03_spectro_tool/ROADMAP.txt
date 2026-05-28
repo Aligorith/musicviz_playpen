@@ -15,7 +15,7 @@ Spectrochrome Roadmap
 
 
 == High Priority Defect Fixes ==
-* Ensure the canvas does not overlap the C-marker gutter on the left (as musescore tracks start immediately, instead of having some blank space up front) - see "v50_prompt"
+* Add a "right side" margin, so clips don't look like they are hard-clipped / running off the screen?
 
 * Fix bad resizing behaviour (i.e. requires refactoring the drawing to draw to a cache buffer, instead of directly to a frame buffer that can get corrupted) - see "v51_prompt"
 
@@ -42,7 +42,9 @@ Spectrochrome Roadmap
 
 * Include the other strong-pitches info into the exported table (with the relative weights also), as well as note on/off/duration type info  
 
-* Optionally use an external FFT library  (i.e. "FFT.js" instead of the slow O(n^2) naive one included)
+* Speed up the analysis processing
+  * Run via a profiler, to see what is so slow
+  * Optionally use an external FFT library  (i.e. "FFT.js" instead of the slow O(n^2) naive one included)
 
 * Reduce CPU usage when IDLE
   * Investigate pausing render() updates when window has been idle for a while,

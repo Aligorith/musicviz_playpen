@@ -264,11 +264,29 @@ let aTuningHz = 440;
 
 // Viz State ==================================
 
+// Min/Max Range of Frequencies able to be shown:
+// This cuts out the really low (< C2) and high (> C8) frequencies,
+// which are mostly just noise (i.e. ambient bass rumbles / white-noise)
 const MIN_FREQ = 49;
 const MAX_FREQ = 8000;
 
+// ---------------
+
+// Width of the octave markers gutter (in px)
+const LEFT_GUTTER = 72;
+
+// Height of the timeline gutter (in px)
+const TIMELINE_GUTTER = 28;
+
+// Current maximum width of the spectrogram viewing area
+let canvasWidth = canvas.width - LEFT_GUTTER;
+
+// ---------------
+
+// List of note-events identified
 const midiEvents = [];
 
+// Cache of the spectrogram data
 let cachedSpectrogram = [];
 
 let fixedColumnWidth = 1;
@@ -307,12 +325,12 @@ function updateStatusText(text)
 
 function xToTime(x)
 {
-	return (x / canvas.width) * audioDuration;
+	return ((x - LEFT_GUTTER) / canvasWidth) * audioDuration;
 }
 
 function timeToX(t)
 {
-	return (t / audioDuration) * canvas.width;
+	return ((t / audioDuration) * canvasWidth) + LEFT_GUTTER;
 }
 
 function freqToY(freq)
@@ -478,7 +496,7 @@ async function processAudio(buffer)
 	const data = buffer.getChannelData(0);
 	const total = Math.floor((data.length - fftSize) / hop);
 	
-	fixedColumnWidth = canvas.width / total;
+	fixedColumnWidth = canvasWidth / total;
 	
 	const processingStart = performance.now();
 	
@@ -627,13 +645,11 @@ function drawTimeline()
 		return;
 	}
 	
-	// TODO: Define that size as a constant
-	const y = canvas.height - 28;
-	
-	const px = canvas.width / audioDuration;
+	const y = canvas.height - TIMELINE_GUTTER;
+	const px = canvasWidth / audioDuration;
 	
 	for (let s = 0; s <= audioDuration; s++) {
-		const x = s * px;
+		const x = LEFT_GUTTER + s * px;
 		const major = (s % 10 === 0);
 		
 		ctx.strokeStyle = "white";
@@ -724,11 +740,9 @@ function drawBubbles()
 	let activeFound = false;
 	for (const e of midiEvents) {
 		const x = timeToX(e.start);
-		
 		const dist = Math.abs(x - mouseX);
 		
-		const active = dist < 36 && !activeFound;
-		
+		const active = (dist < 36) && !activeFound;
 		if (active) {
 			activeFound = true;
 		}
@@ -753,7 +767,7 @@ function drawBubbles()
 				Math.max(
 					4,
 					Math.min(
-						canvas.width - w - 4,
+						canvasWidth - w - 4,
 						x - w * 0.5
 					)
 				);
@@ -811,7 +825,7 @@ function render()
 	
 	ctx.drawImage(
 		specCanvas,
-		0,
+		LEFT_GUTTER,
 		0
 	);
 	
@@ -850,7 +864,7 @@ function render()
 		const tw = ctx.measureText(label).width;
 		const bx =
 			Math.min(
-				canvas.width - tw - 58,
+				canvasWidth - tw - 58,
 				mouseX + 10
 			);
 		
@@ -1009,7 +1023,8 @@ function previewAt(time)
 function scrubAt(x)
 {
 	// Set new position of the scrubber
-	mouseX = x;
+	// NOTE: Need to clamp to not go into the gutter
+	mouseX = Math.max(LEFT_GUTTER, x);
 	
 	// Trigger preview of soundbyte under scrubber
 	const t = xToTime(mouseX);
@@ -1147,11 +1162,19 @@ function exportDetectedNotes()
 //       Need to trigger recalculation
 function resize()
 {
+	// Update the canvas bounds
 	canvas.width = innerWidth;
 	canvas.height = innerHeight;
 	
-	specCanvas.width = innerWidth;
+	// Update viewable area
+	canvasWidth = canvas.width - LEFT_GUTTER;
+	
+	// Compute the cached spectrogram canvas size
+	// XXX: These actually point to the exact same underlying objects?
+	specCanvas.width = canvasWidth;
 	specCanvas.height = innerHeight;
+	
+	// TODO: Trigger repaint / recalcs?
 }
 
 addEventListener("resize", resize);
@@ -1241,7 +1264,7 @@ document.getElementById("playPauseBtn").onclick = () => {
 		stopPlayback();
 	}
 	else {
-		playAt(xToTime(Math.max(mouseX, 0)));
+		playAt(xToTime(Math.max(LEFT_GUTTER, mouseX)));
 	}
 };
 
