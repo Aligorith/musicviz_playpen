@@ -32,6 +32,15 @@ Spectrochrome Roadmap
 * Add Sharp/Flat colour variant of each main pitches currently defined. Then add a control about whether to prefer the "Sharp" or "Flat" accidentals, if/when those are needed.
   * NOTE: Do this and see how this affects the handling of all those currently "grey" lines
   * TODO: Figure out the mappings for the existing colors
+  
+* Tweaks panel layout improvements
+  * 1) Need fixed size, multi-column grid: Name, Slider / Widget, Optional Text Indicator, Reset-to-Default button
+  * 2) Find way for Tweaks + Layout panels to be aware of each other, and to snap to the right accordingly
+
+* Review architecture of the UI, and how much the default text labels / etc. are set in the HTML vs applied on startup. Look into how we can keep these things in sync (so the UI is still useful initially if JS is disabled)
+  * JS Disabled Banner?
+  * Help Info Popup?
+  * General Centered Large Popup Panel
 
 * Option to hide the scrubber for taking a screenshot of the overall colourful spectrogram.  (Also include option for disabling the other axes)
   * Dismiss also if dragging fast to the very start or very end?
@@ -41,6 +50,7 @@ Spectrochrome Roadmap
 * Look into bringing back the identification of the other dominant alternative frequencies, sorted by strength (in addition to keeping the current dominant display)
 
 * Include the other strong-pitches info into the exported table (with the relative weights also), as well as note on/off/duration type info  
+  * Present this export info as a table in a popup panel, allowing live inspection before exporting
 
 * Speed up the analysis processing
   * Run via a profiler, to see what is so slow
