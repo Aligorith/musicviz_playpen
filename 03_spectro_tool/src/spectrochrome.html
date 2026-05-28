@@ -489,8 +489,9 @@ async function processAudio(buffer)
 				i * hop + fftSize
 			);
 		
+		const segCountScaleFactor = TWO_PI / (seg.length - 1);
 		for (let j = 0; j < seg.length; j++) {
-			seg[j] *= 0.5 * ( 1 - Math.cos(TWO_PI * j / (seg.length - 1)) );
+			seg[j] *= 0.5 * ( 1 - Math.cos(j * segCountScaleFactor) );
 		}
 		
 		const spec = fft(seg);
