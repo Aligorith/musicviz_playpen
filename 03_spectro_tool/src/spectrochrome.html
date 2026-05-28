@@ -288,6 +288,16 @@ function setPauseButtonState()
 	document.getElementById("playPauseBtn").textContent = pauseStateTxt;
 }
 
+function setStartRecordingButtonState()
+{
+	document.getElementById("recordBtn").textContent = "⬤ Record";
+}
+
+function setStopRecordingButtonState()
+{
+	document.getElementById("recordBtn").textContent = "■ Recording";
+}
+
 function updateStatusText(text)
 {
 	document.getElementById("status").textContent = text;
@@ -374,7 +384,7 @@ function midiToLabel(m)
 function colorForFreq(freq)
 {
 	const midi = tunedMidi(freq);
-
+	
 	const octave = Math.floor(midi / semitonesPerOctave);
 	const pitch  = Math.round(midi) % semitonesPerOctave;
 	
@@ -979,7 +989,7 @@ function previewAt(time)
 	
 	scrubPreviewSource = audioCtx.createBufferSource();
 	scrubPreviewSource.buffer = audioBuffer;
-
+	
 	const gain = audioCtx.createGain();
 	gain.gain.value = 0.28;
 	
@@ -1042,7 +1052,7 @@ async function startRecording()
 		...canvasStream.getVideoTracks(),
 		...recordDest.stream.getAudioTracks()
 	]);
-
+	
 	const EXPORT_FORMAT_MP4  = {
 		mime: "video/mp4",
 		extn: "mp4"
@@ -1063,7 +1073,7 @@ async function startRecording()
 			chunks.push(e.data);
 		}
 	};
-
+	
 	recorder.onstop = () => {
 		// IMPORTANT: flush audio stream cleanly
 		recordDest.stream.getTracks().forEach(t => t.stop());
@@ -1085,13 +1095,13 @@ async function startRecording()
 		URL.revokeObjectURL(url);
 		
 		recording = false;
-		document.getElementById("recordBtn").textContent = "⬤ Record";
+		setStartRecordingButtonState();
 	};
 	
 	recorder.start();
 	recording = true;
 	
-	document.getElementById("recordBtn").textContent = "■ Recording";
+	setStopRecordingButtonState();
 	
 	// always start from beginning
 	playAt(0);
