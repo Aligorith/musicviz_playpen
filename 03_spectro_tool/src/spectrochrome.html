@@ -898,25 +898,42 @@ function render()
 	if (recording) {
 		// When recording, only show the portion that has been revealed by the
 		// scrubber so far...
+		
+		// 1) Draw "darkened" region (i.e. by rendering it with less alpha + darkened)
 		ctx.save();
+		{
+			// Set drawing mode flags to be less visible
+			ctx.globalAlpha = 0.1;
+			
+			// Draw this now
+			ctx.drawImage(
+				spectogramCanvas,
+				LEFT_GUTTER,
+				0
+			);
+		}
+		ctx.restore();
 		
-		// 1) Define the visible region (i.e. between margin + scrubber)
-		ctx.beginPath();
-		ctx.rect(
-			LEFT_GUTTER,
-			0,
-			scrubberPosition - LEFT_GUTTER,
-			canvas.height
-		);
-		ctx.clip();
-		
-		// 2) Then doing this drawing will only show the clipped parts
-		ctx.drawImage(
-			spectogramCanvas,
-			LEFT_GUTTER,
-			0
-		);
-		
+		// 2) Draw the region being revealed
+		ctx.save();
+		{
+			// 2.1) Define the visible region (i.e. between margin + scrubber)
+			ctx.beginPath();
+			ctx.rect(
+				LEFT_GUTTER,
+				0,
+				scrubberPosition - LEFT_GUTTER,
+				canvas.height
+			);
+			ctx.clip();
+			
+			// 2.2) Then doing this drawing will only show the clipped parts
+			ctx.drawImage(
+				spectogramCanvas,
+				LEFT_GUTTER,
+				0
+			);
+		}
 		ctx.restore();
 	}
 	else {
