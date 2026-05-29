@@ -608,6 +608,7 @@ async function processAudio(buffer)
 	const processingStart = performance.now();
 	
 	for (let i = 0; i < total; i++) {
+		// Perform CQT transform
 		const seg =
 			data.slice(
 				i * hop,
@@ -622,8 +623,10 @@ async function processAudio(buffer)
 		const spec = fft(seg);
 		cachedSpectrogram.push(spec);
 		
+		// Convert FFT results to the colourful plotted results
 		redrawSpectrogramColumn(i, spec);
 		
+		// Try to identify the likely "dominant pitch" at this point
 		let best = 0;
 		let bestBin = 0;
 		
@@ -655,6 +658,7 @@ async function processAudio(buffer)
 			});
 		}
 		
+		// Update progress
 		const elapsed = elapsedTime(processingStart);
 		const progress = (i + 1) / total;
 		const estimate = elapsed / progress;
