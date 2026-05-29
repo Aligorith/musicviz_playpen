@@ -46,8 +46,6 @@ Spectrochrome Roadmap
 * Option to hide the scrubber for taking a screenshot of the overall colourful spectrogram.  (Also include option for disabling the other axes)
   * Dismiss also if dragging fast to the very start or very end?
 
-* Introduce a floor for minimum intensity of "dominant" frequency detection, so that we can filter out any that come from background noise / reverb, chattering away in the "quiet" spaces + ruining the accuracy
-
 * Look into bringing back the identification of the other dominant alternative frequencies, sorted by strength (in addition to keeping the current dominant display)
 
 * Include the other strong-pitches info into the exported table (with the relative weights also), as well as note on/off/duration type info  
