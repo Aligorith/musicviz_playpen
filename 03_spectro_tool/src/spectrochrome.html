@@ -941,14 +941,26 @@ function render()
 	}
 	
 	if (scrubberPosition > 0) {
+		// Scrubber Line
+		ctx.save();
+		
 		ctx.strokeStyle = "rgba(255,140,40,0.85)";
 		ctx.lineWidth = 2;
+		
+		if (recording) {
+			// Show glow if recording
+			ctx.shadowBlur = 15;
+			ctx.shadowColor = "rgba(255,140,40,0.95)"
+		}
 		
 		ctx.beginPath();
 		ctx.moveTo(scrubberPosition, 0);
 		ctx.lineTo(scrubberPosition, canvas.height);
 		ctx.stroke();
 		
+		ctx.restore();
+		
+		// Top Tag/Bubble - Time + Pitch
 		const t = xToTime(scrubberPosition);
 		const pitch = dominantPitchAtTime(t);
 		
