@@ -2,25 +2,32 @@ Spectrochrome Roadmap
 =====================
 
 == Refactoring ==
-* Perform a round of code cleanup to tidy up the crazy formatting
+* Perform a round of code cleanup to tidy up the crazy formatting + bad code
+  * Properly figure out all those magic numbers for the layouts
+  * Convert all constants to CONSTANT_CASE
+
+* Make wrapper for all the drawing logic
+  * Abstract filled-rounded-rect-with-text drawing
+  * Abstract line-drawing)
+  * Abstract text drawing
 
 * Introduce docstrings for each of the methods
 
+* Make "MidiPitchInfo" a proper type
+  * Implement also support for Scientific Notation (c4) to Lilypond Notation (c')
+  
+* Refactor out the "progress estimate" stuff to an "ProgressEstimator" type
+
 
 == High Priority Defect Fixes ==
-* Clicking somewhere while playback is running stops the playback, and then it needs
-  to be manually resumed again. Instead, it should just adjust time to that point
-  and continue on.
-
-* Ensure the canvas does not overlap the C-marker gutter on the left (as musescore tracks start immediately, instead of having some blank space up front) - see "v50_prompt"
+* Resuming playback following clicking "stop" doesn't work?
 
 * Fix bad resizing behaviour (i.e. requires refactoring the drawing to draw to a cache buffer, instead of directly to a frame buffer that can get corrupted) - see "v51_prompt"
-
-* Make the recording "progressively reveal" the full display (requiring / depending on 51 refactor) - see "v52_prompt"
 
 * Fix scrubbing crackling issues (i.e. need gain-fading on the pipeline) - see "v53_prompt"
 
 * Fix bug where processing pauses if/when the tab loses focus, and then completely dies when we come back and look at it (or start interacting with it)
+  * Option 1:  Create a "progress popup panel, with progressbar", + button to resume / cancel stalled operations. This will work by storing the "in-progress" Promise, and triggering it to get run again if it got stalled out for whatever reason?
 
 
 == Enhancements ==
@@ -28,19 +35,38 @@ Spectrochrome Roadmap
 
 * Add Sharp/Flat colour variant of each main pitches currently defined. Then add a control about whether to prefer the "Sharp" or "Flat" accidentals, if/when those are needed.
   * NOTE: Do this and see how this affects the handling of all those currently "grey" lines
+  * TODO: Figure out the mappings for the existing colors
+  
+* Add ability to adjust the minimum magnitude via tweaks, then re-analyse
+
+* Ability to reclassify specific frequencies (e.g. "f#4 -> g4") to cope with "off" tunings, without having to adjust everything
+  
+* Tweaks panel layout improvements
+  * 1) Need fixed size, multi-column grid: Name, Slider / Widget, Optional Text Indicator, Reset-to-Default button
+  * 2) Find way for Tweaks + Layout panels to be aware of each other, and to snap to the right accordingly
+
+* Review architecture of the UI, and how much the default text labels / etc. are set in the HTML vs applied on startup. Look into how we can keep these things in sync (so the UI is still useful initially if JS is disabled)
+  * JS Disabled Banner?
+  * Help Info Popup?
+  * General Centered Large Popup Panel
 
 * Option to hide the scrubber for taking a screenshot of the overall colourful spectrogram.  (Also include option for disabling the other axes)
   * Dismiss also if dragging fast to the very start or very end?
 
-* Move all the tweaks under a popup panel (as they're not really that relevant anymore)
-
-* Fix sizing of the lower orange bubble (too wide)
-
 * Look into bringing back the identification of the other dominant alternative frequencies, sorted by strength (in addition to keeping the current dominant display)
 
 * Include the other strong-pitches info into the exported table (with the relative weights also), as well as note on/off/duration type info  
+  * Present this export info as a table in a popup panel, allowing live inspection before exporting
+  
 
-* Optionally use an external FFT library  (i.e. "FFT.js" instead of the slow O(n^2) naive one included)
+* Speed up the analysis processing
+  * Run via a profiler, to see what is so slow
+  * Optionally use an external FFT library  (i.e. "FFT.js" instead of the slow O(n^2) naive one included)
+
+* Reduce CPU usage when IDLE
+  * Investigate pausing render() updates when window has been idle for a while,
+    to be reset upon any interactions with the UI again?
+
 
 * Identify ways to make the graphics fancier
   * Play with per-octave colour variations   --> Check on whether the per octave brightness shading actually works
@@ -54,6 +80,7 @@ Spectrochrome Roadmap
   * Look into automatically de-emphasizing the "soundscape clutter" high up from the overlapping harmonics (i.e. the "c7 -> c8" band), or maybe even allowing that to be split out for other handling (e.g. maybe prototyping a technique for future visualisation engines)
   
   * Melodic-line following / tracing: Figure out an algorithm for that, and draw an overlay tracking those?
+  
 
 * Composition / Analysis Tools:
   * Tool for detecting the rhythmic configuration

@@ -6,102 +6,122 @@
 <title>Interactive CQT Spectrogram</title>
 
 <style>
-html, body{
-    margin:0;
-    padding:0;
-    overflow:hidden;
-    background:#454545;
-    color:white;
-    font-family:sans-serif;
+html, body {
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	background: #454545;
+	color: white;
+	font-family: sans-serif;
 }
 
-#canvas{
-    position:absolute;
-    inset:0;
-    width:100vw;
-    height:100vh;
+#canvas {
+	position: absolute;
+	inset:    0;
+	width:    100vw;
+	height:   100vh;
 }
 
-#topbar{
-    position:absolute;
-    top:0;
-    left:0;
-    width:100%;
-    z-index:100;
-    background:rgba(28,28,28,0.74);
-    backdrop-filter:blur(8px);
-    padding:10px;
-    box-sizing:border-box;
+#topbar {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	z-index: 100;
+	background: rgba(28,28,28,0.74);
+	backdrop-filter: blur(8px);
+	padding: 10px;
+	box-sizing: border-box;
 }
 
-.row{
-    display:flex;
-    align-items:center;
-    width:100%;
+.row {
+	display: flex;
+	align-items: center;
+	width: 100%;
 }
 
-.leftControls{
-    display:flex;
-    align-items:center;
-    gap:10px;
-    flex:1;
+.leftControls {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex: 1;
 }
 
-.centerControls{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:10px;
-    flex:1;
+.centerControls {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	flex: 1;
 }
 
-.rightControls{
-    display:flex;
-    align-items:center;
-    justify-content:flex-end;
-    gap:14px;
-    flex:1;
+.rightControls {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 14px;
+	flex: 1;
 }
 
-button{
-    cursor:pointer;
+button {
+	cursor: pointer;
 }
 
-input[type="range"]{
-    width:140px;
+input[type="range"] {
+	width: 140px;
 }
 
-#status{
-    margin-top:6px;
-    font-size:13px;
-    color:#ddd;
+#status {
+	margin-top: 6px;
+	font-size: 13px;
+	color: #ddd;
 }
 
-#legendPanel{
-    position:absolute;
-    right:20px;
-    top:90px;
-    width:250px;
-    background:rgba(20,20,20,0.96);
-    border-radius:12px;
-    padding:14px;
-    z-index:200;
-    display:none;
-    box-shadow:0 10px 40px rgba(0,0,0,0.5);
+#legendPanel {
+	position: absolute;
+	right: 280px;
+	top: 90px;
+	width: 250px;
+	background: rgba(20,20,20,0.96);
+	border-radius: 12px;
+	padding: 14px;
+	z-index: 200;
+	display: none;
+	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
 }
 
-.legendRow{
-    display:flex;
-    align-items:center;
-    margin-bottom:8px;
-    font-size:13px;
+.legendRow {
+	display: flex;
+	align-items: center;
+	margin-bottom: 8px;
+	font-size: 13px;
 }
 
-.swatch{
-    width:18px;
-    height:18px;
-    border-radius:5px;
-    margin-right:10px;
+.swatch {
+	width: 18px;
+	height: 18px;
+	border-radius: 5px;
+	margin-right: 10px;
+}
+
+#tweaksPanel {
+	position: absolute;
+	right: 20px;
+	top: 90px;
+	width: 280px;
+	background: rgba(20,20,20,0.96);
+	border-radius: 12px;
+	padding: 14px;
+	z-index: 200;
+	display: none;
+	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+}
+
+.tweaksRow {
+	display: flex;
+	align-items: center;
+	margin-bottom: 8px;
+	font-size: 13px;
 }
 </style>
 </head>
@@ -109,160 +129,131 @@ input[type="range"]{
 <body>
 
 <div id="topbar">
+	<div class="row">
+		<div class="leftControls">
+			<input type="file" id="file">
+			
+			<label>
+				A=
+				<select id="aTuning">
+					<option value="440">440 Hz</option>
+					<option value="432">432 Hz</option>
+				</select>
+			</label>
 
-    <div class="row">
+			<button id="analyzeBtn">Analyze</button>
 
-        <div class="leftControls">
+			<button id="exportBtn">Export</button>
+		</div>
 
-            <input type="file" id="file">
+		<div class="centerControls">
+			<button id="playPauseBtn">▶ Play</button>
+			<button id="stopBtn">⏹ Stop</button>
+			<button id="restartBtn">↺ Restart</button>
+			<button id="recordBtn">⬤ Record</button>
+		</div>
 
-            <label>
-                A=
-                <select id="aTuning">
-                    <option value="440">440 Hz</option>
-                    <option value="432">432 Hz</option>
-                </select>
-            </label>
+		<div class="rightControls">
+			<button id="legendBtn">Legend</button>
+			<button id="tweaksBtn">Tweaks</button>
+		</div>
+	</div>
 
-            <button id="analyzeBtn">
-                Analyze
-            </button>
-
-            <button id="exportBtn">
-                Export
-            </button>
-
-        </div>
-
-        <div class="centerControls">
-
-            <button id="playPauseBtn">▶ Play</button>
-            <button id="stopBtn">⏹ Stop</button>
-            <button id="restartBtn">↺ Restart</button>
-            <button id="recordBtn">⬤ Record</button>
-        </div>
-
-        <div class="rightControls">
-
-            <button id="legendBtn">
-                Legend
-            </button>
-
-            <label>
-                Tuning
-
-                <input
-                    type="range"
-                    id="tuningSlider"
-                    min="-12"
-                    max="12"
-                    step="0.01"
-                    value="0"
-                >
-
-                <span id="tuningLabel">
-                    0.00 st
-                </span>
-            </label>
-
-            <label>
-                Brightness
-
-                <input
-                    type="range"
-                    id="brightnessSlider"
-                    min="0.2"
-                    max="4"
-                    step="0.05"
-                    value="1"
-                >
-            </label>
-
-        </div>
-
-    </div>
-
-    <div id="status">
-        Load a file
-    </div>
-
+	<div id="status">
+		Load a file, then click Analyse
+	</div>
 </div>
 
 <div id="legendPanel">
-
-    <div class="legendRow">
-        <div class="swatch" style="background:#ffd0a0"></div>
-        C = peach/gold
-    </div>
-
-    <div class="legendRow">
-        <div class="swatch" style="background:#203c96"></div>
-        D = navy blue
-    </div>
-
-    <div class="legendRow">
-        <div class="swatch" style="background:#d8b0ff"></div>
-        E = lavender
-    </div>
-
-    <div class="legendRow">
-        <div class="swatch" style="background:#F5D954"></div>
-        F = yellow
-    </div>
-
-    <div class="legendRow">
-        <div class="swatch" style="background:#46be32"></div>
-        G = lawn green
-    </div>
-
-    <div class="legendRow">
-        <div class="swatch" style="background:#ff5050"></div>
-        A = red
-    </div>
-
-    <div class="legendRow">
-        <div class="swatch" style="background:#78dcff"></div>
-        B = sky blue
-    </div>
-
+	<div class="legendRow">
+		<div class="swatch" style="background:#ffd0a0"></div>
+		C = peach/gold
+	</div>
+	
+	<div class="legendRow">
+		<div class="swatch" style="background:#203c96"></div>
+		D = navy blue
+	</div>
+	
+	<div class="legendRow">
+		<div class="swatch" style="background:#d8b0ff"></div>
+		E = lavender
+	</div>
+	
+	<div class="legendRow">
+		<div class="swatch" style="background:#F5D954"></div>
+		F = yellow
+	</div>
+	
+	<div class="legendRow">
+		<div class="swatch" style="background:#46be32"></div>
+		G = lawn green
+	</div>
+	
+	<div class="legendRow">
+		<div class="swatch" style="background:#ff5050"></div>
+		A = red
+	</div>
+	
+	<div class="legendRow">
+		<div class="swatch" style="background:#78dcff"></div>
+		B = sky blue
+	</div>
 </div>
+
+<div id="tweaksPanel">
+	<div class="tweaksRow">
+		<label>
+			Tuning
+			<input
+				type="range"
+				id="tuningSlider"
+				min="-12"
+				max="12"
+				step="0.01"
+				value="0"
+			>
+			<span id="tuningLabel">0.00 st</span>
+		</label>
+	</div>
+	
+	<div class="tweaksRow">
+		<label>
+			Brightness
+			<input
+				type="range"
+				id="brightnessSlider"
+				min="0.2"
+				max="4"
+				step="0.05"
+				value="1"
+			>
+		</label>
+	</div>
+</div>
+
 
 <canvas id="canvas"></canvas>
 
+
 <script>
+// ============= Canvas Defines ====================
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
 
-const canvas =
-    document.getElementById("canvas");
+// NOTE: "spectogramCanvas" is the spectrogram cache canvas that gets drawn to
+// while we are processing the audio. Without having this, nothing gets
+// shown until the whole lot is done.
+const spectogramCanvas = document.createElement("canvas");
+const spectogramCanvasCtx = spectogramCanvas.getContext("2d");
 
-const ctx =
-    canvas.getContext("2d");
-
-const specCanvas =
-    document.createElement("canvas");
-
-const specCtx =
-    specCanvas.getContext("2d");
-
-function resize(){
-
-    canvas.width = innerWidth;
-    canvas.height = innerHeight;
-
-    specCanvas.width = innerWidth;
-    specCanvas.height = innerHeight;
-}
-
-addEventListener("resize", resize);
-
-resize();
-
-// ================ Audio ======================
+// ================ Audio ==========================
 
 const audioCtx =
-    new (
-        window.AudioContext ||
-        window.webkitAudioContext
-    )();
+	new (
+		window.AudioContext ||
+		window.webkitAudioContext
+	)();
 
 let audioBuffer = null;
 let audioDuration = 0;
@@ -276,7 +267,13 @@ let scrubPreviewSource = null;
 let scrubbing = false;
 let lastScrubPreviewTime = -1;
 
-let mouseX = -9999;
+// ----------------------------------------------
+
+// Placeholder / Invalid Position for scrubber
+const INVALID_HIDDEN_SCRUBBER_IDX = -9999;
+
+// Position of the scrubber (in window x-coordinates - pixels)
+let scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
 
 // =============== Recording ====================
 
@@ -289,1194 +286,1281 @@ let recordVersion = 1;
 
 const recordDest = audioCtx.createMediaStreamDestination();
 
-// ============== Viz / Tweaks ===============
+// (bool) Show faint "ghosted" copy of the whole spectrogram in the background when recording
+let showGhostBackdropWhenRendering = true;
 
-let brightnessBoost = 1;
-let tuningOffset = 0;
+// Tweaks =======================================
+
+// Processing Settings ----------
+// Tuning for "A4"
 let aTuningHz = 440;
 
 
+// Popup Panel Visibility --------
+
+// "Legend" Panel Visible
+let legendVisible = false;
+
+// "Tweaks" Panel Visible
+let tweaksVisible = false;
+
+
+// "Tweaks" Panel Items ---------
+
+let brightnessBoost = 1;
+let tuningOffset = 0;
+
+
+// Viz State ==================================
+
+// Min/Max Range of Frequencies able to be shown:
+// This cuts out the really low (< C2) and high (> C8) frequencies,
+// which are mostly just noise (i.e. ambient bass rumbles / white-noise)
 const MIN_FREQ = 49;
 const MAX_FREQ = 8000;
 
+// ---------------
+
+// Width of the octave markers gutter (in px)
+const LEFT_GUTTER = 72;
+
+// Height of the timeline gutter (in px)
+const TIMELINE_GUTTER = 28;
+
+// Current maximum width of the spectrogram viewing area
+let spectogramWidth = canvas.width - LEFT_GUTTER;
+
+// ---------------
+
+// List of note-events identified
 const midiEvents = [];
 
+// Cache of the spectrogram data
 let cachedSpectrogram = [];
 
+// Width of each vertical sliver of the spectogram.
+// "cachedSpectogram" contains a list of these slivers, one per 
 let fixedColumnWidth = 1;
 
-// ============== Analysis / Rendering Logic ==============
+// =============== UI Defines / Utils ====================
 
-function formatTime(s){
+// UI Labels for toggle buttons ...............
+const playStateActionTxt          = "▶ Play";
+const pauseStateActionTxt         = "⏸ Pause";
+const recordStateActionTxt        = "⬤ Record";
+const stopRecordingStateActionTxt = "■ Recording";
 
-    return (
-        String(Math.floor(s/60))
-        .padStart(2,"0")
-        + ":" +
-        String(Math.floor(s%60))
-        .padStart(2,"0")
-    );
+// Color Defines ..............................
+const SCRUBBER_COLOR = [255, 140, 40];
+const BUBBLE_COLOR = [80, 120, 255];
+
+// -----------------------
+
+function setPlayButtonState()
+{
+	document.getElementById("playPauseBtn").textContent = playStateActionTxt;
 }
 
-function tunedMidi(freq){
-
-    return (
-        69 +
-        12 *
-        Math.log2(freq / aTuningHz)
-    ) +
-    tuningOffset;
+function setPauseButtonState()
+{
+	document.getElementById("playPauseBtn").textContent = pauseStateActionTxt;
 }
 
-function midiToLabel(m){
-
-    const n =
-        (
-            Math.round(m)%12 + 12
-        ) % 12;
-
-    return [
-        "c","c#","d","d#",
-        "e","f","f#","g",
-        "g#","a","a#","b"
-    ][n];
+function setStartRecordingButtonState()
+{
+	document.getElementById("recordBtn").textContent = recordStateActionTxt;
 }
 
-function freqToY(freq){
-
-    return (
-        canvas.height -
-        40 -
-        (
-            Math.log2(freq/MIN_FREQ)
-            /
-            Math.log2(MAX_FREQ/MIN_FREQ)
-        ) *
-        (
-            canvas.height - 180
-        )
-    );
+function setStopRecordingButtonState()
+{
+	document.getElementById("recordBtn").textContent = stopRecordingStateActionTxt;
 }
 
-function colorForFreq(freq){
+// -----------------------
 
-    const midi =
-        tunedMidi(freq);
-
-    const octave =
-        Math.floor(midi/12);
-
-    const pitch =
-        Math.round(midi)%12;
-
-    switch(pitch){
-
-        case 0:
-            return [255,210,160];
-
-        case 2:
-            return [40,60,150];
-
-        case 4:
-            return (
-                freq >= aTuningHz
-                ? [220,180,255]
-                : [120,80,50]
-            );
-
-        case 5:
-            return [245,217,84];
-
-        case 7:
-
-            if(octave < 4)
-                return [0,80,30];
-
-            if(octave === 4)
-                return [70,190,50];
-
-            return [180,255,80];
-
-        case 9:
-            return [255,70,70];
-
-        case 11:
-            return [120,220,255];
-
-        default:
-            return [180,180,180];
-    }
+function updateStatusText(text)
+{
+	document.getElementById("status").textContent = text;
 }
 
-function dominantPitchAtTime(t){
+// -----------------------
 
-    for(const e of midiEvents){
-
-        if(
-            t >= e.start &&
-            t <= e.end
-        ){
-            return e;
-        }
-    }
-
-    return null;
+// Convert a "RGB Tuple" into a "rgb()" color string
+// < rgbTuple: ([uchar, uchar, uchar]) RGB color, represented as "0 <= c <= 255"
+// > returns: (str) "rgb(r, g, b)"
+function colorFromTuple(rgbTuple)
+{
+	return `rgb(${rgbTuple[0]}, ${rgbTuple[1]}, ${rgbTuple[2]})`;
 }
 
-function redrawSpectrogramColumn(i,spec){
-
-    for(let b=1;b<spec.length;b++){
-
-        const freq =
-            b * (
-                audioCtx.sampleRate /
-                4096
-            );
-
-        if(
-            freq < MIN_FREQ ||
-            freq > MAX_FREQ
-        ) continue;
-
-        const y =
-            freqToY(freq);
-
-        const mag =
-            spec[b];
-
-        const intensity =
-            Math.min(
-                1,
-                (
-                    Math.log10(1+mag)
-                    / 2.2
-                ) * brightnessBoost
-            );
-
-        if(intensity < 0.02)
-            continue;
-
-        const c =
-            colorForFreq(freq);
-
-        const glow =
-            1.5 + intensity * 4.5;
-
-        const grad =
-            specCtx.createLinearGradient(
-                0,
-                y - glow,
-                0,
-                y + glow
-            );
-
-        grad.addColorStop(
-            0,
-            `rgba(${c[0]},${c[1]},${c[2]},0)`
-        );
-
-        grad.addColorStop(
-            0.5,
-            `rgba(${c[0]},${c[1]},${c[2]},${intensity})`
-        );
-
-        grad.addColorStop(
-            1,
-            `rgba(${c[0]},${c[1]},${c[2]},0)`
-        );
-
-        specCtx.fillStyle = grad;
-
-        specCtx.fillRect(
-            i * fixedColumnWidth,
-            y - glow,
-            fixedColumnWidth + 1,
-            glow * 2
-        );
-    }
+// Convert an "rgb" color (given as a 3-int tuple) into an "rgba()"
+// color string, that has been tempered using the given alpha.
+// < rgbTuple: ([uchar, uchar, uchar]) RGB color, represented as "0 <= c <= 255"
+// < alpha: (float :: 0.0 <= f <= 1.0) The alpha / opacity value
+// > returns: (str) "rgba(r, g, b, a)"
+function colorWithAlpha(rgbTuple, alpha)
+{
+	return `rgba(${rgbTuple[0]}, ${rgbTuple[1]}, ${rgbTuple[2]}, ${alpha})`;
 }
 
-function fft(sig){
+// ============= Coordinate Conversion Utils ==============
 
-    const N = sig.length;
-
-    const out =
-        new Float32Array(N/2);
-
-    for(let k=0;k<N/2;k++){
-
-        let re=0;
-        let im=0;
-
-        for(let n=0;n<N;n++){
-
-            const p =
-                2*Math.PI*k*n/N;
-
-            re +=
-                sig[n] *
-                Math.cos(p);
-
-            im -=
-                sig[n] *
-                Math.sin(p);
-        }
-
-        out[k] =
-            Math.sqrt(re*re+im*im);
-    }
-
-    return out;
+function xToTime(x)
+{
+	return ((x - LEFT_GUTTER) / spectogramWidth) * audioDuration;
 }
 
-async function processAudio(buffer){
-
-    audioBuffer = buffer;
-
-    audioDuration =
-        buffer.duration;
-
-    midiEvents.length = 0;
-
-    specCtx.clearRect(
-        0,
-        0,
-        specCanvas.width,
-        specCanvas.height
-    );
-
-    cachedSpectrogram = [];
-
-    const data =
-        buffer.getChannelData(0);
-
-    const fftSize = 4096;
-    const hop = 1024;
-
-    const total =
-        Math.floor(
-            (
-                data.length -
-                fftSize
-            ) / hop
-        );
-
-    fixedColumnWidth =
-        canvas.width / total;
-
-    const processingStart =
-        performance.now();
-
-    for(let i=0;i<total;i++){
-
-        const seg =
-            data.slice(
-                i*hop,
-                i*hop+fftSize
-            );
-
-        for(let j=0;j<seg.length;j++){
-
-            seg[j] *=
-                0.5 *
-                (
-                    1 -
-                    Math.cos(
-                        2*Math.PI*j /
-                        (
-                            seg.length-1
-                        )
-                    )
-                );
-        }
-
-        const spec =
-            fft(seg);
-
-        cachedSpectrogram.push(spec);
-
-        redrawSpectrogramColumn(
-            i,
-            spec
-        );
-
-        let best=0;
-        let bestBin=0;
-
-        for(let b=1;b<spec.length;b++){
-
-            if(spec[b] > best){
-
-                best = spec[b];
-                bestBin = b;
-            }
-        }
-
-        const freq =
-            bestBin *
-            (
-                audioCtx.sampleRate /
-                fftSize
-            );
-
-        const t =
-            i * hop /
-            audioCtx.sampleRate;
-
-        const prev =
-            midiEvents[
-                midiEvents.length - 1
-            ];
-
-        const note =
-            midiToLabel(
-                tunedMidi(freq)
-            );
-
-        if(
-            !prev ||
-
-            (
-                t - prev.start
-            ) > 1.1 ||
-
-            prev.label !== note
-        ){
-
-            midiEvents.push({
-
-                start:t,
-                end:t+0.8,
-
-                freq,
-
-                label:note
-            });
-        }
-
-        const elapsed =
-            (
-                performance.now()
-                - processingStart
-            ) / 1000;
-
-        const progress =
-            (i+1) / total;
-
-        const estimate =
-            elapsed / progress;
-
-        const remaining =
-            estimate - elapsed;
-
-        document
-        .getElementById("status")
-        .textContent =
-            `Processing ${
-                i+1
-            }/${
-                total
-            } • elapsed ${
-                elapsed.toFixed(1)
-            }s • remaining ≈ ${
-                remaining.toFixed(1)
-            }s`;
-
-        await new Promise(
-            r=>setTimeout(r,0)
-        );
-    }
-
-    // JSL: Restored processing time
-    const totalTimeElapsed =
-            (
-                performance.now()
-                - processingStart
-            ) / 1000;
-    document
-    .getElementById("status")
-    .textContent =
-        `Ready. Processing took ${totalTimeElapsed.toFixed(1)}s`;
+function timeToX(t)
+{
+	return ((t / audioDuration) * spectogramWidth) + LEFT_GUTTER;
 }
 
-function drawTimeline(){
-
-    if(!audioDuration)
-        return;
-
-    const y =
-        canvas.height - 28;
-
-    const px =
-        canvas.width /
-        audioDuration;
-
-    for(let s=0;s<=audioDuration;s++){
-
-        const x = s * px;
-
-        const major =
-            s % 10 === 0;
-
-        ctx.strokeStyle =
-            "white";
-
-        ctx.beginPath();
-
-        ctx.moveTo(x,y);
-
-        ctx.lineTo(
-            x,
-            y - (
-                major ? 24 : 12
-            )
-        );
-
-        ctx.stroke();
-
-        if(major){
-
-            ctx.fillStyle =
-                "white";
-
-            ctx.font =
-                "11px monospace";
-
-            ctx.fillText(
-                formatTime(s),
-                x+3,
-                y-30
-            );
-        }
-    }
+function freqToY(freq)
+{
+	return (
+		canvas.height -
+		40 -
+		(
+			Math.log2(freq / MIN_FREQ)
+			/
+			Math.log2(MAX_FREQ / MIN_FREQ)
+		) *
+		(
+			canvas.height - 180
+		)
+	);
 }
 
-function drawCMarkers(){
+// ================ Time Utils ==========================
 
-    for(let o=0;o<9;o++){
-
-        const midi =
-            12 + o*12;
-
-        const freq =
-            aTuningHz *
-            Math.pow(
-                2,
-                (midi-69)/12
-            );
-
-        if(
-            freq < MIN_FREQ ||
-            freq > MAX_FREQ
-        ) continue;
-
-        const y =
-            freqToY(freq);
-
-        ctx.strokeStyle =
-            "rgba(255,255,255,0.25)";
-
-        ctx.beginPath();
-
-        ctx.moveTo(0,y);
-        ctx.lineTo(16,y);
-
-        ctx.stroke();
-
-        if(o===4){
-
-            ctx.font =
-                "bold 12px monospace";
-
-            const label =
-                `c${o}`;
-
-            const tw =
-                ctx.measureText(label)
-                .width;
-
-            ctx.fillStyle =
-                "rgba(255,255,255,0.10)";
-
-            ctx.beginPath();
-
-            ctx.roundRect(
-                18,
-                y - 8,
-                tw + 10,
-                14,
-                5
-            );
-
-            ctx.fill();
-
-            ctx.strokeStyle =
-                "rgba(255,255,255,0.55)";
-
-            ctx.stroke();
-
-            ctx.fillStyle =
-                "white";
-
-        }else{
-
-            ctx.fillStyle =
-                "rgba(255,255,255,0.75)";
-
-            ctx.font =
-                "11px monospace";
-        }
-
-        ctx.fillText(
-            `c${o}`,
-            o===4 ? 23 : 24,
-            o===4 ? y+2 : y+3
-        );
-    }
+function elapsedTime(startTime)
+{
+	const msPerSecond = 1000;
+	return (performance.now() - startTime) / msPerSecond;
 }
 
-function drawBubbles(){
-
-    let activeFound = false;
-
-    for(const e of midiEvents){
-
-        const x =
-            (
-                e.start /
-                audioDuration
-            ) *
-            canvas.width;
-
-        const dist =
-            Math.abs(x - mouseX);
-
-        const active =
-            dist < 36 &&
-            !activeFound;
-
-        if(active)
-            activeFound = true;
-
-        const bubbleY =
-            canvas.height * 0.89;
-
-        if(active){
-
-            const label =
-                e.label;
-
-            ctx.font =
-                "bold 12px monospace";
-
-            const tw =
-                ctx.measureText(label)
-                .width;
-
-            const w =
-                Math.max(
-                    120,
-                    tw + 34
-                );
-
-            let bx =
-                x - w * 0.5;
-
-            bx =
-                Math.max(
-                    4,
-                    Math.min(
-                        canvas.width - w - 4,
-                        bx
-                    )
-                );
-
-            ctx.fillStyle =
-                "rgba(255,140,40,0.92)";
-
-            ctx.beginPath();
-
-            ctx.roundRect(
-                bx,
-                bubbleY - 12,
-                w,
-                22,
-                10
-            );
-
-            ctx.fill();
-
-            ctx.fillStyle =
-                "white";
-
-            ctx.fillText(
-                label,
-                bx + 16,
-                bubbleY + 3
-            );
-
-        }else{
-
-            ctx.fillStyle =
-                "rgba(80,120,255,0.58)";
-
-            ctx.beginPath();
-
-            ctx.roundRect(
-                x - 6,
-                bubbleY - 4,
-                12,
-                8,
-                4
-            );
-
-            ctx.fill();
-        }
-    }
+function formatTime(s)
+{
+	const secsPerMinute = 60;
+	return (
+		String(Math.floor(s / secsPerMinute)).padStart(2, "0")
+		+ ":" +
+		String(Math.floor(s % secsPerMinute)).padStart(2, "0")
+	);
 }
 
-function stopPlayback(){
+// Audio Processing Constants =================================
 
-    if(playbackSource){
+const TWO_PI = 2 * Math.PI;
 
-        try{
-            playbackSource.stop();
-        }catch(e){}
+const semitonesPerOctave = 12;
+const midiRefPitch = 69;
 
-        playbackSource.disconnect();
+const fftSize = 4096;
+const hop = 1024;
 
-        playbackSource = null;
-    }
+// Sharp-Based Pitch Names
+const PITCH_NAMES_SHARPS = [
+	"c","c#","d","d#",
+	"e","f","f#","g",
+	"g#","a","a#","b"
+];
 
-    playbackRunning = false;
+// Flat-Based Pitch Names
+const PITCH_NAMES_FLATS = [
+	"c","d♭","d","e♭",
+	"e","f","g♭","g",
+	"a♭","a","b♭","b"
+];
 
-    document
-    .getElementById("playPauseBtn")
-    .textContent =
-        "▶ Play";
+// Common Useful Sharp/Flat Names
+// NOTE: These are only useful for my typical usages
+// NOTE: A-Flat / G-Sharp is the only ambiguous one...
+const PITCH_NAMES_COMMON = [
+	"c","c#","d","e♭",
+	"e","f","f#","g",
+	"g#","a","b♭","b"
+];
+
+const pitchNameModeOptions = {
+	"Sharps": PITCH_NAMES_SHARPS,
+	"Flats":  PITCH_NAMES_FLATS,
+	"Common": PITCH_NAMES_COMMON
+};
+let pitchNamesMode = "Common";
+
+
+// Minimum "magnitude" in the spectrogram needed for a pitch to be considered
+// for the "dominant pitch" detection
+let minimumPitchStrength = 30;
+
+// Audio Processing Logic =====================================
+
+// Convert a given frequency in Hz into a "midi" pitch value
+// < freq: (int :: Hz) Frequency from the spectrogram to try to quantize into
+//                     a midi pitch
+// > returns: A "MidiPitchInfo" object containing the following
+//   * midi: (int :: 0 <= i <= 127) The pitch identified
+//   * pitch: (int :: 0 <= i < 12) The semitone number within an octave (c == 0)
+//   * octave: (int: i >= 0) The c0 -> c10 octave
+function tunedMidi(freq)
+{
+	// Convert into a Midi note number
+	const midi = 
+		((semitonesPerOctave * Math.log2(freq / aTuningHz)) + 
+		  midiRefPitch + 
+		  tuningOffset);
+	
+	// Decompose into components
+	const octave = Math.floor(midi / semitonesPerOctave);
+	const pitch  = Math.round(midi) % semitonesPerOctave;
+	
+	// Assemble into an object
+	return { midi: midi, pitch: pitch, octave: octave };
 }
 
-function playAt(offset){
+// Given a MidiPitchInfo object, get a UI name for the pitch that represents
+// < m: (MidiPitchInfo) The midi pitch info object to decompose from
+function midiToLabel(m)
+{
+	let pitchName = pitchNameModeOptions[pitchNamesMode][m.pitch];
+	
+	// Convert to a pitch name label for the UI
+	// TODO: Allow converting between "scientific pitch notation" (i.e. "c4"),
+	//       and "Lilypond Pitch Notation" (i.e. "c'")
+	return `${pitchName}(${m.octave})`
+}
+
+// Get the color to render the given frequency as
+// < freq: (Num :: Hz) The frequency of the pitch in Hz
+function colorForFreq(freq)
+{
+	const midiPitchInfo = tunedMidi(freq);
+	
+	switch (midiPitchInfo.pitch) {
+		case 0:
+			return [255,210,160];
+		
+		case 2:
+			return [40,60,150];
+		
+		case 4:
+			return (
+				freq >= aTuningHz
+				? [220,180,255]
+				: [120,80,50]
+			);
+		
+		case 5:
+			return [245,217,84];
+		
+		case 7:
+			if (midiPitchInfo.octave < 4) {
+				return [0,80,30];
+			}
+			if (midiPitchInfo.octave === 4) {
+				return [70,190,50];
+			}
+			return [180,255,80];
+		
+		case 9:
+			return [255,70,70];
+		
+		case 11:
+			return [120,220,255];
+		
+		default:
+			return [180,180,180];
+	}
+}
+
+// Find which detected "midiEvent" note is active for the current time
+function dominantPitchAtTime(t)
+{
+	for (const e of midiEvents) {
+		if (t >= e.start &&
+			t <= e.end)
+		{
+			return e;
+		}
+	}
+	
+	return null;
+}
+
+// ---------------------------
+
+// Compute FFT  (naive implementation)
+function fft(sig)
+{
+	const N = sig.length;
+	const out = new Float32Array(N / 2);
+	
+	for (let k = 0; k < N/2; k++) {
+		let re = 0;
+		let im = 0;
+		
+		for (let n = 0; n < N; n++) {
+			const p = TWO_PI * k * n/N;
+			
+			re += sig[n] * Math.cos(p);
+			im -= sig[n] * Math.sin(p);
+		}
+		
+		out[k] = Math.sqrt(re*re + im*im);
+	}
+	
+	return out;
+}
+
+// Called from processAudio to identify the dominant pitch(s)
+// for the current spectrogram slice ("spec")
+//
+// < i: (int) The slice index being processed
+// < spec: ([Num]) Current vertical slice of the spectrogram for the sample / bin
+//                 being processed
+//
+// ! This method adds a new "midiEvent" to the "midiEvents" global list
+//   if it finds anything worth adding.
+function identifyMidiEventForSlice(i, spec)
+{
+	// Find the strongest frequency
+	let strongestMagnitude = 0;
+	let strongestBin = 0;
+	
+	for (let b = 1; b < spec.length; b++) {
+		if (spec[b] > strongestMagnitude) {
+			strongestMagnitude = spec[b];
+			strongestBin = b;
+		}
+	}
+	
+	// Only consider this entry if it exceeds the minimum threshold
+	// of significance  (see "reference_data" datafiles for examples
+	// of the range of values, and why this has been set like this)
+	if (strongestMagnitude > minimumPitchStrength) {
+		const freq = strongestBin * (audioCtx.sampleRate / fftSize);
+		const note = midiToLabel(tunedMidi(freq));
+		
+		const prev = midiEvents[midiEvents.length - 1];
+		const t = i * hop / audioCtx.sampleRate;
+		
+		// Sanity Check: Skip this note if it falls out of range we're interested in.
+		if (freq < MIN_FREQ || freq > MAX_FREQ) {
+			console.log(`Skipping strongest frequency ${freq} at ${i} (mag = ${strongestMagnitude}, as out of range`);
+			return;
+		}
+		
+		// TODO: The pitch-change-needed thing may be blocking repeated notes
+		//       showing up as new midi events...
+		if (!prev ||
+			(t - prev.start) > 1.1 ||
+			prev.label !== note) 
+		{
+			midiEvents.push({
+				start: t,
+				end: t + 0.8,
+				
+				freq,
+				
+				label: note,
+				intensity: strongestMagnitude
+			});
+		}
+	}
+}
+
+// ---------------------------
+
+// Entry-point to process the audio file
+async function processAudio(buffer)
+{
+	audioBuffer = buffer;
+	audioDuration = buffer.duration;
+	
+	midiEvents.length = 0;
+	
+	spectogramCanvasCtx.clearRect(
+		0,
+		0,
+		spectogramCanvas.width,
+		spectogramCanvas.height
+	);
+	
+	cachedSpectrogram = [];
+	
+	const data = buffer.getChannelData(0);
+	const total = Math.floor((data.length - fftSize) / hop);
+	
+	fixedColumnWidth = spectogramWidth / total;
+	
+	const processingStart = performance.now();
+	
+	for (let i = 0; i < total; i++) {
+		// Perform CQT transform
+		const seg =
+			data.slice(
+				i * hop,
+				i * hop + fftSize
+			);
+		
+		const segCountScaleFactor = TWO_PI / (seg.length - 1);
+		for (let j = 0; j < seg.length; j++) {
+			seg[j] *= 0.5 * ( 1 - Math.cos(j * segCountScaleFactor) );
+		}
+		
+		const spec = fft(seg);
+		cachedSpectrogram.push(spec);
+		
+		// Convert FFT results to the colourful plotted results
+		redrawSpectrogramColumn(i, spec);
+		
+		// Try to identify the likely "dominant pitch" at this point
+		identifyMidiEventForSlice(i, spec);
+		
+		// Update progress
+		const elapsed = elapsedTime(processingStart);
+		const progress = (i + 1) / total;
+		const estimate = elapsed / progress;
+		const remaining = estimate - elapsed;
+		
+		let statusText =
+				`Processing ${
+					i+1
+				}/${
+					total
+				} • elapsed ${
+					elapsed.toFixed(1)
+				}s • remaining ≈ ${
+					remaining.toFixed(1)
+				}s`;
+		updateStatusText(statusText);
+		
+		// FIXME: This breaks if the tab loses focus
+		await new Promise(
+			r => setTimeout(r, 0)
+		);
+	}
+	
+	const totalTimeElapsed = elapsedTime(processingStart);
+	updateStatusText(
+		`Ready.   Processing took ${totalTimeElapsed.toFixed(1)}s`);
+}
+
+// Rendering ========================================================
+
+function redrawSpectrogramColumn(i, spec)
+{
+	for (let b = 1; b < spec.length; b++) {
+		const freq = b * (audioCtx.sampleRate / fftSize);
+		
+		if (freq < MIN_FREQ || freq > MAX_FREQ) {
+			continue;
+		}
+		
+		const y = freqToY(freq);
+		const mag = spec[b];
+		
+		const intensity =
+			Math.min(
+				1,
+				(
+					Math.log10(1 + mag)
+					/ 2.2
+				) * brightnessBoost
+			);
+		
+		if (intensity < 0.02) {
+			continue;
+		}
+		
+		const c = colorForFreq(freq);
+		const glow = 1.5 + intensity * 4.5;
+		
+		const grad =
+			spectogramCanvasCtx.createLinearGradient(
+				0,
+				y - glow,
+				0,
+				y + glow
+			);
+		
+		grad.addColorStop(
+			0,
+			colorWithAlpha(c, 0)
+		);
+		
+		grad.addColorStop(
+			0.5,
+			colorWithAlpha(c, intensity)
+		);
+		
+		grad.addColorStop(
+			1,
+			colorWithAlpha(c, 0)
+		);
+		
+		spectogramCanvasCtx.fillStyle = grad;
+		
+		spectogramCanvasCtx.fillRect(
+			i * fixedColumnWidth,
+			y - glow,
+			fixedColumnWidth + 1,
+			glow * 2
+		);
+	}
+}
+
+function drawTimeline()
+{
+	if (!audioDuration) {
+		return;
+	}
+	
+	const y = canvas.height - TIMELINE_GUTTER;
+	const px = spectogramWidth / audioDuration;
+	
+	for (let s = 0; s <= audioDuration; s++) {
+		const x = LEFT_GUTTER + s * px;
+		const major = (s % 10 === 0);
+		
+		ctx.strokeStyle = "white";
+		
+		ctx.beginPath();
+		ctx.moveTo(x,y);
+		ctx.lineTo(
+			x,
+			y - (major ? 24 : 12)
+		);
+		ctx.stroke();
+		
+		if (major) {
+			ctx.fillStyle = "white";
+			
+			ctx.font = "11px monospace";
+			
+			ctx.fillText(
+				formatTime(s),
+				x + 3,
+				y - 30
+			);
+		}
+	}
+}
+
+function drawCMarkers()
+{
+	for (let octave = 0; octave < 9; octave++) {
+		const midi = (octave + 1) * semitonesPerOctave;
+		const freq =
+			aTuningHz *
+			Math.pow(
+				2,
+				(midi - midiRefPitch) / semitonesPerOctave
+			);
+		
+		if (freq < MIN_FREQ || freq > MAX_FREQ) {
+			continue;
+		}
+		
+		const MARKER_COLOR = [255, 255, 255];
+		const y = freqToY(freq);
+		
+		ctx.strokeStyle = colorWithAlpha(MARKER_COLOR, 0.25);
+		
+		ctx.beginPath();
+		ctx.moveTo(0, y);
+		ctx.lineTo(16, y);
+		ctx.stroke();
+		
+		if (octave === 4) {
+			// C4
+			ctx.font = "bold 12px monospace";
+			
+			const label = "c4";
+			const tw = ctx.measureText(label).width;
+			
+			ctx.fillStyle = colorWithAlpha(MARKER_COLOR, 0.10);
+			
+			ctx.beginPath();
+			ctx.roundRect(
+				18,
+				y - 8,
+				tw + 10,
+				14,
+				5
+			);
+			ctx.fill();
+			
+			ctx.strokeStyle = colorWithAlpha(MARKER_COLOR, 0.55);
+			ctx.stroke();
+			
+			ctx.fillStyle = "white";
+			ctx.fillText(label, 23, y+2)
+		}
+		else {
+			// All other C's
+			ctx.fillStyle = colorWithAlpha(MARKER_COLOR, 0.75);
+			ctx.font = "11px monospace";
+			ctx.fillText(`c${octave}`, 24, y+3)
+		}
+	}
+}
+
+function drawBubbles()
+{
+	let activeFound = false;
+	for (const e of midiEvents) {
+		const x = timeToX(e.start);
+		const dist = Math.abs(x - scrubberPosition);
+		
+		const active = (dist < 36) && !activeFound;
+		if (active) {
+			activeFound = true;
+		}
+		
+		const bubbleY = canvas.height * 0.89;
+		
+		if (active) {
+			// Orange / "Active" Bubble
+			const label = e.label;
+			
+			ctx.font = "bold 12px monospace";
+			const tw = ctx.measureText(label).width;
+			
+			const w =
+				Math.min(
+					120,
+					tw + 34
+				);
+			
+			let bx =
+				Math.max(
+					4,
+					Math.min(
+						spectogramWidth - w - 4,
+						x - w * 0.5
+					)
+				);
+			
+			// Orange Fill for label background
+			ctx.fillStyle = colorWithAlpha(SCRUBBER_COLOR, 0.92);
+			
+			ctx.beginPath();
+			ctx.roundRect(
+				bx,
+				bubbleY - 25, //bubbleY - 12,
+				w,
+				22,
+				10
+			);
+			ctx.fill();
+			
+			// Label Text
+			ctx.fillStyle = "white";
+			ctx.fillText(
+				label,
+				bx + 16,
+				bubbleY - 10 //bubbleY + 3
+			);
+		}
+		else {
+			// Blue bubble
+			ctx.fillStyle = colorWithAlpha(BUBBLE_COLOR, 0.58);
+			
+			ctx.beginPath();
+			ctx.roundRect(
+				x - 6,
+				bubbleY - 4,
+				12,
+				8,
+				4
+			);
+			ctx.fill();
+		}
+	}
+}
+
+function render()
+{
+	requestAnimationFrame(render);
+	
+	// Use fillRect so that the exported video will have the same background as the viewport one does.
+	ctx.fillStyle = '#454545';
+	ctx.fillRect(
+		0,
+		0,
+		canvas.width,
+		canvas.height
+	);
+	
+	// Draw the cached spectogram from the "spectogramCanvas"...
+	if (recording) {
+		// When recording, we want a "slow reveal" effect...
+		
+		// 1) Draw "darkened" backdrop of the complete  (i.e. by rendering it with less alpha + darkened)
+		if (showGhostBackdropWhenRendering) {
+			ctx.save();
+			
+			// Set drawing mode flags to be less visible
+			ctx.globalAlpha = 0.1;
+			
+			// Draw this now
+			ctx.drawImage(
+				spectogramCanvas,
+				LEFT_GUTTER,
+				0
+			);
+			
+			ctx.restore();
+		}
+		
+		// 2) Draw the region being revealed
+		ctx.save();
+		{
+			// 2.1) Define the visible region (i.e. between margin + scrubber)
+			ctx.beginPath();
+			ctx.rect(
+				LEFT_GUTTER,
+				0,
+				scrubberPosition - LEFT_GUTTER,
+				canvas.height
+			);
+			ctx.clip();
+			
+			// 2.2) Then doing this drawing will only show the clipped parts
+			ctx.drawImage(
+				spectogramCanvas,
+				LEFT_GUTTER,
+				0
+			);
+		}
+		ctx.restore();
+	}
+	else {
+		// Normal Interactive Drawing - Draw the whole thing
+		ctx.drawImage(
+			spectogramCanvas,
+			LEFT_GUTTER,
+			0
+		);
+	}
+	
+	drawTimeline();
+	drawCMarkers();
+	drawBubbles();
+	
+	if (playbackRunning) {
+		const current =
+			playbackOffset +
+			(audioCtx.currentTime - playbackStartTime);
+		
+		scrubberPosition = timeToX(current);
+	}
+	
+	if (scrubberPosition > 0) {
+		// Scrubber Line
+		ctx.save();
+		
+		ctx.strokeStyle = colorWithAlpha(SCRUBBER_COLOR, 0.85);
+		ctx.lineWidth = 2;
+		
+		if (recording) {
+			// Show glow if recording
+			ctx.shadowBlur = 15;
+			ctx.shadowColor = colorWithAlpha(SCRUBBER_COLOR, 0.95);
+		}
+		
+		ctx.beginPath();
+		ctx.moveTo(scrubberPosition, 0);
+		ctx.lineTo(scrubberPosition, canvas.height);
+		ctx.stroke();
+		
+		ctx.restore();
+		
+		// Top Tag/Bubble - Time + Pitch
+		const t = xToTime(scrubberPosition);
+		const pitch = dominantPitchAtTime(t);
+		
+		const bubbleY =
+			document.getElementById("topbar").offsetHeight + 8;
+		
+		const pitchNameForLabel = (pitch) ? pitch.label : "--";
+		const label =`${formatTime(t)} ${pitchNameForLabel}`;
+		
+		ctx.font = "12px monospace";
+		
+		const tw = ctx.measureText(label).width;
+		const bx =
+			Math.min(
+				spectogramWidth - tw - 58,
+				scrubberPosition + 10
+			);
+		
+		ctx.fillStyle = colorWithAlpha(SCRUBBER_COLOR, 0.95);
+		
+		ctx.beginPath();
+		ctx.roundRect(
+			bx,
+			bubbleY,
+			tw + 44,
+			24,
+			8
+		);
+		ctx.fill();
+		
+		if (pitch) {
+			const c = colorForFreq(pitch.freq);
+			ctx.fillStyle = colorFromTuple(c);
+			
+			ctx.beginPath();
+			ctx.roundRect(
+				bx+8,
+				bubbleY+5,
+				14,
+				14,
+				4
+			);
+			ctx.fill();
+		}
+		
+		ctx.fillStyle = "white";
+		ctx.fillText(
+			label,
+			bx+30,
+			bubbleY+16
+		);
+	}
+}
+
+// Audio Playback Functions =========================
+
+// Stop current audio playback
+function stopPlayback()
+{
+	if (playbackSource != null) {
+		// NOTE: Need to stop and disconnect any running audio-streams,
+		//       otherwise they can build up and keep overlapping.
+		try {
+			playbackSource.stop();
+		}
+		catch(e) {
+		}
+		
+		playbackSource.disconnect();
+		playbackSource = null;
+	}
+	
+	// Stop the animation loop when we aren't updating
+	//
+	// Do this to try stopping laptops chewing away 30% CPU
+	// constantly running this.
+	cancelAnimationFrame(render);
+	
+	// Reset UI state
+	playbackRunning = false;
+	setPlayButtonState();
+}
+
+// Playback
+function playAt(offset)
+{
+	// Need to stop anything already playing, otherwise we could have 
+	// overlapping audio (with the older one then unstoppable).
+	stopPlayback();
+	
+	// Resume the audioCtx if it has been stopped for some reason
+	if (audioCtx.state !== "running") {
+		audioCtx.resume();
+	}
+	
+	// Create a new playbackSource object, since the old one got destroyed
+	playbackSource = audioCtx.createBufferSource();
+	playbackSource.buffer = audioBuffer;
+	
+	playbackSource.connect(audioCtx.destination);
+	playbackSource.connect(recordDest);
+	
+	// Reset relative offsets, as audioCtx.currentTime is a readonly
+	// monotonically increasing internal timers, and we use the time
+	// offset from that to determine where we are in the audio.
+	playbackOffset = offset;
+	playbackStartTime = audioCtx.currentTime;
+	
+	// Start running playback
+	playbackSource.start(0, offset);
+	playbackRunning = true;
+	
+	// Trigger rendering again
+	render();
+	
+	// Update UI to indicate running state...
+	setPauseButtonState();
+	
+	playbackSource.onended = () => {
+		if (recording) {
+			// Don't terminate immediately, to try to ensure the
+			// stream end-length gets encoded properly
+			setTimeout(() => {
+				if (recorder && recording) {
+					recorder.stop();
+				}
+			}, 250);
+		}
+		else {
+			// Just stop
+			stopPlayback();
+		}
+		
+		// Hide the scrubber
+		scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
+	};
+}
+
+// Scrubbing - Play audio when timeline scrubbed to this timestamp (in secs)
+// < time: (float :: secs) Seconds since start of the clip to preview the sound at
+function previewAt(time)
+{
+	// XXX: Is this needed / valid?
+	if (!audioBuffer) {
+		return;
+	}
+	
+	if (Math.abs(time -lastScrubPreviewTime) < 0.03) {
+		return;
+	}
+	
+	lastScrubPreviewTime = time;
+	if (scrubPreviewSource) {
+		try {
+			scrubPreviewSource.stop();
+		}
+		catch(e) {
+		}
+	}
+	
+	scrubPreviewSource = audioCtx.createBufferSource();
+	scrubPreviewSource.buffer = audioBuffer;
+	
+	const gain = audioCtx.createGain();
+	gain.gain.value = 0.28;
+	
+	scrubPreviewSource.connect(gain);
+	gain.connect(audioCtx.destination);
+	
+	scrubPreviewSource.start(
+		0,
+		Math.max(0, time),
+		0.09
+	);
+}
+
+// Scrubbing - Interaction handler. Place scrubber + preview the sound
+// < x: (int) X-coordinate to move the scrubber to
+function scrubAt(x)
+{
+	// Set new position of the scrubber
+	// NOTE: Need to clamp to not go into the gutter
+	scrubberPosition = Math.max(LEFT_GUTTER, x);
+	
+	// Trigger preview of soundbyte under scrubber
+	const t = xToTime(scrubberPosition);
+	previewAt(t);
+	
+	// Resume playing from this point, if playback was engaged
+	if (playbackRunning) {
+		playAt(t);
+	}
+}
+
+// =========================
+
+// Entrypoint for starting the audio analysis process
+async function analyseAudio()
+{
+	const f = document.getElementById("file").files[0];
+	if (!f) {
+		return;
+	}
+	
+	// Save filename into variable used for making export file
+	inputFileName = f.name;
+	
+	// Read the audio-file buffer
+	const arr = await f.arrayBuffer();
+	const buf = await audioCtx.decodeAudioData(arr);
+	
+	// Trigger processing of it...
+	await processAudio(buf);
+}
+
+// Video Recording  (Screen Capture)
+async function startRecording()
+{
+	chunks = [];
+	
+	const canvasStream = canvas.captureStream(60);
+	
+	const combined = new MediaStream([
+		...canvasStream.getVideoTracks(),
+		...recordDest.stream.getAudioTracks()
+	]);
+	
+	const EXPORT_FORMAT_MP4  = {
+		mime: "video/mp4",
+		extn: "mp4"
+	};
+	const EXPORT_FORMAT_WEBM = {
+		mime: "video/webm",
+		extn: "webm"
+	};
+	
+	const exportFormat =
+		MediaRecorder.isTypeSupported(EXPORT_FORMAT_MP4.mime)
+		? EXPORT_FORMAT_MP4
+		: EXPORT_FORMAT_WEBM;
+	
+	recorder = new MediaRecorder(combined, { mimeType: exportFormat.mime });
+	recorder.ondataavailable = e => {
+		if (e.data.size > 0) {
+			chunks.push(e.data);
+		}
+	};
+	
+	recorder.onstop = () => {
+		// IMPORTANT: flush audio stream cleanly
+		recordDest.stream.getTracks().forEach(t => t.stop());
+		
+		const blob = new Blob(chunks, { type: exportFormat.mime });
+		const url = URL.createObjectURL(blob);
+		
+		const a = document.createElement("a");
+		a.href = url;
+		
+		const filename =
+			`${inputFileName}_spectrogram_v${recordVersion}.${exportFormat.extn}`;
+		
+		recordVersion++;
+		
+		a.download = filename;
+		a.click();
+		
+		URL.revokeObjectURL(url);
+		
+		recording = false;
+		setStartRecordingButtonState();
+	};
+	
+	recorder.start();
+	recording = true;
+	
+	setStopRecordingButtonState();
+	
+	// always start from beginning
+	playAt(0);
+}
+
+// Export detected note timing info
+function exportDetectedNotes()
+{
+	if (!midiEvents.length) {
+		return;
+	}
+	
+	let txt = "time_seconds,note,freq_hz,intensity\n";
+	for (const e of midiEvents) {
+		// TODO: Include other notes considered by not included
+		let lineValues = [
+			e.start.toFixed(3),
+			e.label,
+			e.freq.toFixed(2),
+			e.intensity
+		]
+		
+		txt += lineValues.join(",\t") + "\n"
+	}
+	
+	const blob =
+		new Blob(
+			[txt],
+			{
+				type: "text/csv"
+			}
+		);
+	
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	
+	const filename = `${inputFileName}_detected_notes_v${recordVersion}.csv`;
+	a.download = filename;
+	a.click();
+	
+	URL.revokeObjectURL(url);
+}
+
+// =========== Window Resize Handling ==============
+
+// Handle window resizing
+// TODO: Canvas gets blanked for the portions not using this scale. 
+//       Need to trigger recalculation
+function resize()
+{
+	// Update the canvas bounds
+	canvas.width = innerWidth;
+	canvas.height = innerHeight;
+	
+	// Update viewable area
+	spectogramWidth = canvas.width - LEFT_GUTTER;
+	
+	// Compute the cached spectrogram canvas size
+	spectogramCanvas.width = spectogramWidth;
+	spectogramCanvas.height = innerHeight;
+	
+	// TODO: Trigger repaint / recalcs?
+}
+
+addEventListener("resize", resize);
+resize();
+
+// ============ Button Event Handlers ==============
+
+document.getElementById("brightnessSlider").addEventListener(
+	"input",
+	e => {
+		brightnessBoost = parseFloat(e.target.value);
+		spectogramCanvasCtx.clearRect(
+			0,
+			0,
+			spectogramCanvas.width,
+			spectogramCanvas.height
+		);
+		
+		for (let i = 0; i < cachedSpectrogram.length; i++) {
+			redrawSpectrogramColumn(
+				i,
+				cachedSpectrogram[i]
+			);
+		}
+	}
+);
+
+document.getElementById("tuningSlider").addEventListener(
+	"input",
+	e => {
+		tuningOffset = parseFloat(e.target.value);
+		
+		document.getElementById("tuningLabel").textContent =
+			tuningOffset.toFixed(2)
+			+ " st";
+	}
+);
+
+document.getElementById("legendBtn").onclick = () => {
+    // Toggle Legend Panel visiblity status
+	legendVisible ^= true;
+	
+    // TODO: Don't allow tweaks to stay visible when this is opened
+	
+	const p = document.getElementById("legendPanel");
+	p.style.display = (legendVisible) ? "block" : "none";
+};
+
+document.getElementById("tweaksBtn").onclick = () => {
+    // Toggle Tweak Panel visibility status
+    tweaksVisible ^= true;
     
-    stopPlayback();
-
-    playbackSource = audioCtx.createBufferSource();
-    playbackSource.buffer = audioBuffer;
-
-    playbackSource.connect(audioCtx.destination);
-    playbackSource.connect(recordDest);
-
-    playbackOffset = offset;
-    playbackStartTime = audioCtx.currentTime;
-
-    playbackSource.start(0, offset);
-
-    playbackRunning = true;
-
-    document.getElementById("playPauseBtn").textContent = "⏸ Pause";
-
-    playbackSource.onended = () => {
-
-        if(recording){
-            setTimeout(()=>{
-                if(recorder && recording){
-                    recorder.stop();
-                }
-            }, 250);
-        } else {
-            stopPlayback();
-        }
-    };
+    // TODO: Don't allow legend to stay visible when this is opened
+    
+    const p = document.getElementById("tweaksPanel");
+	p.style.display = (tweaksVisible) ? "block" : "none";
 }
 
-function previewAt(time){
 
-    if(!audioBuffer)
-        return;
-
-    if(
-        Math.abs(
-            time -
-            lastScrubPreviewTime
-        ) < 0.03
-    ){
-        return;
-    }
-
-    lastScrubPreviewTime = time;
-
-    if(scrubPreviewSource){
-
-        try{
-            scrubPreviewSource.stop();
-        }catch(e){}
-    }
-
-    scrubPreviewSource =
-        audioCtx.createBufferSource();
-
-    scrubPreviewSource.buffer =
-        audioBuffer;
-
-    const gain =
-        audioCtx.createGain();
-
-    gain.gain.value = 0.28;
-
-    scrubPreviewSource.connect(gain);
-
-    gain.connect(
-        audioCtx.destination
-    );
-
-    scrubPreviewSource.start(
-        0,
-        Math.max(0,time),
-        0.09
-    );
-}
-
-// Recording...
-async function startRecording(){
-
-    chunks = [];
-
-    const canvasStream = canvas.captureStream(60);
-
-    const combined = new MediaStream([
-        ...canvasStream.getVideoTracks(),
-        ...recordDest.stream.getAudioTracks()
-    ]);
-
-    const mime =
-        MediaRecorder.isTypeSupported("video/mp4")
-        ? "video/mp4"
-        : "video/webm";
-
-    recorder = new MediaRecorder(combined, { mimeType: mime });
-
-    recorder.ondataavailable = e => {
-        if(e.data.size > 0) chunks.push(e.data);
-    };
-
-    recorder.onstop = () => {
-
-        // IMPORTANT: flush audio stream cleanly
-        recordDest.stream.getTracks().forEach(t => t.stop());
-
-        const blob = new Blob(chunks, { type: mime });
-        const url = URL.createObjectURL(blob);
-
-        const a = document.createElement("a");
-        a.href = url;
-
-        const ext = mime.includes("mp4") ? "mp4" : "webm";
-
-        const filename =
-            `${inputFileName}_spectrogram_v${recordVersion}.${ext}`;
-
-        recordVersion++;
-
-        a.download = filename;
-        a.click();
-
-        URL.revokeObjectURL(url);
-
-        recording = false;
-        document.getElementById("recordBtn").textContent = "⬤ Record";
-    };
-
-    recorder.start();
-    recording = true;
-
-    document.getElementById("recordBtn").textContent = "■ Recording";
-
-    // always start from beginning
-    playAt(0);
-}
-
-function exportDetectedNotes(){
-
-    if(!midiEvents.length)
-        return;
-
-    let txt =
-        "time_seconds,note,freq_hz\n";
-
-    for(const e of midiEvents){
-
-        txt +=
-            `${e.start.toFixed(3)},${e.label},${e.freq.toFixed(2)}\n`;
-    }
-
-    const blob =
-        new Blob(
-            [txt],
-            {
-                type:"text/csv"
-            }
-        );
-
-    const url =
-        URL.createObjectURL(blob);
-
-    const a =
-        document.createElement("a");
-
-    a.href = url;
-
-    // JSL: Use inputFileName to make a more useful filename
-    const filename = `${inputFileName}_detected_notes_v${recordVersion}.csv`;
-    a.download = filename;
-
-    a.click();
-
-    URL.revokeObjectURL(url);
-}
-
-function render(){
-
-    requestAnimationFrame(render);
-
-    // JSL: Was just "clearRect", but using fillRect works better for recording
-    ctx.fillStyle = '#454545';
-    ctx.fillRect(
-        0,
-        0,
-        canvas.width,
-        canvas.height
-    );
-
-    ctx.drawImage(
-        specCanvas,
-        0,
-        0
-    );
-
-    drawTimeline();
-
-    drawCMarkers();
-
-    drawBubbles();
-
-    if(playbackRunning){
-
-        const current =
-            playbackOffset +
-            (
-                audioCtx.currentTime -
-                playbackStartTime
-            );
-
-        mouseX =
-            (
-                current /
-                audioDuration
-            ) *
-            canvas.width;
-
-        // if(current >= audioDuration){
-
-        //     stopPlayback();
-        // }
-    }
-
-    if(mouseX > 0){
-
-        ctx.strokeStyle =
-            "rgba(255,140,40,0.85)";
-
-        ctx.lineWidth = 2;
-
-        ctx.beginPath();
-
-        ctx.moveTo(mouseX,0);
-        ctx.lineTo(mouseX,canvas.height);
-
-        ctx.stroke();
-
-        const t =
-            (
-                mouseX /
-                canvas.width
-            ) *
-            audioDuration;
-
-        const pitch =
-            dominantPitchAtTime(t);
-
-        const bubbleY =
-            document
-            .getElementById("topbar")
-            .offsetHeight + 8;
-
-        const label =
-            `${formatTime(t)} ${
-                pitch
-                ? pitch.label
-                : "--"
-            }`;
-
-        ctx.font =
-            "12px monospace";
-
-        const tw =
-            ctx.measureText(label)
-            .width;
-
-        const bx =
-            Math.min(
-                canvas.width - tw - 58,
-                mouseX + 10
-            );
-
-        ctx.fillStyle =
-            "rgba(255,140,40,0.95)";
-
-        ctx.beginPath();
-
-        ctx.roundRect(
-            bx,
-            bubbleY,
-            tw + 44,
-            24,
-            8
-        );
-
-        ctx.fill();
-
-        if(pitch){
-
-            const c =
-                colorForFreq(
-                    pitch.freq
-                );
-
-            ctx.fillStyle =
-                `rgb(${c[0]},${c[1]},${c[2]})`;
-
-            ctx.beginPath();
-
-            ctx.roundRect(
-                bx+8,
-                bubbleY+5,
-                14,
-                14,
-                4
-            );
-
-            ctx.fill();
-        }
-
-        ctx.fillStyle =
-            "white";
-
-        ctx.fillText(
-            label,
-            bx+30,
-            bubbleY+16
-        );
-    }
-}
+// Mouse Event Handlers =====================================
 
 canvas.addEventListener(
-    "mousedown",
-    e=>{
-
-        scrubbing = true;
-
-        mouseX = e.clientX;
-
-        const t =
-            (
-                mouseX /
-                canvas.width
-            ) *
-            audioDuration;
-
-        previewAt(t);
-
-        if(playbackRunning){
-
-            playAt(t);
-        }
-    }
+	"mousedown",
+	e => {
+		scrubbing = true;
+		scrubAt(e.clientX);
+	}
 );
 
 canvas.addEventListener(
-    "mousemove",
-    e=>{
-        // JSL: Only handle when not recording
-        if (recording)
-            return;
-        
-        if(scrubbing){
-            // JSL: Don't update mouseX if not already scrubbing
-            mouseX = e.clientX;
-
-            const t =
-                (
-                    mouseX /
-                    canvas.width
-                ) *
-                audioDuration;
-
-            previewAt(t);
-
-            if(playbackRunning){
-
-                playAt(t);
-            }
-        }
-    }
+	"mousemove",
+	e => {
+		// Only handle when not recording
+		if (recording) {
+			return;
+		}
+		
+		// Don't update scrubber position if not already scrubbing
+		// (i.e. don't do anything unless mouse-button is held down)
+		if (scrubbing) {
+			scrubAt(e.clientX);
+		}
+	}
 );
 
 addEventListener(
-    "mouseup",
-    ()=>{
-
-        scrubbing = false;
-    }
+	"mouseup",
+	() => {
+		scrubbing = false;
+	}
 );
 
-document
-.getElementById("analyzeBtn")
-.onclick = async ()=>{
 
-    const f =
-        document
-        .getElementById("file")
-        .files[0];
+// Playback Button Event Handlers ===========================
 
-    if(!f) return;
-    
-    // JSL: Save filename into variable used for making export file
-    inputFileName = f.name;
-
-    const arr =
-        await f.arrayBuffer();
-
-    const buf =
-        await audioCtx.decodeAudioData(arr);
-
-    await processAudio(buf);
+document.getElementById("playPauseBtn").onclick = () => {
+	if (playbackRunning) {
+		stopPlayback();
+	}
+	else {
+		playAt(xToTime(Math.max(LEFT_GUTTER, scrubberPosition)));
+	}
 };
 
-document
-.getElementById("brightnessSlider")
-.addEventListener(
-    "input",
-    e=>{
-
-        brightnessBoost =
-            parseFloat(
-                e.target.value
-            );
-
-        specCtx.clearRect(
-            0,
-            0,
-            specCanvas.width,
-            specCanvas.height
-        );
-
-        for(
-            let i=0;
-            i<cachedSpectrogram.length;
-            i++
-        ){
-
-            redrawSpectrogramColumn(
-                i,
-                cachedSpectrogram[i]
-            );
-        }
-    }
-);
-
-document
-.getElementById("tuningSlider")
-.addEventListener(
-    "input",
-    e=>{
-
-        tuningOffset =
-            parseFloat(
-                e.target.value
-            );
-
-        document
-        .getElementById("tuningLabel")
-        .textContent =
-            tuningOffset.toFixed(2)
-            + " st";
-    }
-);
-
-document
-.getElementById("legendBtn")
-.onclick = ()=>{
-
-    const p =
-        document
-        .getElementById("legendPanel");
-
-    p.style.display =
-        p.style.display === "block"
-        ? "none"
-        : "block";
+document.getElementById("stopBtn").onclick = () => {
+	stopPlayback();
+	
+	// Send the "suspend" signal, so that Firefox on Linux will
+	// stop showing the "playing audio" symbol + consuming CPU
+	// and battery life like crazy
+	audioCtx.suspend();
+	
+	// Hide the scrubber
+	scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
 };
 
-document
-.getElementById("playPauseBtn")
-.onclick = ()=>{
-
-    if(playbackRunning){
-
-        stopPlayback();
-
-    }else{
-
-        playAt(
-            (
-                mouseX > 0
-                ? mouseX /
-                  canvas.width
-                : 0
-            ) * audioDuration
-        );
-    }
-};
-
-document
-.getElementById("stopBtn")
-.onclick = ()=>{
-
-    stopPlayback();
-
-    mouseX = -9999;
-};
-
-document
-.getElementById("restartBtn")
-.onclick = ()=>{
-
-    playAt(0);
+document.getElementById("restartBtn").onclick = () => {
+	// Reset scrubber to the start of the timeline
+	scrubberPosition = LEFT_GUTTER;
+	
+	// Restart playback from the beginning too
+	playAt(0);
 };
 
 document.getElementById("recordBtn").onclick = () => {
-    if(recording){
-        recorder.stop();
-    } else {
-        startRecording();
-    }
+	if (recording) {
+		recorder.stop();
+	}
+	else {
+		startRecording();
+	}
 };
 
-document
-.getElementById("exportBtn")
-.onclick =
-    exportDetectedNotes;
+// Main Project-Level Buttons ==============================
 
+document.getElementById("analyzeBtn").onclick = analyseAudio;
+
+document.getElementById("exportBtn").onclick = exportDetectedNotes;
+
+
+// ============== Main Entrypoint ======================
+
+// Start rendering loop
 render();
 
 </script>

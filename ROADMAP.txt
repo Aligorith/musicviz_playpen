@@ -7,4 +7,12 @@ Overall Roadmap
 
 * 3) More testing with Spectrochrome to figure out how far we can push that approach
 
-* 4) Figure out next steps to better capture the "background soundscape" painting method, vs extracting polyphonic melodies
+* 4) Tool for recording short multi-bar audio snippet of clapping / thumping, and use this to get timing + stress patterns.  (This is a dev prototype for the "MusicSketchpad") - Allow marking up the audio to define bar divisions (approximately), which allows the user to provide some guidance.
+
+* 5) Primitive Audacity-like multi-track recording tool, using the Spectrochrome viz in realtime?
+
+* 6) Start developing the "MusicSketchpad" tool as part of this repo (?) - Even though it's not strictly a visualisation tool, it ties into many of the same techniques being developed here.
+
+
+* ???) Figure out next steps to better capture the "background soundscape" painting method, vs extracting polyphonic melodies
+

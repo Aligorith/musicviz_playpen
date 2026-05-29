@@ -2,6 +2,7 @@
 *.tmp
 *.lock
 
+*.lnk
 Thumbs.db
 
 .mscbackup/
