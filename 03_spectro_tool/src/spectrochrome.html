@@ -645,6 +645,14 @@ function identifyMidiEventForSlice(i, spec)
 		const prev = midiEvents[midiEvents.length - 1];
 		const t = i * hop / audioCtx.sampleRate;
 		
+		// Sanity Check: Skip this note if it falls out of range we're interested in.
+		if (freq < MIN_FREQ || freq > MAX_FREQ) {
+			console.log(`Skipping strongest frequency ${freq} at ${i} (mag = ${strongestMagnitude}, as out of range`);
+			return;
+		}
+		
+		// TODO: The pitch-change-needed thing may be blocking repeated notes
+		//       showing up as new midi events...
 		if (!prev ||
 			(t - prev.start) > 1.1 ||
 			prev.label !== note) 
@@ -851,7 +859,7 @@ function drawCMarkers()
 				(midi - midiRefPitch) / semitonesPerOctave
 			);
 		
-		if (freq < MIN_FREQ || freq > MAX_FREQ)  {
+		if (freq < MIN_FREQ || freq > MAX_FREQ) {
 			continue;
 		}
 		
