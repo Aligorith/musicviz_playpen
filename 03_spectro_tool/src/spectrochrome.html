@@ -489,6 +489,11 @@ const pitchNameModeOptions = {
 };
 let pitchNamesMode = "Common";
 
+
+// Minimum "magnitude" in the spectrogram needed for a pitch to be considered
+// for the "dominant pitch" detection
+let minimumPitchStrength = 30;
+
 // Audio Processing Logic =====================================
 
 // Convert a given frequency in Hz into a "midi" pitch value
@@ -619,37 +624,45 @@ function fft(sig)
 //   if it finds anything worth adding.
 function identifyMidiEventForSlice(i, spec)
 {
-	let best = 0;
-	let bestBin = 0;
+	// Find the strongest frequency
+	let strongestMagnitude = 0;
+	let strongestBin = 0;
 	
 	for (let b = 1; b < spec.length; b++) {
-		if (spec[b] > best) {
-			best = spec[b];
-			bestBin = b;
+		if (spec[b] > strongestMagnitude) {
+			strongestMagnitude = spec[b];
+			strongestBin = b;
 		}
 	}
 	
-	const freq = bestBin * (audioCtx.sampleRate / fftSize);
-	const note = midiToLabel(tunedMidi(freq));
-	
-	const prev = midiEvents[midiEvents.length - 1];
-	const t = i * hop / audioCtx.sampleRate;
-	
-	if (!prev ||
-		(t - prev.start) > 1.1 ||
-		prev.label !== note) 
-	{
-		midiEvents.push({
-			start: t,
-			end: t + 0.8,
-			
-			freq,
-			
-			label: note,
-			intensity: best
-		});
+	// Only consider this entry if it exceeds the minimum threshold
+	// of significance  (see "reference_data" datafiles for examples
+	// of the range of values, and why this has been set like this)
+	if (strongestMagnitude > minimumPitchStrength) {
+		const freq = strongestBin * (audioCtx.sampleRate / fftSize);
+		const note = midiToLabel(tunedMidi(freq));
+		
+		const prev = midiEvents[midiEvents.length - 1];
+		const t = i * hop / audioCtx.sampleRate;
+		
+		if (!prev ||
+			(t - prev.start) > 1.1 ||
+			prev.label !== note) 
+		{
+			midiEvents.push({
+				start: t,
+				end: t + 0.8,
+				
+				freq,
+				
+				label: note,
+				intensity: strongestMagnitude
+			});
+		}
 	}
 }
+
+// ---------------------------
 
 // Entry-point to process the audio file
 async function processAudio(buffer)
@@ -726,7 +739,7 @@ async function processAudio(buffer)
 		`Ready.   Processing took ${totalTimeElapsed.toFixed(1)}s`);
 }
 
-// =========================== Rendering ============================
+// Rendering ========================================================
 
 function redrawSpectrogramColumn(i, spec)
 {
