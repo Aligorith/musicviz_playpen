@@ -491,29 +491,48 @@ let pitchNamesMode = "Common";
 
 // Audio Processing Logic =====================================
 
+// Convert a given frequency in Hz into a "midi" pitch value
+// < freq: (int :: Hz) Frequency from the spectrogram to try to quantize into
+//                     a midi pitch
+// > returns: A "MidiPitchInfo" object containing the following
+//   * midi: (int :: 0 <= i <= 127) The pitch identified
+//   * pitch: (int :: 0 <= i < 12) The semitone number within an octave (c == 0)
+//   * octave: (int: i >= 0) The c0 -> c10 octave
 function tunedMidi(freq)
 {
-	return ((semitonesPerOctave * Math.log2(freq / aTuningHz)) + 
-	        midiRefPitch + 
-	        tuningOffset);
-}
-
-function midiToLabel(m)
-{
-	const n = 
-		(Math.round(m) % semitonesPerOctave  +  semitonesPerOctave) % semitonesPerOctave;
+	// Convert into a Midi note number
+	const midi = 
+		((semitonesPerOctave * Math.log2(freq / aTuningHz)) + 
+		  midiRefPitch + 
+		  tuningOffset);
 	
-	return pitchNameModeOptions[pitchNamesMode][n];
-}
-
-function colorForFreq(freq)
-{
-	const midi = tunedMidi(freq);
-	
+	// Decompose into components
 	const octave = Math.floor(midi / semitonesPerOctave);
 	const pitch  = Math.round(midi) % semitonesPerOctave;
 	
-	switch (pitch) {
+	// Assemble into an object
+	return { midi: midi, pitch: pitch, octave: octave };
+}
+
+// Given a MidiPitchInfo object, get a UI name for the pitch that represents
+// < m: (MidiPitchInfo) The midi pitch info object to decompose from
+function midiToLabel(m)
+{
+	let pitchName = pitchNameModeOptions[pitchNamesMode][m.pitch];
+	
+	// Convert to a pitch name label for the UI
+	// TODO: Allow converting between "scientific pitch notation" (i.e. "c4"),
+	//       and "Lilypond Pitch Notation" (i.e. "c'")
+	return `${pitchName}(${m.octave})`
+}
+
+// Get the color to render the given frequency as
+// < freq: (Num :: Hz) The frequency of the pitch in Hz
+function colorForFreq(freq)
+{
+	const midiPitchInfo = tunedMidi(freq);
+	
+	switch (midiPitchInfo.pitch) {
 		case 0:
 			return [255,210,160];
 		
@@ -531,11 +550,12 @@ function colorForFreq(freq)
 			return [245,217,84];
 		
 		case 7:
-			if (octave < 4)
+			if (midiPitchInfo.octave < 4) {
 				return [0,80,30];
-			if (octave === 4)
+			}
+			if (midiPitchInfo.octave === 4) {
 				return [70,190,50];
-				
+			}
 			return [180,255,80];
 		
 		case 9:

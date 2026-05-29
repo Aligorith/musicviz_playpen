@@ -13,6 +13,9 @@ Spectrochrome Roadmap
 
 * Introduce docstrings for each of the methods
 
+* Make "MidiPitchInfo" a proper type
+  * Implement also support for Scientific Notation (c4) to Lilypond Notation (c')
+
 
 == High Priority Defect Fixes ==
 * Resuming playback following clicking "stop" doesn't work?
