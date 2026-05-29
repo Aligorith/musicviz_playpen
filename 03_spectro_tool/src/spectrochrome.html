@@ -650,7 +650,8 @@ async function processAudio(buffer)
 				
 				freq,
 				
-				label: note
+				label: note,
+				intensity: best
 			});
 		}
 		
@@ -1302,10 +1303,17 @@ function exportDetectedNotes()
 		return;
 	}
 	
-	let txt = "time_seconds,note,freq_hz\n";
+	let txt = "time_seconds,note,freq_hz,intensity\n";
 	for (const e of midiEvents) {
-		txt +=
-			`${e.start.toFixed(3)},${e.label},${e.freq.toFixed(2)}\n`;
+		// TODO: Include other notes considered by not included
+		let lineValues = [
+			e.start.toFixed(3),
+			e.label,
+			e.freq.toFixed(2),
+			e.intensity
+		]
+		
+		txt += lineValues.join(",\t") + "\n"
 	}
 	
 	const blob =
