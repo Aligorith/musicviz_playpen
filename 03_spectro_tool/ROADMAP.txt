@@ -18,8 +18,6 @@ Spectrochrome Roadmap
 
 * Fix bad resizing behaviour (i.e. requires refactoring the drawing to draw to a cache buffer, instead of directly to a frame buffer that can get corrupted) - see "v51_prompt"
 
-* Make the recording "progressively reveal" the full display (requiring / depending on 51 refactor) - see "v52_prompt"
-
 * Fix scrubbing crackling issues (i.e. need gain-fading on the pipeline) - see "v53_prompt"
 
 * Fix bug where processing pauses if/when the tab loses focus, and then completely dies when we come back and look at it (or start interacting with it)

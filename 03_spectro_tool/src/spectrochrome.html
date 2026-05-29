@@ -241,11 +241,11 @@ input[type="range"] {
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
-// NOTE: "specCanvas" is the spectrogram cache canvas that gets drawn to
+// NOTE: "spectogramCanvas" is the spectrogram cache canvas that gets drawn to
 // while we are processing the audio. Without having this, nothing gets
 // shown until the whole lot is done.
-const specCanvas = document.createElement("canvas");
-const specCtx = specCanvas.getContext("2d");
+const spectogramCanvas = document.createElement("canvas");
+const spectogramCanvasCtx = spectogramCanvas.getContext("2d");
 
 // ================ Audio ==========================
 
@@ -325,7 +325,7 @@ const LEFT_GUTTER = 72;
 const TIMELINE_GUTTER = 28;
 
 // Current maximum width of the spectrogram viewing area
-let canvasWidth = canvas.width - LEFT_GUTTER;
+let spectogramWidth = canvas.width - LEFT_GUTTER;
 
 // ---------------
 
@@ -371,12 +371,12 @@ function updateStatusText(text)
 
 function xToTime(x)
 {
-	return ((x - LEFT_GUTTER) / canvasWidth) * audioDuration;
+	return ((x - LEFT_GUTTER) / spectogramWidth) * audioDuration;
 }
 
 function timeToX(t)
 {
-	return ((t / audioDuration) * canvasWidth) + LEFT_GUTTER;
+	return ((t / audioDuration) * spectogramWidth) + LEFT_GUTTER;
 }
 
 function freqToY(freq)
@@ -555,11 +555,11 @@ async function processAudio(buffer)
 	
 	midiEvents.length = 0;
 	
-	specCtx.clearRect(
+	spectogramCanvasCtx.clearRect(
 		0,
 		0,
-		specCanvas.width,
-		specCanvas.height
+		spectogramCanvas.width,
+		spectogramCanvas.height
 	);
 	
 	cachedSpectrogram = [];
@@ -567,7 +567,7 @@ async function processAudio(buffer)
 	const data = buffer.getChannelData(0);
 	const total = Math.floor((data.length - fftSize) / hop);
 	
-	fixedColumnWidth = canvasWidth / total;
+	fixedColumnWidth = spectogramWidth / total;
 	
 	const processingStart = performance.now();
 	
@@ -677,7 +677,7 @@ function redrawSpectrogramColumn(i, spec)
 		const glow = 1.5 + intensity * 4.5;
 		
 		const grad =
-			specCtx.createLinearGradient(
+			spectogramCanvasCtx.createLinearGradient(
 				0,
 				y - glow,
 				0,
@@ -699,9 +699,9 @@ function redrawSpectrogramColumn(i, spec)
 			`rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`
 		);
 		
-		specCtx.fillStyle = grad;
+		spectogramCanvasCtx.fillStyle = grad;
 		
-		specCtx.fillRect(
+		spectogramCanvasCtx.fillRect(
 			i * fixedColumnWidth,
 			y - glow,
 			fixedColumnWidth + 1,
@@ -717,7 +717,7 @@ function drawTimeline()
 	}
 	
 	const y = canvas.height - TIMELINE_GUTTER;
-	const px = canvasWidth / audioDuration;
+	const px = spectogramWidth / audioDuration;
 	
 	for (let s = 0; s <= audioDuration; s++) {
 		const x = LEFT_GUTTER + s * px;
@@ -838,7 +838,7 @@ function drawBubbles()
 				Math.max(
 					4,
 					Math.min(
-						canvasWidth - w - 4,
+						spectogramWidth - w - 4,
 						x - w * 0.5
 					)
 				);
@@ -894,11 +894,39 @@ function render()
 		canvas.height
 	);
 	
-	ctx.drawImage(
-		specCanvas,
-		LEFT_GUTTER,
-		0
-	);
+	// Draw the cached spectogram from the "spectogramCanvas"...
+	if (recording) {
+		// When recording, only show the portion that has been revealed by the
+		// scrubber so far...
+		ctx.save();
+		
+		// 1) Define the visible region (i.e. between margin + scrubber)
+		ctx.beginPath();
+		ctx.rect(
+			LEFT_GUTTER,
+			0,
+			scrubberPosition - LEFT_GUTTER,
+			canvas.height
+		);
+		ctx.clip();
+		
+		// 2) Then doing this drawing will only show the clipped parts
+		ctx.drawImage(
+			spectogramCanvas,
+			LEFT_GUTTER,
+			0
+		);
+		
+		ctx.restore();
+	}
+	else {
+		// Normal Interactive Drawing - Draw the whole thing
+		ctx.drawImage(
+			spectogramCanvas,
+			LEFT_GUTTER,
+			0
+		);
+	}
 	
 	drawTimeline();
 	drawCMarkers();
@@ -935,7 +963,7 @@ function render()
 		const tw = ctx.measureText(label).width;
 		const bx =
 			Math.min(
-				canvasWidth - tw - 58,
+				spectogramWidth - tw - 58,
 				scrubberPosition + 10
 			);
 		
@@ -1246,12 +1274,11 @@ function resize()
 	canvas.height = innerHeight;
 	
 	// Update viewable area
-	canvasWidth = canvas.width - LEFT_GUTTER;
+	spectogramWidth = canvas.width - LEFT_GUTTER;
 	
 	// Compute the cached spectrogram canvas size
-	// XXX: These actually point to the exact same underlying objects?
-	specCanvas.width = canvasWidth;
-	specCanvas.height = innerHeight;
+	spectogramCanvas.width = spectogramWidth;
+	spectogramCanvas.height = innerHeight;
 	
 	// TODO: Trigger repaint / recalcs?
 }
@@ -1265,11 +1292,11 @@ document.getElementById("brightnessSlider").addEventListener(
 	"input",
 	e => {
 		brightnessBoost = parseFloat(e.target.value);
-		specCtx.clearRect(
+		spectogramCanvasCtx.clearRect(
 			0,
 			0,
-			specCanvas.width,
-			specCanvas.height
+			spectogramCanvas.width,
+			spectogramCanvas.height
 		);
 		
 		for (let i = 0; i < cachedSpectrogram.length; i++) {
