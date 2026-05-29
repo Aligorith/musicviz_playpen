@@ -286,6 +286,9 @@ let recordVersion = 1;
 
 const recordDest = audioCtx.createMediaStreamDestination();
 
+// (bool) Show faint "ghosted" copy of the whole spectrogram in the background when recording
+let showGhostBackdropWhenRendering = true;
+
 // Tweaks =======================================
 
 // Processing Settings ----------
@@ -896,12 +899,12 @@ function render()
 	
 	// Draw the cached spectogram from the "spectogramCanvas"...
 	if (recording) {
-		// When recording, only show the portion that has been revealed by the
-		// scrubber so far...
+		// When recording, we want a "slow reveal" effect...
 		
-		// 1) Draw "darkened" region (i.e. by rendering it with less alpha + darkened)
-		ctx.save();
-		{
+		// 1) Draw "darkened" backdrop of the complete  (i.e. by rendering it with less alpha + darkened)
+		if (showGhostBackdropWhenRendering) {
+			ctx.save();
+			
 			// Set drawing mode flags to be less visible
 			ctx.globalAlpha = 0.1;
 			
@@ -911,8 +914,9 @@ function render()
 				LEFT_GUTTER,
 				0
 			);
+			
+			ctx.restore();
 		}
-		ctx.restore();
 		
 		// 2) Draw the region being revealed
 		ctx.save();
