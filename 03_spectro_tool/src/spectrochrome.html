@@ -296,7 +296,7 @@ let showGhostBackdropWhenRendering = true;
 let aTuningHz = 440;
 
 
-// Popup Panel Visiblity --------
+// Popup Panel Visibility --------
 
 // "Legend" Panel Visible
 let legendVisible = false;
@@ -338,36 +338,69 @@ const midiEvents = [];
 // Cache of the spectrogram data
 let cachedSpectrogram = [];
 
+// Width of each vertical sliver of the spectogram.
+// "cachedSpectogram" contains a list of these slivers, one per 
 let fixedColumnWidth = 1;
 
 // =============== UI Defines / Utils ====================
 
-const playStateTxt = "▶ Play";
-const pauseStateTxt = "⏸ Pause";
+// UI Labels for toggle buttons ...............
+const playStateActionTxt          = "▶ Play";
+const pauseStateActionTxt         = "⏸ Pause";
+const recordStateActionTxt        = "⬤ Record";
+const stopRecordingStateActionTxt = "■ Recording";
+
+// Color Defines ..............................
+const SCRUBBER_COLOR = [255, 140, 40];
+const BUBBLE_COLOR = [80, 120, 255];
+
+// -----------------------
 
 function setPlayButtonState()
 {
-	document.getElementById("playPauseBtn").textContent = playStateTxt;
+	document.getElementById("playPauseBtn").textContent = playStateActionTxt;
 }
 
 function setPauseButtonState()
 {
-	document.getElementById("playPauseBtn").textContent = pauseStateTxt;
+	document.getElementById("playPauseBtn").textContent = pauseStateActionTxt;
 }
 
 function setStartRecordingButtonState()
 {
-	document.getElementById("recordBtn").textContent = "⬤ Record";
+	document.getElementById("recordBtn").textContent = recordStateActionTxt;
 }
 
 function setStopRecordingButtonState()
 {
-	document.getElementById("recordBtn").textContent = "■ Recording";
+	document.getElementById("recordBtn").textContent = stopRecordingStateActionText;
 }
+
+// -----------------------
 
 function updateStatusText(text)
 {
 	document.getElementById("status").textContent = text;
+}
+
+// -----------------------
+
+// Convert a "RGB Tuple" into a "rgb()" color string
+// < rgbTuple: ([uchar, uchar, uchar]) RGB color, represented as "0 <= c <= 255"
+// > returns: (str) "rgb(r, g, b)"
+function colorFromTuple(rgbTuple)
+{
+	return `rgb(${rgbTuple[0]}, ${rgbTuple[1]}, ${rgbTuple[2]})`;
+}
+
+// Convert an "rgb" color (given as a 3-int tuple) into an "rgba()"
+// color string, that has been tempered using the given alpha.
+// < rgbTuple: ([uchar, uchar, uchar]) RGB color, represented as "0 <= c <= 255"
+// < alpha: (float :: 0.0 <= f <= 1.0) The alpha / opacity value
+// > returns: (str) "rgba(r, g, b, a)"
+function colorWithAlpha(rgbTuple, alpha)
+{
+	return `rgba(${rgbTuple[0]}, ${rgbTuple[1]}, ${rgbTuple[2]}, ${alpha})`;
 }
 
 // ============= Coordinate Conversion Utils ==============
@@ -689,17 +722,17 @@ function redrawSpectrogramColumn(i, spec)
 		
 		grad.addColorStop(
 			0,
-			`rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`
+			colorWithAlpha(c, 0)
 		);
 		
 		grad.addColorStop(
 			0.5,
-			`rgba(${c[0]}, ${c[1]}, ${c[2]}, ${intensity})`
+			colorWithAlpha(c, intensity)
 		);
 		
 		grad.addColorStop(
 			1,
-			`rgba(${c[0]}, ${c[1]}, ${c[2]}, 0)`
+			colorWithAlpha(c, 0)
 		);
 		
 		spectogramCanvasCtx.fillStyle = grad;
@@ -729,7 +762,6 @@ function drawTimeline()
 		ctx.strokeStyle = "white";
 		
 		ctx.beginPath();
-		
 		ctx.moveTo(x,y);
 		ctx.lineTo(
 			x,
@@ -766,9 +798,10 @@ function drawCMarkers()
 			continue;
 		}
 		
+		const MARKER_COLOR = [255, 255, 255];
 		const y = freqToY(freq);
 		
-		ctx.strokeStyle = "rgba(255,255,255,0.25)";
+		ctx.strokeStyle = colorWithAlpha(MARKER_COLOR, 0.25);
 		
 		ctx.beginPath();
 		ctx.moveTo(0, y);
@@ -782,7 +815,7 @@ function drawCMarkers()
 			const label = "c4";
 			const tw = ctx.measureText(label).width;
 			
-			ctx.fillStyle = "rgba(255,255,255, 0.10)";
+			ctx.fillStyle = colorWithAlpha(MARKER_COLOR, 0.10);
 			
 			ctx.beginPath();
 			ctx.roundRect(
@@ -794,7 +827,7 @@ function drawCMarkers()
 			);
 			ctx.fill();
 			
-			ctx.strokeStyle = "rgba(255,255,255, 0.55)";
+			ctx.strokeStyle = colorWithAlpha(MARKER_COLOR, 0.55);
 			ctx.stroke();
 			
 			ctx.fillStyle = "white";
@@ -802,7 +835,7 @@ function drawCMarkers()
 		}
 		else {
 			// All other C's
-			ctx.fillStyle = "rgba(255,255,255,0.75)";
+			ctx.fillStyle = colorWithAlpha(MARKER_COLOR, 0.75);
 			ctx.font = "11px monospace";
 			ctx.fillText(`c${octave}`, 24, y+3)
 		}
@@ -828,7 +861,6 @@ function drawBubbles()
 			const label = e.label;
 			
 			ctx.font = "bold 12px monospace";
-			
 			const tw = ctx.measureText(label).width;
 			
 			const w =
@@ -847,7 +879,7 @@ function drawBubbles()
 				);
 			
 			// Orange Fill for label background
-			ctx.fillStyle = "rgba(255, 140, 40, 0.92)";
+			ctx.fillStyle = colorWithAlpha(SCRUBBER_COLOR, 0.92);
 			
 			ctx.beginPath();
 			ctx.roundRect(
@@ -869,7 +901,7 @@ function drawBubbles()
 		}
 		else {
 			// Blue bubble
-			ctx.fillStyle = "rgba(80, 120, 255, 0.58)";
+			ctx.fillStyle = colorWithAlpha(BUBBLE_COLOR, 0.58);
 			
 			ctx.beginPath();
 			ctx.roundRect(
@@ -965,13 +997,13 @@ function render()
 		// Scrubber Line
 		ctx.save();
 		
-		ctx.strokeStyle = "rgba(255,140,40,0.85)";
+		ctx.strokeStyle = colorWithAlpha(SCRUBBER_COLOR, 0.85);
 		ctx.lineWidth = 2;
 		
 		if (recording) {
 			// Show glow if recording
 			ctx.shadowBlur = 15;
-			ctx.shadowColor = "rgba(255,140,40,0.95)"
+			ctx.shadowColor = colorWithAlpha(SCRUBBER_COLOR, 0.95);
 		}
 		
 		ctx.beginPath();
@@ -1000,7 +1032,7 @@ function render()
 				scrubberPosition + 10
 			);
 		
-		ctx.fillStyle = "rgba(255,140,40,0.95)";
+		ctx.fillStyle = colorWithAlpha(SCRUBBER_COLOR, 0.95);
 		
 		ctx.beginPath();
 		ctx.roundRect(
@@ -1014,7 +1046,7 @@ function render()
 		
 		if (pitch) {
 			const c = colorForFreq(pitch.freq);
-			ctx.fillStyle = `rgb(${c[0]},${c[1]},${c[2]})`;
+			ctx.fillStyle = colorFromTuple(c);
 			
 			ctx.beginPath();
 			ctx.roundRect(
