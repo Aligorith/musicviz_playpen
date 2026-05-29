@@ -569,6 +569,7 @@ function colorForFreq(freq)
 	}
 }
 
+// Find which detected "midiEvent" note is active for the current time
 function dominantPitchAtTime(t)
 {
 	for (const e of midiEvents) {
@@ -582,6 +583,9 @@ function dominantPitchAtTime(t)
 	return null;
 }
 
+// ---------------------------
+
+// Compute FFT  (naive implementation)
 function fft(sig)
 {
 	const N = sig.length;
@@ -604,6 +608,50 @@ function fft(sig)
 	return out;
 }
 
+// Called from processAudio to identify the dominant pitch(s)
+// for the current spectrogram slice ("spec")
+//
+// < i: (int) The slice index being processed
+// < spec: ([Num]) Current vertical slice of the spectrogram for the sample / bin
+//                 being processed
+//
+// ! This method adds a new "midiEvent" to the "midiEvents" global list
+//   if it finds anything worth adding.
+function identifyMidiEventForSlice(i, spec)
+{
+	let best = 0;
+	let bestBin = 0;
+	
+	for (let b = 1; b < spec.length; b++) {
+		if (spec[b] > best) {
+			best = spec[b];
+			bestBin = b;
+		}
+	}
+	
+	const freq = bestBin * (audioCtx.sampleRate / fftSize);
+	const note = midiToLabel(tunedMidi(freq));
+	
+	const prev = midiEvents[midiEvents.length - 1];
+	const t = i * hop / audioCtx.sampleRate;
+	
+	if (!prev ||
+		(t - prev.start) > 1.1 ||
+		prev.label !== note) 
+	{
+		midiEvents.push({
+			start: t,
+			end: t + 0.8,
+			
+			freq,
+			
+			label: note,
+			intensity: best
+		});
+	}
+}
+
+// Entry-point to process the audio file
 async function processAudio(buffer)
 {
 	audioBuffer = buffer;
@@ -647,36 +695,7 @@ async function processAudio(buffer)
 		redrawSpectrogramColumn(i, spec);
 		
 		// Try to identify the likely "dominant pitch" at this point
-		let best = 0;
-		let bestBin = 0;
-		
-		for (let b = 1; b < spec.length; b++) {
-			if (spec[b] > best) {
-				best = spec[b];
-				bestBin = b;
-			}
-		}
-		
-		const freq = bestBin * (audioCtx.sampleRate / fftSize);
-		const note = midiToLabel(tunedMidi(freq));
-		
-		const prev = midiEvents[midiEvents.length - 1];
-		const t = i * hop / audioCtx.sampleRate;
-		
-		if (!prev ||
-			(t - prev.start) > 1.1 ||
-			prev.label !== note) 
-		{
-			midiEvents.push({
-				start: t,
-				end: t + 0.8,
-				
-				freq,
-				
-				label: note,
-				intensity: best
-			});
-		}
+		identifyMidiEventForSlice(i, spec);
 		
 		// Update progress
 		const elapsed = elapsedTime(processingStart);
