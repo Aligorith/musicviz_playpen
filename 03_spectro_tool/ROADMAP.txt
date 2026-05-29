@@ -27,6 +27,7 @@ Spectrochrome Roadmap
 * Fix scrubbing crackling issues (i.e. need gain-fading on the pipeline) - see "v53_prompt"
 
 * Fix bug where processing pauses if/when the tab loses focus, and then completely dies when we come back and look at it (or start interacting with it)
+  * Option 1:  Create a "progress popup panel, with progressbar", + button to resume / cancel stalled operations. This will work by storing the "in-progress" Promise, and triggering it to get run again if it got stalled out for whatever reason?
 
 
 == Enhancements ==
@@ -37,6 +38,8 @@ Spectrochrome Roadmap
   * TODO: Figure out the mappings for the existing colors
   
 * Add ability to adjust the minimum magnitude via tweaks, then re-analyse
+
+* Ability to reclassify specific frequencies (e.g. "f#4 -> g4") to cope with "off" tunings, without having to adjust everything
   
 * Tweaks panel layout improvements
   * 1) Need fixed size, multi-column grid: Name, Slider / Widget, Optional Text Indicator, Reset-to-Default button
@@ -54,6 +57,7 @@ Spectrochrome Roadmap
 
 * Include the other strong-pitches info into the exported table (with the relative weights also), as well as note on/off/duration type info  
   * Present this export info as a table in a popup panel, allowing live inspection before exporting
+  
 
 * Speed up the analysis processing
   * Run via a profiler, to see what is so slow
