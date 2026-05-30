@@ -6,6 +6,10 @@
 <title>Interactive CQT Spectrogram</title>
 
 <style>
+/* ************************* */
+/* Overall Page-Level Stuff */
+
+/* Basic styling for the page */
 html, body {
 	margin: 0;
 	padding: 0;
@@ -13,6 +17,12 @@ html, body {
 	background: #454545;
 	color: white;
 	font-family: sans-serif;
+}
+
+/* Force the wait cursor on everything while the active class is present */
+html.is-processing, 
+html.is-processing * {
+  cursor: wait !important;
 }
 
 /* ************************* */
@@ -434,6 +444,23 @@ const BUBBLE_COLOR = [80, 120, 255];
 
 // -----------------------
 
+function enableWaitCursor()
+{
+	document.documentElement.classList.add("is-processing");
+}
+
+function clearWaitCursor()
+{
+	document.documentElement.classList.remove("is-processing");
+}
+
+function updateStatusText(text)
+{
+	document.getElementById("status").textContent = text;
+}
+
+// -----------------------
+
 function setPlayButtonState()
 {
 	document.getElementById("playPauseBtn").textContent = playStateActionTxt;
@@ -447,18 +474,13 @@ function setPauseButtonState()
 function setStartRecordingButtonState()
 {
 	document.getElementById("recordBtn").textContent = recordStateActionTxt;
+	clearWaitCursor();
 }
 
 function setStopRecordingButtonState()
 {
 	document.getElementById("recordBtn").textContent = stopRecordingStateActionTxt;
-}
-
-// -----------------------
-
-function updateStatusText(text)
-{
-	document.getElementById("status").textContent = text;
+	enableWaitCursor();
 }
 
 // -----------------------
@@ -776,6 +798,8 @@ function recalcSpectrogram()
 // Entry-point to process the audio file
 async function processAudio(buffer)
 {
+	enableWaitCursor();
+	
 	audioBuffer = buffer;
 	audioDuration = buffer.duration;
 	
@@ -847,6 +871,8 @@ async function processAudio(buffer)
 	const totalTimeElapsed = elapsedTime(processingStart);
 	updateStatusText(
 		`Ready.   Processing took ${totalTimeElapsed.toFixed(1)}s`);
+	
+	clearWaitCursor();
 }
 
 // Rendering ========================================================
@@ -1651,6 +1677,7 @@ document.getElementById("restartBtn").onclick = () => {
 document.getElementById("recordBtn").onclick = () => {
 	if (recording) {
 		recorder.stop();
+		
 	}
 	else {
 		startRecording();
