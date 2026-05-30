@@ -1553,19 +1553,71 @@ resize();
 
 // ============ Button Event Handlers ==============
 
-// TODO: Defer/throttle evaluation to avoid locking up the UI?
+// Standard debounc threshold for the sliders (in ms)
+const STD_DEBOUNCE_DELAY_MS = 500;
+
+// For interactive slider events, use "Debounce" Pattern for deferring / batching
+// events until the last in a stream of rapidly occurring updates on an interactive 
+// element
+//
+// < delay: (uint :: ms) Delay in ms for how long to wait for activity to die down
+//                       before letting callback() run
+// < callback: (fn()) Callback function to perform when the rapid stream of events
+//                    stops hitting the triggering event listener.
+//
+// NOTE: From https://stackoverflow.com/questions/75988682/debounce-in-javascript
+function debounce(delay, callback)
+{
+	// Timer-ID for keeping track of if we have a pending event we're waiting on...
+	let batchingTimerId;
+	
+	return (...args) => {
+		// Reset the timer, as a new event came in...
+		clearTimeout(batchingTimerId);
+		
+		// Re-register the timer, with a new function now
+		batchingTimerId = setTimeout(() => {
+			callback();
+		}, delay);
+	};
+}
+
+// ----------------------------------
+
+// Update the brightnessBoost value, with the given float value.
+// ! This causes a recomputation of the spectogram, which can be slow...
+function setBrightnessBoost(value)
+{
+	enableWaitCursor();
+	
+	brightnessSlider.value = brightnessBoost = value;
+	recalcSpectrogram();
+	
+	clearWaitCursor();
+}
+
 document.getElementById("brightnessSlider").addEventListener(
 	"input",
 	e => {
-		brightnessBoost = parseFloat(e.target.value);
-		recalcSpectrogram();
+		debounce(STD_DEBOUNCE_DELAY_MS, () => {
+			// * Need to use debounce here as this update op is slow,
+			//   but the slider updates a bazillion times when dragged
+			// * This does end up setting the parsed value back 
+			//   onto the variable in question
+			let newBrightness = parseFloat(e.target.value);
+			console.log(`new brightness = ${newBrightness}`); 
+			
+			setBrightnessBoost(newBrightness);
+		})();
 	}
 );
 
 document.getElementById("resetBrightnessBtn").onclick = () => {
-	brightnessSlider.value = brightnessBoost = 1;
-	recalcSpectrogram();
+	// NOTE: 1 here is the initial value of the slider (as per the HTML)
+	setBrightnessBoost(1);
 };
+
+// ----------------------------------
 
 // TODO: Defer/throttle evaluation to avoid locking up the UI?
 document.getElementById("tuningSlider").addEventListener(
@@ -1586,6 +1638,7 @@ document.getElementById("resetTuningOffsetBtn").onclick = () => {
 	// TODO: Update label too, then recalculate the whole thing
 };
 
+// ----------------------------------
 
 
 document.getElementById("legendBtn").onclick = () => {
