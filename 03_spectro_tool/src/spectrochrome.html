@@ -15,6 +15,9 @@ html, body {
 	font-family: sans-serif;
 }
 
+/* ************************* */
+/* Main (Static) UI Elements */
+
 #canvas {
 	position: absolute;
 	inset:    0;
@@ -33,6 +36,15 @@ html, body {
 	padding: 10px;
 	box-sizing: border-box;
 }
+
+#status {
+	margin-top: 6px;
+	font-size: 13px;
+	color: #ddd;
+}
+
+/* ************************* */
+/* Top-Bar - Layout Cluster Types */
 
 .row {
 	display: flex;
@@ -63,19 +75,76 @@ html, body {
 	flex: 1;
 }
 
+/* ************************* */
+/* General Basics for Widgets */
+
 button {
 	cursor: pointer;
 }
 
+/* Preferred width of the sliders inside the form grids */
 input[type="range"] {
 	width: 140px;
 }
 
-#status {
-	margin-top: 6px;
-	font-size: 13px;
-	color: #ddd;
+/* ************************* */
+/* Settings Form Styles */
+
+/* Settings-Form - Grid Layout for Container */
+.form-grid {
+	display: grid;
+	
+	/* 
+	 * Columns:
+	 * 1. label          -> only as wide as needed
+	 * 2. widget/slider  -> expands to fill available space
+	 * 3. optional text  -> only as wide as needed
+	 * 4. reset button   -> square
+	 */
+	grid-template-columns:
+		max-content
+		minmax(0, 1fr)
+		max-content
+		auto;
+	
+	gap: 0.5rem 1rem;
+	
+	/* vertically center everything in each row */
+	align-items: center;
 }
+
+/* Make sliders/widgets shrink properly inside grid */
+.form-grid .form-widget {
+	min-width: 0;
+}
+
+/* Form Layout Tags */
+.form-property-label     { grid-column: 1; }
+.form-property-widget    { grid-column: 2; }
+.form-property-value     { grid-column: 3; }
+
+.reset-property-btn {
+	aspect-ratio: 1;
+	width: 24px;
+	border: none;
+	border-radius: 8px;
+	/*background: #f3f4f6;*/
+	cursor: pointer;
+	
+	display: grid;
+	place-items: center;
+	
+	font-size: 13px; /* emoji size, to match other text  */
+	line-height: 1;
+	
+	/*transition: background 0.2s ease, transform 0.1s ease;*/
+}
+.form-reset-property-btn::before {
+	content: "↺";
+}
+
+/* ************************* */
+/* Legend / Mappings Panel */
 
 #legendPanel {
 	position: absolute;
@@ -104,23 +173,20 @@ input[type="range"] {
 	margin-right: 10px;
 }
 
+/* ************************* */
+/* Tweaks Panel */
+
 #tweaksPanel {
 	position: absolute;
 	right: 20px;
 	top: 90px;
-	width: 280px;
+	width: 320px;
 	background: rgba(20,20,20,0.96);
 	border-radius: 12px;
 	padding: 14px;
 	z-index: 200;
 	display: none;
 	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-}
-
-.tweaksRow {
-	display: flex;
-	align-items: center;
-	margin-bottom: 8px;
 	font-size: 13px;
 }
 </style>
@@ -201,34 +267,38 @@ input[type="range"] {
 	</div>
 </div>
 
-<div id="tweaksPanel">
+<div id="tweaksPanel" class="form-grid">
 	<div class="tweaksRow">
-		<label>
-			Tuning
-			<input
-				type="range"
+		<label class="form-property-label" for="tuningSlider">
+			Tuning Offset:
+		</label>
+		<input
 				id="tuningSlider"
+				class="form-property-widget"
+				type="range"
 				min="-12"
 				max="12"
 				step="0.01"
 				value="0"
 			>
-			<span id="tuningLabel">0.00 st</span>
-		</label>
+		<span id="tuningLabel" class="form-property-value">0.00 st</span>
+		<button id="resetTuningOffsetBtn" class="form-reset-property-btn" aria-label="Reset" />
 	</div>
 	
 	<div class="tweaksRow">
-		<label>
-			Brightness
-			<input
-				type="range"
+		<label class="form-property-label" for="brightnessSlider">
+			Brightness:
+		</label>
+		<input
 				id="brightnessSlider"
+				class="form-property-widget"
+				type="range"
 				min="0.2"
 				max="4"
 				step="0.05"
 				value="1"
 			>
-		</label>
+		<button id="resetBrightnessBtn" class="form-reset-property-btn" aria-label="Reset" />
 	</div>
 </div>
 
@@ -667,6 +737,29 @@ function identifyMidiEventForSlice(i, spec)
 				intensity: strongestMagnitude
 			});
 		}
+	}
+}
+
+// ---------------------------
+
+// Recalculate the contents of the cached spectogram when some settings change
+// (e.g. color assignments / brightness values)
+//
+// TODO: Maybe this should be async to not lock the main thread?
+function recalcSpectogram()
+{
+	spectogramCanvasCtx.clearRect(
+		0,
+		0,
+		spectogramCanvas.width,
+		spectogramCanvas.height
+	);
+	
+	for (let i = 0; i < cachedSpectrogram.length; i++) {
+		redrawSpectrogramColumn(
+			i,
+			cachedSpectrogram[i]
+		);
 	}
 }
 
@@ -1429,21 +1522,15 @@ document.getElementById("brightnessSlider").addEventListener(
 	"input",
 	e => {
 		brightnessBoost = parseFloat(e.target.value);
-		spectogramCanvasCtx.clearRect(
-			0,
-			0,
-			spectogramCanvas.width,
-			spectogramCanvas.height
-		);
-		
-		for (let i = 0; i < cachedSpectrogram.length; i++) {
-			redrawSpectrogramColumn(
-				i,
-				cachedSpectrogram[i]
-			);
-		}
+		recalcSpectrogram();
 	}
 );
+
+document.getElementById("resetBrightnessBtn").onclick = () => {
+	brigtnessBoost = 0;
+	recalcSpectrogram();
+};
+
 
 document.getElementById("tuningSlider").addEventListener(
 	"input",
@@ -1456,23 +1543,30 @@ document.getElementById("tuningSlider").addEventListener(
 	}
 );
 
+document.getElementById("resetTuningOffsetBtn").onclick = () => {
+	tuningOffset = 0;
+	// TODO: Is there any updating needed?
+};
+
+
+
 document.getElementById("legendBtn").onclick = () => {
-    // Toggle Legend Panel visiblity status
+	// Toggle Legend Panel visiblity status
 	legendVisible ^= true;
 	
-    // TODO: Don't allow tweaks to stay visible when this is opened
+	// TODO: Don't allow tweaks to stay visible when this is opened
 	
 	const p = document.getElementById("legendPanel");
 	p.style.display = (legendVisible) ? "block" : "none";
 };
 
 document.getElementById("tweaksBtn").onclick = () => {
-    // Toggle Tweak Panel visibility status
-    tweaksVisible ^= true;
-    
-    // TODO: Don't allow legend to stay visible when this is opened
-    
-    const p = document.getElementById("tweaksPanel");
+	// Toggle Tweak Panel visibility status
+	tweaksVisible ^= true;
+	
+	// TODO: Don't allow legend to stay visible when this is opened
+	
+	const p = document.getElementById("tweaksPanel");
 	p.style.display = (tweaksVisible) ? "block" : "none";
 }
 
