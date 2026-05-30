@@ -413,6 +413,13 @@ let cachedSpectrogram = [];
 // "cachedSpectogram" contains a list of these slivers, one per 
 let fixedColumnWidth = 1;
 
+// Factor that each "b" or "bin" value from the FFT "spec" array
+// needs to be multiplied by to obtain a frequency value.
+//
+// NOTE: Calculated as "audioCtx.sampleRate / fftSize"
+//       in processAudio()
+let fftToFreqFactor = 1;
+
 // =============== UI Defines / Utils ====================
 
 // UI Labels for toggle buttons ...............
@@ -710,7 +717,7 @@ function identifyMidiEventForSlice(i, spec)
 	// of significance  (see "reference_data" datafiles for examples
 	// of the range of values, and why this has been set like this)
 	if (strongestMagnitude > minimumPitchStrength) {
-		const freq = strongestBin * (audioCtx.sampleRate / fftSize);
+		const freq = strongestBin * fftToFreqFactor;
 		const note = midiToLabel(tunedMidi(freq));
 		
 		const prev = midiEvents[midiEvents.length - 1];
@@ -787,6 +794,7 @@ async function processAudio(buffer)
 	const total = Math.floor((data.length - fftSize) / hop);
 	
 	fixedColumnWidth = spectogramWidth / total;
+	fftToFreqFactor = audioCtx.sampleRate / fftSize;
 	
 	const processingStart = performance.now();
 	
@@ -846,7 +854,7 @@ async function processAudio(buffer)
 function redrawSpectrogramColumn(i, spec)
 {
 	for (let b = 1; b < spec.length; b++) {
-		const freq = b * (audioCtx.sampleRate / fftSize);
+		const freq = b * fftToFreqFactor;
 		
 		if (freq < MIN_FREQ || freq > MAX_FREQ) {
 			continue;
@@ -1542,12 +1550,14 @@ document.getElementById("tuningSlider").addEventListener(
 		document.getElementById("tuningLabel").textContent =
 			tuningOffset.toFixed(2)
 			+ " st";
+		
+		// TODO: Need to recalculate all the whole thing
 	}
 );
 
 document.getElementById("resetTuningOffsetBtn").onclick = () => {
 	tuningOffset = 0;
-	// TODO: Update label too
+	// TODO: Update label too, then recalculate the whole thing
 };
 
 
