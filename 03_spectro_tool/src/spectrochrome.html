@@ -1519,6 +1519,7 @@ resize();
 
 // ============ Button Event Handlers ==============
 
+// TODO: Defer/throttle evaluation to avoid locking up the UI?
 document.getElementById("brightnessSlider").addEventListener(
 	"input",
 	e => {
@@ -1528,11 +1529,11 @@ document.getElementById("brightnessSlider").addEventListener(
 );
 
 document.getElementById("resetBrightnessBtn").onclick = () => {
-	brigtnessBoost = 0;
+	brightnessSlider.value = brightnessBoost = 1;
 	recalcSpectrogram();
 };
 
-
+// TODO: Defer/throttle evaluation to avoid locking up the UI?
 document.getElementById("tuningSlider").addEventListener(
 	"input",
 	e => {
@@ -1546,7 +1547,7 @@ document.getElementById("tuningSlider").addEventListener(
 
 document.getElementById("resetTuningOffsetBtn").onclick = () => {
 	tuningOffset = 0;
-	// TODO: Is there any updating needed?
+	// TODO: Update label too
 };
 
 
