@@ -1655,15 +1655,21 @@ document.getElementById("resetBrightnessBtn").onclick = () => {
 // Update the "tuningOffset" value, with the given float value.
 // ! This causes all the detected pitch values to need to be re-generated
 //   (and also the spectrogram colouring)
-function setTuningOffset(value)
+function setTuningOffsetValues(value)
 {
-	enableWaitCursor();
-	
 	tuningSlider.value = tuningOffset = value;
 	
 	document.getElementById("tuningLabel").textContent =
 		tuningOffset.toFixed(2) + " st";
+}
+
+// Actually perform all the expensive recomputations associated with a recent
+// tuning update change.
+function applyTuningOffsetUpdate()
+{
+	enableWaitCursor();
 	
+	console.log(`Retuning with A=${aTuningHz} Hz and tuningOffset = ${tuningOffset}`);
 	recalcSpectrogramAndAllNoteIds();
 	
 	clearWaitCursor();
@@ -1672,21 +1678,29 @@ function setTuningOffset(value)
 document.getElementById("tuningSlider").addEventListener(
 	"input",
 	e => {
+		// Only flush the tuning slider updates to all the properties that
+		// depend on it (e.g. UI label) so that user has feedback on what
+		// they are setting, and can fine-tune before it triggers an update.
+		//
+		// NOTE: This step will end up flushing the just-parsed value back to
+		//       the slider it just go read from. But this simplifies the update
+		//       handling for all other cases.
+		setTuningOffsetValues(parseFloat(e.target.value));
+		
 		debounce(STD_DEBOUNCE_DELAY_MS, () => {
-			// * Need to use debounce here as this update op is slow,
-			//   but the slider updates a bazillion times when dragged
-			// * This does end up setting the parsed value back 
-			//   onto the variable in question
-			let newTuningOffset = parseFloat(e.target.value);
-			console.log(`new tuning offset = ${newTuningOffset}`); 
-			
-			setTuningOffset(newTuningOffset);
+			// Now, only actually perform the heavy recalc from this
+			// (or another subsequent update) if debounce() allows it to 
+			// happen in a throttled manner.
+			applyTuningOffsetUpdate();
 		})();
 	}
 );
 
 document.getElementById("resetTuningOffsetBtn").onclick = () => {
-	setTuningOffset(0);
+	// NOTE: Resetting is a two-step operation, given the need to decouple
+	//       fast-ui-feedback from recomputed spectrogram data (slow)
+	setTuningOffsetValues(0);
+	applyTuningOffsetUpdate();
 };
 
 // ----------------------------------
