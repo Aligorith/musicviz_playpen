@@ -155,26 +155,80 @@ input[type="range"] {
 }
 
 /* ************************* */
+/* Floating / Popup Panel Stuff */
+
+/* The host container for the popup panels */
+.popup-panel-host {
+	position: fixed;
+	  
+	top: 40px;
+	right: 20px;
+	
+	display: flex;
+	flex-direction: row-reverse;
+	
+	align-items: flex-start;
+	gap: 5px;
+	
+	z-index: 999;
+}
+
+/* Popup Panels */
+.popup-panel {
+	flex: 0 0 auto;
+	
+	padding: 14px;
+	
+	background: rgba(20,20,20,0.96);
+	border-radius: 12px;
+	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+	
+	font-size: 13px;
+	
+	white-space: nowrap;
+	
+	transition:
+		transform 250ms ease,
+		opacity 250ms ease,
+		max-width 250ms ease,
+		margin 250ms ease,
+		padding 250ms ease;
+	
+	transform: translateX(0) scale(1);
+	transform-origin: top right;
+	opacity: 1;
+	
+	/* max-width: 1000px; */
+	overflow: hidden;
+}
+
+/* Popup Panels Hidden state */
+.popup-panel.hidden {
+	opacity: 0;
+	
+	transform: translateX(30px) scale(0.95);
+	
+	max-width: 0;
+	
+	padding-left: 0;
+	padding-right: 0;
+	
+	margin-left: -12px;
+	
+	pointer-events: none;
+}
+
+/* ************************* */
 /* Legend / Mappings Panel */
 
 #legendPanel {
-	position: absolute;
-	right: 280px;
-	top: 90px;
-	width: 250px;
-	background: rgba(20,20,20,0.96);
-	border-radius: 12px;
-	padding: 14px;
-	z-index: 200;
-	display: none;
-	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+	max-width: 250px;
 }
 
 .legendRow {
 	display: flex;
 	align-items: center;
 	margin-bottom: 8px;
-	font-size: 13px;
 }
 
 .swatch {
@@ -184,27 +238,10 @@ input[type="range"] {
 	margin-right: 10px;
 }
 
-/* ************************* */
-/* Tweaks Panel */
-
-#tweaksPanel {
-	position: absolute;
-	right: 20px;
-	top: 90px;
-	width: 320px;
-	background: rgba(20,20,20,0.96);
-	border-radius: 12px;
-	padding: 14px;
-	z-index: 200;
-	display: none;
-	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-	font-size: 13px;
-}
 </style>
 </head>
 
 <body>
-
 <div id="topbar">
 	<div class="row">
 		<div class="leftControls">
@@ -217,102 +254,106 @@ input[type="range"] {
 					<option value="432">432 Hz</option>
 				</select>
 			</label>
-
+			
 			<button id="analyzeBtn">Analyze</button>
-
+			
 			<button id="exportBtn">Export</button>
 		</div>
-
+		
 		<div class="centerControls">
 			<button id="playPauseBtn">▶ Play</button>
 			<button id="stopBtn">⏹ Stop</button>
 			<button id="restartBtn">↺ Restart</button>
 			<button id="recordBtn">⬤ Record</button>
 		</div>
-
+		
 		<div class="rightControls">
 			<button id="legendBtn">Legend</button>
 			<button id="tweaksBtn">Tweaks</button>
 		</div>
 	</div>
-
+	
 	<div id="status">
 		Load a file, then click Analyse
 	</div>
 </div>
 
-<div id="legendPanel">
-	<div class="legendRow">
-		<div class="swatch" style="background:#ffd0a0"></div>
-		C = peach/gold
+<div class="popup-panel-host">
+	<!-- NOTE: Panels are in right to left, starting from the top right -->
+	<!-- 1) Tweaks Panel -->
+	<div id="tweaksPanel" class="popup-panel hidden">
+		<div class="form-grid">
+			<!-- Tuning Offset -->
+			<label class="form-property-label" for="tuningSlider">
+				Tuning Offset:
+			</label>
+			<input
+					id="tuningSlider"
+					class="form-property-widget"
+					type="range"
+					min="-12"
+					max="12"
+					step="0.01"
+					value="0"
+				/>
+			<span id="tuningLabel" class="form-property-value">0.00 st</span>
+			<button id="resetTuningOffsetBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+		
+			<!-- Brightness Slider -->
+			<label class="form-property-label" for="brightnessSlider">
+				Brightness:
+			</label>
+			<input
+					id="brightnessSlider"
+					class="form-property-widget"
+					type="range"
+					min="0.2"
+					max="4"
+					step="0.05"
+					value="1"
+				/>
+			<button id="resetBrightnessBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+		</div>
 	</div>
 	
-	<div class="legendRow">
-		<div class="swatch" style="background:#203c96"></div>
-		D = navy blue
-	</div>
-	
-	<div class="legendRow">
-		<div class="swatch" style="background:#d8b0ff"></div>
-		E = lavender
-	</div>
-	
-	<div class="legendRow">
-		<div class="swatch" style="background:#F5D954"></div>
-		F = yellow
-	</div>
-	
-	<div class="legendRow">
-		<div class="swatch" style="background:#46be32"></div>
-		G = lawn green
-	</div>
-	
-	<div class="legendRow">
-		<div class="swatch" style="background:#ff5050"></div>
-		A = red
-	</div>
-	
-	<div class="legendRow">
-		<div class="swatch" style="background:#78dcff"></div>
-		B = sky blue
+	<!-- 1) Legend Panel -->
+	<div id="legendPanel" class="popup-panel hidden">
+		<div class="legendRow">
+			<div class="swatch" style="background:#ffd0a0"></div>
+			C = peach/gold
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#203c96"></div>
+			D = navy blue
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#d8b0ff"></div>
+			E = lavender
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#F5D954"></div>
+			F = yellow
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#46be32"></div>
+			G = lawn green
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#ff5050"></div>
+			A = red
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#78dcff"></div>
+			B = sky blue
+		</div>
 	</div>
 </div>
-
-<div id="tweaksPanel">
-	<div class="form-grid">
-		<!-- Tuning Offset -->
-		<label class="form-property-label" for="tuningSlider">
-			Tuning Offset:
-		</label>
-		<input
-				id="tuningSlider"
-				class="form-property-widget"
-				type="range"
-				min="-12"
-				max="12"
-				step="0.01"
-				value="0"
-			/>
-		<span id="tuningLabel" class="form-property-value">0.00 st</span>
-		<button id="resetTuningOffsetBtn" class="form-reset-property-btn" aria-label="Reset"></button>
-	
-		<!-- Brightness Slider -->
-		<label class="form-property-label" for="brightnessSlider">
-			Brightness:
-		</label>
-		<input
-				id="brightnessSlider"
-				class="form-property-widget"
-				type="range"
-				min="0.2"
-				max="4"
-				step="0.05"
-				value="1"
-			/>
-		<button id="resetBrightnessBtn" class="form-reset-property-btn" aria-label="Reset"></button>
-	</div>	
-</div>
-
 
 <canvas id="canvas"></canvas>
 
@@ -375,16 +416,6 @@ let showGhostBackdropWhenRendering = true;
 // Processing Settings ----------
 // Tuning for "A4"
 let aTuningHz = 440;
-
-
-// Popup Panel Visibility --------
-
-// "Legend" Panel Visible
-let legendVisible = false;
-
-// "Tweaks" Panel Visible
-let tweaksVisible = false;
-
 
 // "Tweaks" Panel Items ---------
 
@@ -1711,23 +1742,13 @@ document.getElementById("resetTuningOffsetBtn").onclick = () => {
 
 
 document.getElementById("legendBtn").onclick = () => {
-	// Toggle Legend Panel visiblity status
-	legendVisible ^= true;
-	
-	// TODO: Don't allow tweaks to stay visible when this is opened
-	
 	const p = document.getElementById("legendPanel");
-	p.style.display = (legendVisible) ? "block" : "none";
+	p.classList.toggle("hidden");
 };
 
 document.getElementById("tweaksBtn").onclick = () => {
-	// Toggle Tweak Panel visibility status
-	tweaksVisible ^= true;
-	
-	// TODO: Don't allow legend to stay visible when this is opened
-	
 	const p = document.getElementById("tweaksPanel");
-	p.style.display = (tweaksVisible) ? "block" : "none";
+	p.classList.toggle("hidden");
 }
 
 
