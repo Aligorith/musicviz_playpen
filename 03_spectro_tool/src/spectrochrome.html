@@ -778,6 +778,7 @@ function identifyMidiEventForSlice(i, spec)
 // TODO: Maybe this should be async to not lock the main thread?
 function recalcSpectrogram()
 {
+	// Clear the cached spectrogram image, that we're rebuilding
 	spectogramCanvasCtx.clearRect(
 		0,
 		0,
@@ -785,11 +786,43 @@ function recalcSpectrogram()
 		spectogramCanvas.height
 	);
 	
+	// Go through all the cached spectrogram data slices,
+	// redrawing these to the cache canvas.
 	for (let i = 0; i < cachedSpectrogram.length; i++) {
 		redrawSpectrogramColumn(
 			i,
 			cachedSpectrogram[i]
 		);
+	}
+}
+
+// Fully recalculate spectrogram colours + midi events
+// TODO: Introduce an optimised method that only changes the tagged ones
+function recalcSpectrogramAndAllNoteIds()
+{
+	// Reset all the relevant bits being recalculated
+	spectogramCanvasCtx.clearRect(
+		0,
+		0,
+		spectogramCanvas.width,
+		spectogramCanvas.height
+	);
+	
+	midiEvents.length = 0;
+	
+	// Reprocess each of the cached spectogram slices...
+	// TODO: Update status text again with our progress
+	for (let i = 0; i < cachedSpectrogram.length; i++) {
+		// Redraw colours (which may haved changed due to the tuning)
+		redrawSpectrogramColumn(
+			i,
+			cachedSpectrogram[i]
+		);
+		
+		// Recalculate the most likely pitches
+		identifyMidiEventForSlice(i, spec);
+		
+		// TODO: Update progress text
 	}
 }
 
@@ -1619,23 +1652,41 @@ document.getElementById("resetBrightnessBtn").onclick = () => {
 
 // ----------------------------------
 
-// TODO: Defer/throttle evaluation to avoid locking up the UI?
+// Update the "tuningOffset" value, with the given float value.
+// ! This causes all the detected pitch values to need to be re-generated
+//   (and also the spectrogram colouring)
+function setTuningOffset(value)
+{
+	enableWaitCursor();
+	
+	tuningSlider.value = tuningOffset = value;
+	
+	document.getElementById("tuningLabel").textContent =
+		tuningOffset.toFixed(2) + " st";
+	
+	recalcSpectrogramAndAllNoteIds();
+	
+	clearWaitCursor();
+}
+
 document.getElementById("tuningSlider").addEventListener(
 	"input",
 	e => {
-		tuningOffset = parseFloat(e.target.value);
-		
-		document.getElementById("tuningLabel").textContent =
-			tuningOffset.toFixed(2)
-			+ " st";
-		
-		// TODO: Need to recalculate all the whole thing
+		debounce(STD_DEBOUNCE_DELAY_MS, () => {
+			// * Need to use debounce here as this update op is slow,
+			//   but the slider updates a bazillion times when dragged
+			// * This does end up setting the parsed value back 
+			//   onto the variable in question
+			let newTuningOffset = parseFloat(e.target.value);
+			console.log(`new tuning offset = ${newTuningOffset}`); 
+			
+			setTuningOffset(newTuningOffset);
+		})();
 	}
 );
 
 document.getElementById("resetTuningOffsetBtn").onclick = () => {
-	tuningOffset = 0;
-	// TODO: Update label too, then recalculate the whole thing
+	setTuningOffset(0);
 };
 
 // ----------------------------------
