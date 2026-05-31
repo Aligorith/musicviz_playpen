@@ -810,6 +810,7 @@ function recalcSpectrogramAndAllNoteIds()
 	
 	midiEvents.length = 0;
 	
+	console.log("Recalculating spectrogram and all note id's...");
 	// Reprocess each of the cached spectogram slices...
 	// TODO: Update status text again with our progress
 	for (let i = 0; i < cachedSpectrogram.length; i++) {
@@ -820,7 +821,7 @@ function recalcSpectrogramAndAllNoteIds()
 		);
 		
 		// Recalculate the most likely pitches
-		identifyMidiEventForSlice(i, spec);
+		identifyMidiEventForSlice(i, cachedSpectrogram[i]);
 		
 		// TODO: Update progress text
 	}
