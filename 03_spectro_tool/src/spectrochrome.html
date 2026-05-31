@@ -1447,6 +1447,9 @@ async function analyseAudio()
 	// Save filename into variable used for making export file
 	inputFileName = f.name;
 	
+	// Clear + park the scrubber (as it will now be invalidated)
+	scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
+	
 	// Read the audio-file buffer
 	const arr = await f.arrayBuffer();
 	const buf = await audioCtx.decodeAudioData(arr);
