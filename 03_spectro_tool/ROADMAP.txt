@@ -39,11 +39,9 @@ Spectrochrome Roadmap
   
 * Add ability to adjust the minimum magnitude via tweaks, then re-analyse
 
-* Ability to reclassify specific frequencies (e.g. "f#4 -> g4") to cope with "off" tunings, without having to adjust everything
-  
-* Tweaks panel layout improvements
-  * 1) Need fixed size, multi-column grid: Name, Slider / Widget, Optional Text Indicator, Reset-to-Default button
-  * 2) Find way for Tweaks + Layout panels to be aware of each other, and to snap to the right accordingly
+* Ability to reclassify specific frequencies (e.g. "f#4 -> g4") to cope with "off" tunings, without having to adjust everything.  
+  * TODO: Need option to control whether this will reset when a tuning offset is then applied?  Or does it shift with that?
+  * Related is the ability to tag specific dominant pitches identified.   (Will then need to keep a list of these, to stop the "adjust tuning" tool overwriting it - i.e. by reapplying this override on top of what the )
 
 * Review architecture of the UI, and how much the default text labels / etc. are set in the HTML vs applied on startup. Look into how we can keep these things in sync (so the UI is still useful initially if JS is disabled)
   * JS Disabled Banner?

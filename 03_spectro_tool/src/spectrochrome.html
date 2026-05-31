@@ -6,6 +6,10 @@
 <title>Interactive CQT Spectrogram</title>
 
 <style>
+/* ************************* */
+/* Overall Page-Level Stuff */
+
+/* Basic styling for the page */
 html, body {
 	margin: 0;
 	padding: 0;
@@ -14,6 +18,15 @@ html, body {
 	color: white;
 	font-family: sans-serif;
 }
+
+/* Force the wait cursor on everything while the active class is present */
+html.is-processing, 
+html.is-processing * {
+  cursor: wait !important;
+}
+
+/* ************************* */
+/* Main (Static) UI Elements */
 
 #canvas {
 	position: absolute;
@@ -33,6 +46,15 @@ html, body {
 	padding: 10px;
 	box-sizing: border-box;
 }
+
+#status {
+	margin-top: 6px;
+	font-size: 13px;
+	color: #ddd;
+}
+
+/* ************************* */
+/* Top-Bar - Layout Cluster Types */
 
 .row {
 	display: flex;
@@ -63,38 +85,150 @@ html, body {
 	flex: 1;
 }
 
+/* ************************* */
+/* General Basics for Widgets */
+
 button {
 	cursor: pointer;
 }
 
+/* Preferred width of the sliders inside the form grids */
 input[type="range"] {
 	width: 140px;
 }
 
-#status {
-	margin-top: 6px;
-	font-size: 13px;
-	color: #ddd;
+/* ************************* */
+/* Settings Form Styles */
+
+/* Settings-Form - Grid Layout for Container */
+.form-grid {
+	display: grid;
+	
+	/* 
+	 * Columns:
+	 * 1. label          -> only as wide as needed
+	 * 2. widget/slider  -> expands to fill available space
+	 * 3. optional text  -> only as wide as needed
+	 * 4. reset button   -> square
+	 */
+	grid-template-columns:
+		max-content
+		minmax(0, 1fr)
+		max-content
+		auto;
+	
+	gap: 0.5rem 1rem;
+	
+	/* vertically center everything in each row */
+	align-items: center;
 }
 
-#legendPanel {
-	position: absolute;
-	right: 280px;
-	top: 90px;
-	width: 250px;
+/* Make sliders/widgets shrink properly inside grid */
+.form-grid .form-widget {
+	min-width: 0;
+}
+
+/* Form Layout Tags */
+.form-property-label     { grid-column: 1; }
+.form-property-widget    { grid-column: 2; }
+.form-property-value     { grid-column: 3; }
+
+.form-reset-property-btn {
+	aspect-ratio: 1;
+	width: 24px;
+	
+	border: none;
+	border-radius: 8px;
+	/*background: #f3f4f6;*/
+	
+	display: grid;
+	grid-column: 4;
+	
+	font-size: 13px; /* emoji size, to match other text  */
+	line-height: 1;
+	place-items: center;
+	
+	/*transition: background 0.2s ease, transform 0.1s ease;*/
+}
+.form-reset-property-btn::before {
+	content: "↺";
+}
+
+/* ************************* */
+/* Floating / Popup Panel Stuff */
+
+/* The host container for the popup panels */
+.popup-panel-host {
+	position: fixed;
+	  
+	top: 40px;
+	right: 20px;
+	
+	display: flex;
+	flex-direction: row-reverse;
+	
+	align-items: flex-start;
+	gap: 5px;
+	
+	z-index: 999;
+}
+
+/* Popup Panels */
+.popup-panel {
+	flex: 0 0 auto;
+	
+	padding: 14px;
+	
 	background: rgba(20,20,20,0.96);
 	border-radius: 12px;
-	padding: 14px;
-	z-index: 200;
-	display: none;
 	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+	
+	font-size: 13px;
+	
+	white-space: nowrap;
+	
+	transition:
+		transform 250ms ease,
+		opacity 250ms ease,
+		max-width 250ms ease,
+		margin 250ms ease,
+		padding 250ms ease;
+	
+	transform: translateX(0) scale(1);
+	transform-origin: top right;
+	opacity: 1;
+	
+	/* max-width: 1000px; */
+	overflow: hidden;
+}
+
+/* Popup Panels Hidden state */
+.popup-panel.hidden {
+	opacity: 0;
+	
+	transform: translateX(30px) scale(0.95);
+	
+	max-width: 0;
+	
+	padding-left: 0;
+	padding-right: 0;
+	
+	margin-left: -12px;
+	
+	pointer-events: none;
+}
+
+/* ************************* */
+/* Legend / Mappings Panel */
+
+#legendPanel {
+	max-width: 250px;
 }
 
 .legendRow {
 	display: flex;
 	align-items: center;
 	margin-bottom: 8px;
-	font-size: 13px;
 }
 
 .swatch {
@@ -104,30 +238,10 @@ input[type="range"] {
 	margin-right: 10px;
 }
 
-#tweaksPanel {
-	position: absolute;
-	right: 20px;
-	top: 90px;
-	width: 280px;
-	background: rgba(20,20,20,0.96);
-	border-radius: 12px;
-	padding: 14px;
-	z-index: 200;
-	display: none;
-	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-}
-
-.tweaksRow {
-	display: flex;
-	align-items: center;
-	margin-bottom: 8px;
-	font-size: 13px;
-}
 </style>
 </head>
 
 <body>
-
 <div id="topbar">
 	<div class="row">
 		<div class="leftControls">
@@ -140,98 +254,106 @@ input[type="range"] {
 					<option value="432">432 Hz</option>
 				</select>
 			</label>
-
+			
 			<button id="analyzeBtn">Analyze</button>
-
+			
 			<button id="exportBtn">Export</button>
 		</div>
-
+		
 		<div class="centerControls">
 			<button id="playPauseBtn">▶ Play</button>
 			<button id="stopBtn">⏹ Stop</button>
 			<button id="restartBtn">↺ Restart</button>
 			<button id="recordBtn">⬤ Record</button>
 		</div>
-
+		
 		<div class="rightControls">
 			<button id="legendBtn">Legend</button>
 			<button id="tweaksBtn">Tweaks</button>
 		</div>
 	</div>
-
+	
 	<div id="status">
 		Load a file, then click Analyse
 	</div>
 </div>
 
-<div id="legendPanel">
-	<div class="legendRow">
-		<div class="swatch" style="background:#ffd0a0"></div>
-		C = peach/gold
+<div class="popup-panel-host">
+	<!-- NOTE: Panels are in right to left, starting from the top right -->
+	<!-- 1) Tweaks Panel -->
+	<div id="tweaksPanel" class="popup-panel hidden">
+		<div class="form-grid">
+			<!-- Tuning Offset -->
+			<label class="form-property-label" for="tuningSlider">
+				Tuning Offset:
+			</label>
+			<input
+					id="tuningSlider"
+					class="form-property-widget"
+					type="range"
+					min="-12"
+					max="12"
+					step="0.01"
+					value="0"
+				/>
+			<span id="tuningLabel" class="form-property-value">0.00 st</span>
+			<button id="resetTuningOffsetBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+		
+			<!-- Brightness Slider -->
+			<label class="form-property-label" for="brightnessSlider">
+				Brightness:
+			</label>
+			<input
+					id="brightnessSlider"
+					class="form-property-widget"
+					type="range"
+					min="0.2"
+					max="4"
+					step="0.05"
+					value="1"
+				/>
+			<button id="resetBrightnessBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+		</div>
 	</div>
 	
-	<div class="legendRow">
-		<div class="swatch" style="background:#203c96"></div>
-		D = navy blue
-	</div>
-	
-	<div class="legendRow">
-		<div class="swatch" style="background:#d8b0ff"></div>
-		E = lavender
-	</div>
-	
-	<div class="legendRow">
-		<div class="swatch" style="background:#F5D954"></div>
-		F = yellow
-	</div>
-	
-	<div class="legendRow">
-		<div class="swatch" style="background:#46be32"></div>
-		G = lawn green
-	</div>
-	
-	<div class="legendRow">
-		<div class="swatch" style="background:#ff5050"></div>
-		A = red
-	</div>
-	
-	<div class="legendRow">
-		<div class="swatch" style="background:#78dcff"></div>
-		B = sky blue
+	<!-- 1) Legend Panel -->
+	<div id="legendPanel" class="popup-panel hidden">
+		<div class="legendRow">
+			<div class="swatch" style="background:#ffd0a0"></div>
+			C = peach/gold
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#203c96"></div>
+			D = navy blue
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#d8b0ff"></div>
+			E = lavender
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#F5D954"></div>
+			F = yellow
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#46be32"></div>
+			G = lawn green
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#ff5050"></div>
+			A = red
+		</div>
+		
+		<div class="legendRow">
+			<div class="swatch" style="background:#78dcff"></div>
+			B = sky blue
+		</div>
 	</div>
 </div>
-
-<div id="tweaksPanel">
-	<div class="tweaksRow">
-		<label>
-			Tuning
-			<input
-				type="range"
-				id="tuningSlider"
-				min="-12"
-				max="12"
-				step="0.01"
-				value="0"
-			>
-			<span id="tuningLabel">0.00 st</span>
-		</label>
-	</div>
-	
-	<div class="tweaksRow">
-		<label>
-			Brightness
-			<input
-				type="range"
-				id="brightnessSlider"
-				min="0.2"
-				max="4"
-				step="0.05"
-				value="1"
-			>
-		</label>
-	</div>
-</div>
-
 
 <canvas id="canvas"></canvas>
 
@@ -295,16 +417,6 @@ let showGhostBackdropWhenRendering = true;
 // Tuning for "A4"
 let aTuningHz = 440;
 
-
-// Popup Panel Visibility --------
-
-// "Legend" Panel Visible
-let legendVisible = false;
-
-// "Tweaks" Panel Visible
-let tweaksVisible = false;
-
-
 // "Tweaks" Panel Items ---------
 
 let brightnessBoost = 1;
@@ -342,6 +454,13 @@ let cachedSpectrogram = [];
 // "cachedSpectogram" contains a list of these slivers, one per 
 let fixedColumnWidth = 1;
 
+// Factor that each "b" or "bin" value from the FFT "spec" array
+// needs to be multiplied by to obtain a frequency value.
+//
+// NOTE: Calculated as "audioCtx.sampleRate / fftSize"
+//       in processAudio()
+let fftToFreqFactor = 1;
+
 // =============== UI Defines / Utils ====================
 
 // UI Labels for toggle buttons ...............
@@ -353,6 +472,23 @@ const stopRecordingStateActionTxt = "■ Recording";
 // Color Defines ..............................
 const SCRUBBER_COLOR = [255, 140, 40];
 const BUBBLE_COLOR = [80, 120, 255];
+
+// -----------------------
+
+function enableWaitCursor()
+{
+	document.documentElement.classList.add("is-processing");
+}
+
+function clearWaitCursor()
+{
+	document.documentElement.classList.remove("is-processing");
+}
+
+function updateStatusText(text)
+{
+	document.getElementById("status").textContent = text;
+}
 
 // -----------------------
 
@@ -369,18 +505,13 @@ function setPauseButtonState()
 function setStartRecordingButtonState()
 {
 	document.getElementById("recordBtn").textContent = recordStateActionTxt;
+	clearWaitCursor();
 }
 
 function setStopRecordingButtonState()
 {
 	document.getElementById("recordBtn").textContent = stopRecordingStateActionTxt;
-}
-
-// -----------------------
-
-function updateStatusText(text)
-{
-	document.getElementById("status").textContent = text;
+	enableWaitCursor();
 }
 
 // -----------------------
@@ -639,7 +770,7 @@ function identifyMidiEventForSlice(i, spec)
 	// of significance  (see "reference_data" datafiles for examples
 	// of the range of values, and why this has been set like this)
 	if (strongestMagnitude > minimumPitchStrength) {
-		const freq = strongestBin * (audioCtx.sampleRate / fftSize);
+		const freq = strongestBin * fftToFreqFactor;
 		const note = midiToLabel(tunedMidi(freq));
 		
 		const prev = midiEvents[midiEvents.length - 1];
@@ -672,9 +803,68 @@ function identifyMidiEventForSlice(i, spec)
 
 // ---------------------------
 
+// Recalculate the contents of the cached spectogram when some settings change
+// (e.g. color assignments / brightness values)
+//
+// TODO: Maybe this should be async to not lock the main thread?
+function recalcSpectrogram()
+{
+	// Clear the cached spectrogram image, that we're rebuilding
+	spectogramCanvasCtx.clearRect(
+		0,
+		0,
+		spectogramCanvas.width,
+		spectogramCanvas.height
+	);
+	
+	// Go through all the cached spectrogram data slices,
+	// redrawing these to the cache canvas.
+	for (let i = 0; i < cachedSpectrogram.length; i++) {
+		redrawSpectrogramColumn(
+			i,
+			cachedSpectrogram[i]
+		);
+	}
+}
+
+// Fully recalculate spectrogram colours + midi events
+// TODO: Introduce an optimised method that only changes the tagged ones
+function recalcSpectrogramAndAllNoteIds()
+{
+	// Reset all the relevant bits being recalculated
+	spectogramCanvasCtx.clearRect(
+		0,
+		0,
+		spectogramCanvas.width,
+		spectogramCanvas.height
+	);
+	
+	midiEvents.length = 0;
+	
+	console.log("Recalculating spectrogram and all note id's...");
+	// Reprocess each of the cached spectogram slices...
+	// TODO: Update status text again with our progress
+	for (let i = 0; i < cachedSpectrogram.length; i++) {
+		// Redraw colours (which may haved changed due to the tuning)
+		redrawSpectrogramColumn(
+			i,
+			cachedSpectrogram[i]
+		);
+		
+		// Recalculate the most likely pitches
+		identifyMidiEventForSlice(i, cachedSpectrogram[i]);
+		
+		// TODO: Update progress text
+	}
+}
+
+// ---------------------------
+
 // Entry-point to process the audio file
 async function processAudio(buffer)
 {
+	enableWaitCursor();
+	
 	audioBuffer = buffer;
 	audioDuration = buffer.duration;
 	
@@ -693,6 +883,7 @@ async function processAudio(buffer)
 	const total = Math.floor((data.length - fftSize) / hop);
 	
 	fixedColumnWidth = spectogramWidth / total;
+	fftToFreqFactor = audioCtx.sampleRate / fftSize;
 	
 	const processingStart = performance.now();
 	
@@ -745,6 +936,8 @@ async function processAudio(buffer)
 	const totalTimeElapsed = elapsedTime(processingStart);
 	updateStatusText(
 		`Ready.   Processing took ${totalTimeElapsed.toFixed(1)}s`);
+	
+	clearWaitCursor();
 }
 
 // Rendering ========================================================
@@ -752,7 +945,7 @@ async function processAudio(buffer)
 function redrawSpectrogramColumn(i, spec)
 {
 	for (let b = 1; b < spec.length; b++) {
-		const freq = b * (audioCtx.sampleRate / fftSize);
+		const freq = b * fftToFreqFactor;
 		
 		if (freq < MIN_FREQ || freq > MAX_FREQ) {
 			continue;
@@ -1286,6 +1479,9 @@ async function analyseAudio()
 	// Save filename into variable used for making export file
 	inputFileName = f.name;
 	
+	// Clear + park the scrubber (as it will now be invalidated)
+	scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
+	
 	// Read the audio-file buffer
 	const arr = await f.arrayBuffer();
 	const buf = await audioCtx.decodeAudioData(arr);
@@ -1425,55 +1621,134 @@ resize();
 
 // ============ Button Event Handlers ==============
 
+// Standard debounc threshold for the sliders (in ms)
+const STD_DEBOUNCE_DELAY_MS = 500;
+
+// For interactive slider events, use "Debounce" Pattern for deferring / batching
+// events until the last in a stream of rapidly occurring updates on an interactive 
+// element
+//
+// < delay: (uint :: ms) Delay in ms for how long to wait for activity to die down
+//                       before letting callback() run
+// < callback: (fn()) Callback function to perform when the rapid stream of events
+//                    stops hitting the triggering event listener.
+//
+// NOTE: From https://stackoverflow.com/questions/75988682/debounce-in-javascript
+function debounce(delay, callback)
+{
+	// Timer-ID for keeping track of if we have a pending event we're waiting on...
+	let batchingTimerId;
+	
+	return (...args) => {
+		// Reset the timer, as a new event came in...
+		clearTimeout(batchingTimerId);
+		
+		// Re-register the timer, with a new function now
+		batchingTimerId = setTimeout(() => {
+			callback();
+		}, delay);
+	};
+}
+
+// ----------------------------------
+
+// Update the brightnessBoost value, with the given float value.
+// ! This causes a recomputation of the spectogram, which can be slow...
+function setBrightnessBoost(value)
+{
+	enableWaitCursor();
+	
+	brightnessSlider.value = brightnessBoost = value;
+	recalcSpectrogram();
+	
+	clearWaitCursor();
+}
+
 document.getElementById("brightnessSlider").addEventListener(
 	"input",
 	e => {
-		brightnessBoost = parseFloat(e.target.value);
-		spectogramCanvasCtx.clearRect(
-			0,
-			0,
-			spectogramCanvas.width,
-			spectogramCanvas.height
-		);
-		
-		for (let i = 0; i < cachedSpectrogram.length; i++) {
-			redrawSpectrogramColumn(
-				i,
-				cachedSpectrogram[i]
-			);
-		}
+		debounce(STD_DEBOUNCE_DELAY_MS, () => {
+			// * Need to use debounce here as this update op is slow,
+			//   but the slider updates a bazillion times when dragged
+			// * This does end up setting the parsed value back 
+			//   onto the variable in question
+			let newBrightness = parseFloat(e.target.value);
+			console.log(`new brightness = ${newBrightness}`); 
+			
+			setBrightnessBoost(newBrightness);
+		})();
 	}
 );
+
+document.getElementById("resetBrightnessBtn").onclick = () => {
+	// NOTE: 1 here is the initial value of the slider (as per the HTML)
+	setBrightnessBoost(1);
+};
+
+// ----------------------------------
+
+// Update the "tuningOffset" value, with the given float value.
+// ! This causes all the detected pitch values to need to be re-generated
+//   (and also the spectrogram colouring)
+function setTuningOffsetValues(value)
+{
+	tuningSlider.value = tuningOffset = value;
+	
+	document.getElementById("tuningLabel").textContent =
+		tuningOffset.toFixed(2) + " st";
+}
+
+// Actually perform all the expensive recomputations associated with a recent
+// tuning update change.
+function applyTuningOffsetUpdate()
+{
+	enableWaitCursor();
+	
+	console.log(`Retuning with A=${aTuningHz} Hz and tuningOffset = ${tuningOffset}`);
+	recalcSpectrogramAndAllNoteIds();
+	
+	clearWaitCursor();
+}
 
 document.getElementById("tuningSlider").addEventListener(
 	"input",
 	e => {
-		tuningOffset = parseFloat(e.target.value);
+		// Only flush the tuning slider updates to all the properties that
+		// depend on it (e.g. UI label) so that user has feedback on what
+		// they are setting, and can fine-tune before it triggers an update.
+		//
+		// NOTE: This step will end up flushing the just-parsed value back to
+		//       the slider it just go read from. But this simplifies the update
+		//       handling for all other cases.
+		setTuningOffsetValues(parseFloat(e.target.value));
 		
-		document.getElementById("tuningLabel").textContent =
-			tuningOffset.toFixed(2)
-			+ " st";
+		debounce(STD_DEBOUNCE_DELAY_MS, () => {
+			// Now, only actually perform the heavy recalc from this
+			// (or another subsequent update) if debounce() allows it to 
+			// happen in a throttled manner.
+			applyTuningOffsetUpdate();
+		})();
 	}
 );
 
+document.getElementById("resetTuningOffsetBtn").onclick = () => {
+	// NOTE: Resetting is a two-step operation, given the need to decouple
+	//       fast-ui-feedback from recomputed spectrogram data (slow)
+	setTuningOffsetValues(0);
+	applyTuningOffsetUpdate();
+};
+
+// ----------------------------------
+
+
 document.getElementById("legendBtn").onclick = () => {
-    // Toggle Legend Panel visiblity status
-	legendVisible ^= true;
-	
-    // TODO: Don't allow tweaks to stay visible when this is opened
-	
 	const p = document.getElementById("legendPanel");
-	p.style.display = (legendVisible) ? "block" : "none";
+	p.classList.toggle("hidden");
 };
 
 document.getElementById("tweaksBtn").onclick = () => {
-    // Toggle Tweak Panel visibility status
-    tweaksVisible ^= true;
-    
-    // TODO: Don't allow legend to stay visible when this is opened
-    
-    const p = document.getElementById("tweaksPanel");
-	p.style.display = (tweaksVisible) ? "block" : "none";
+	const p = document.getElementById("tweaksPanel");
+	p.classList.toggle("hidden");
 }
 
 
@@ -1545,6 +1820,7 @@ document.getElementById("restartBtn").onclick = () => {
 document.getElementById("recordBtn").onclick = () => {
 	if (recording) {
 		recorder.stop();
+		
 	}
 	else {
 		startRecording();
