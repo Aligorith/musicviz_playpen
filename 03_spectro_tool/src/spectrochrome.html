@@ -669,38 +669,38 @@ function colorForFreq(freq)
 	const midiPitchInfo = tunedMidi(freq);
 	
 	switch (midiPitchInfo.pitch) {
-		case 0:
-			return [255,210,160];
+		case 0: // C
+			return [255,210,160];     // #FFD2A0 (peach)
 		
-		case 2:
-			return [40,60,150];
+		case 2: // D
+			return [40,60,150];       // #283C96  (navy blue)
 		
-		case 4:
+		case 4: // E
 			return (
 				freq >= aTuningHz
-				? [220,180,255]
-				: [120,80,50]
+				? [220,180,255]       // #DCB4FF (lavendar)
+				: [120,80,50]         // #785032 (brown)
 			);
 		
-		case 5:
-			return [245,217,84];
+		case 5: // F
+			return [245,217,84];      // #F5D954 (yellow)
 		
-		case 7:
+		case 7: // G
 			if (midiPitchInfo.octave < 4) {
-				return [0,80,30];
+				return [0,80,30];    // #00501E (dark green)
 			}
 			if (midiPitchInfo.octave === 4) {
-				return [70,190,50];
+				return [70,190,50];  // #46BE32 (lawn green)
 			}
-			return [180,255,80];
+			return [180,255,80];     // #B4FF50 (parakeet green)
 		
-		case 9:
-			return [255,70,70];
+		case 9: // A
+			return [255,70,70];      // #FF4646 (light red)
 		
-		case 11:
-			return [120,220,255];
+		case 11: // B
+			return [120,220,255];    // #78DCFF (sky blue)
 		
-		default:
+		default: // Undefined / Unknown - Light Grey
 			return [180,180,180];
 	}
 }
