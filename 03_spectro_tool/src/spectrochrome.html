@@ -673,7 +673,10 @@ function colorForFreq(freq)
 			return [255,210,160];     // #FFD2A0 (peach)
 		
 		case 2: // D
-			return [40,60,150];       // #283C96  (navy blue)
+			if (midiPitchInfo.octave < 4) {
+				return [40,60,150];       // #283C96  (navy blue)
+			}
+			return [55,123,225];       // #377BE1  (dark blue)
 		
 		case 4: // E
 			return (
@@ -686,15 +689,29 @@ function colorForFreq(freq)
 			return [245,217,84];      // #F5D954 (yellow)
 		
 		case 7: // G
-			if (midiPitchInfo.octave < 4) {
+			if (midiPitchInfo.octave < 5) {
+				// "G-String" on Violin Ends Up At "g3 / g4"
 				return [0,80,30];    // #00501E (dark green)
 			}
-			if (midiPitchInfo.octave === 4) {
+			if (midiPitchInfo.octave === 5) {
+				// "G" below tuning A
 				return [70,190,50];  // #46BE32 (lawn green)
+			}
+			if (midiPitchInfo.octave === 7) {
+				// De-emphasize "Harmonics Band" G, as it's too overwhelming
+				return [180,255,80]; // #CBE9A3 (lighter lime green)
 			}
 			return [180,255,80];     // #B4FF50 (parakeet green)
 		
 		case 9: // A
+			if (midiPitchInfo.octave < 4) {
+				// A below tuning A
+				return [197,28,28];      // #C51C1C (dark red)
+			}
+			if (midiPitchInfo.octave === 4) {
+				// Tuning A
+				return [244,21,21];      // #F41515 (tomato red)
+			}
 			return [255,70,70];      // #FF4646 (light red)
 		
 		case 11: // B
