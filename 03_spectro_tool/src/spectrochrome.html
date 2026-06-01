@@ -686,8 +686,8 @@ function colorForFreq(freq)
 			if (pitchName.startsWith("e")) {
 				// Eb
 				if (midiPitchInfo.octave <= 5) {
-					// Warmer Brown
-					return [182,116,66];    // #B67442 (warmer brown)
+					// Darker Brown
+					return [120,80,50];     // #785032 (darker brown)
 				}
 				else {
 					// Darker Lavendar
@@ -703,10 +703,15 @@ function colorForFreq(freq)
 			return (
 				freq >= aTuningHz
 				? [220,180,255]       // #DCB4FF (lavendar)
-				: [120,80,50]         // #785032 (brown)
+				: [182,116,66]        // #B67442 (warmer brown)
 			);
 		
 		case 5: // F
+			// TODO: Decrease c7 band brightness
+			if (midiPitchInfo.octave == 7) {
+				// Desaturated yellow - As this is the "harmonic band" that is really glowy
+				return [237,222,148];      // #EDDE94 (desaturated yellow)
+			}
 			return [245,217,84];      // #F5D954 (yellow)
 		
 		case 6: // F# / Gb
@@ -721,7 +726,9 @@ function colorForFreq(freq)
 			}
 			else {
 				// "F"
-				// TODO: Lower octave should be darker
+				if (midiPitchInfo.octave <= 3) {
+					return [200,194,92];  // #C8C25C (lighter but darker yellow)
+				}
 				return [242,234,106];  // #F2EA6A (lighter yellow)
 			}
 		
