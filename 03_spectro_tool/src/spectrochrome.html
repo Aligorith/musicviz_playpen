@@ -668,39 +668,147 @@ function colorForFreq(freq)
 {
 	const midiPitchInfo = tunedMidi(freq);
 	
+	let pitchName = pitchNameModeOptions[pitchNamesMode][midiPitchInfo.pitch];
+	let octave = midiPitchInfo.octave;
+	
 	switch (midiPitchInfo.pitch) {
-		case 0:
-			return [255,210,160];
+		case 0: // C
+			return [255,210,160];     // #FFD2A0 (peach)
 		
-		case 2:
-			return [40,60,150];
+		case 1: // C#  (NOTE: Almost never "Db"...)
+			return [255,218,160];     // #FFDAA0 (lighter peach)
 		
-		case 4:
-			return (
-				freq >= aTuningHz
-				? [220,180,255]
-				: [120,80,50]
-			);
-		
-		case 5:
-			return [245,217,84];
-		
-		case 7:
-			if (midiPitchInfo.octave < 4) {
-				return [0,80,30];
+		case 2: // D
+			if (octave === 5) {
+				// NOTE: This needed to be made "5" as using "4" to match "d4"
+				//       wasn't working...
+				return [46,71,182];       // #2E47B6  (navy blue - lighter version)
 			}
-			if (midiPitchInfo.octave === 4) {
-				return [70,190,50];
+			if (octave <= 4) {
+				// Things below d4 should be even darker...
+				return [30,92,194];       // #1E5CC2  (navy blue)
 			}
-			return [180,255,80];
+			// For higher registers...
+			return [55,123,225];          // #377BE1  (medium-dark blue)
 		
-		case 9:
-			return [255,70,70];
+		case 3: // D# / Eb
+			if (pitchName.startsWith("e")) {
+				// Eb
+				if (octave <= 5) {
+					// Darker Brown
+					return [120,80,50];     // #785032 (darker brown)
+				}
+				else {
+					// Darker Lavendar
+					return [199,143,248];  // #C78FF8 (darker lavender)
+				}
+			}
+			else {
+				// D#
+				return [56,143,233];       // #388FE9  (blue)
+			}
 		
-		case 11:
-			return [120,220,255];
+		case 4: // E
+			if (freq >= aTuningHz) {
+				// Lavender for "Higher" E's
+				if (octave >= 7) {
+					// Lighter for higher
+					return [231,205,254];   // #E7CDFE (lavender)
+				}
+				return [220,180,255];   // #DCB4FF (lavender)
+			}
+			
+			// Brown for "Lower" E's
+			return [182,116,66];        // #B67442 (warmer brown)
 		
-		default:
+		case 5: // F
+			if (octave == 7) {
+				// Desaturated yellow - As this is the "harmonic band" that is really glowy
+				return [237,222,148];      // #EDDE94 (desaturated yellow)
+			}
+			return [245,217,84];      // #F5D954 (yellow)
+		
+		case 6: // F# / Gb
+			if (pitchName.startsWith("g") || (octave === 4)) {
+				// "G"
+				// NOTE: The octave == 3 thing is a hack for violin-layering,
+				//       where tagging if "f#" for "open G" should just resolve to "G"
+				//       (XXX: Do this earlier in the pipeline instead?)
+				return [162,231,71];   // #A2E747 (darker parakeet green)
+			}
+			else {
+				// "F"
+				if (octave <= 3) {
+					return [200,194,92];  // #C8C25C (lighter but darker yellow)
+				}
+				return [242,234,106];  // #F2EA6A (lighter yellow)
+			}
+		
+		case 7: // G
+			if (octave < 5) {
+				// "G-String" on Violin Ends Up At "g3 / g4"
+				return [0,80,30];    // #00501E (dark green)
+			}
+			if (octave === 5) {
+				// "G" below tuning A
+				return [70,190,50];  // #46BE32 (lawn green)
+			}
+			if (octave === 7 || octave === 8) {
+				// De-emphasize "Harmonics Band" G, as it's too overwhelming...
+				return [191,219,154]; // #BFDB9A (lighter lime green)
+			}
+			return [180,255,80];     // #B4FF50 (parakeet green)
+		
+		case 8: // G# / Ab
+			if (pitchName.startsWith("g") && (aTuningHz != 432)) {
+				// "G"
+				if (octave <= 5) {
+					// "G" below tuning A
+					return [59,225,31];  // #3BE11F ("brighter forest green")
+				}
+				else {
+					// All others
+					return [197,251,126];     // #C5FB7E (brighter parakeet green)
+				}
+			}
+			else {
+				// Ab
+				// NOTE: The A=432 check to force this case to happen is a hack
+				//       to cope with some "off tuning" in this case ending up
+				//       in the G# band instead...
+				
+				return [222,39,39];      // #DE2727 (darker red)
+			}
+		
+		case 9: // A
+			if (octave < 4) {
+				// A below tuning A
+				return [197,28,28];      // #C51C1C (dark red)
+			}
+			if (octave === 4) {
+				// Tuning A
+				return [244,21,21];      // #F41515 (tomato red)
+			}
+			return [255,70,70];          // #FF4646 (light red)
+		
+		case 10: // A# / Bb
+			if (pitchName.startsWith("b")) {
+				// "Bb"
+				return [92,166,192];    // #5CA6C0 (teal-blue)
+			}
+			else {
+				// "A#"
+				return [251,115,115];     // #FB7373 (lighter red)
+			}
+		
+		case 11: // B
+			if (octave < 6) {
+				// Lower B's should look more like D cases...
+				return [68,159,237];     // #449FED  (medium blue)
+			}
+			return [120,220,255];    // #78DCFF (sky blue)
+		
+		default: // Undefined / Unknown - Light Grey
 			return [180,180,180];
 	}
 }
@@ -1112,7 +1220,10 @@ function drawBubbles()
 			activeFound = true;
 		}
 		
-		const bubbleY = canvas.height * 0.89;
+		// NOTE: The bubbles should end up inside the timeline strip,
+		//       otherwise, some of them end up mingling with bass-heavy
+		//       bits in more professionally produced music...
+		const bubbleY = canvas.height * 0.98;
 		
 		if (active) {
 			// Orange / "Active" Bubble

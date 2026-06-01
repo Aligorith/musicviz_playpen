@@ -29,13 +29,18 @@ Spectrochrome Roadmap
 * Fix bug where processing pauses if/when the tab loses focus, and then completely dies when we come back and look at it (or start interacting with it)
   * Option 1:  Create a "progress popup panel, with progressbar", + button to resume / cancel stalled operations. This will work by storing the "in-progress" Promise, and triggering it to get run again if it got stalled out for whatever reason?
 
+* On some machines, the cursor updates aren't reliable, e.g.:
+  * Wait cursor doesn't show when doing tuning tweaks
+  * Wait cursor doesn't clear after analysis, until moving the mouse
+
 
 == Enhancements ==
+* Changing the filename should clear the spectrogram
+* Changing tuning (A=) should result in recalculation (like for the tuning slider)
+
 * Add ability to select per color (in the legend) using popup swatches, and then have these changes be reflected in the overall visualisation
 
-* Add Sharp/Flat colour variant of each main pitches currently defined. Then add a control about whether to prefer the "Sharp" or "Flat" accidentals, if/when those are needed.
-  * NOTE: Do this and see how this affects the handling of all those currently "grey" lines
-  * TODO: Figure out the mappings for the existing colors
+* Expose control in UI for selecting between the sharp/flat color labelling preference
   
 * Add ability to adjust the minimum magnitude via tweaks, then re-analyse
 
