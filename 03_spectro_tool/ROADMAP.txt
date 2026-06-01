@@ -40,9 +40,7 @@ Spectrochrome Roadmap
 
 * Add ability to select per color (in the legend) using popup swatches, and then have these changes be reflected in the overall visualisation
 
-* Add Sharp/Flat colour variant of each main pitches currently defined. Then add a control about whether to prefer the "Sharp" or "Flat" accidentals, if/when those are needed.
-  * NOTE: Do this and see how this affects the handling of all those currently "grey" lines
-  * TODO: Figure out the mappings for the existing colors
+* Expose control in UI for selecting between the sharp/flat color labelling preference
   
 * Add ability to adjust the minimum magnitude via tweaks, then re-analyse
 
