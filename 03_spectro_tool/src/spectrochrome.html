@@ -667,6 +667,7 @@ function midiToLabel(m)
 function colorForFreq(freq)
 {
 	const midiPitchInfo = tunedMidi(freq);
+	let pitchName = pitchNameModeOptions[pitchNamesMode][midiPitchInfo.pitch];
 	
 	switch (midiPitchInfo.pitch) {
 		case 0: // C
@@ -687,6 +688,15 @@ function colorForFreq(freq)
 		
 		case 5: // F
 			return [245,217,84];      // #F5D954 (yellow)
+		
+		case 6: // F# / Gb
+			if (pitchName.startsWith("f")) {
+				return [242,234,106];  // #F2EA6A (lighter yellow)
+			}
+			else {
+				// FIXME: placeholder for testing
+				return [162,231,71];   // #A2E747 (darker parakeet green)
+			}
 		
 		case 7: // G
 			if (midiPitchInfo.octave < 5) {
