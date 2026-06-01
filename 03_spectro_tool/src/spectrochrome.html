@@ -677,10 +677,27 @@ function colorForFreq(freq)
 			return [255,218,160];     // #FFDAA0 (lighter peach)
 		
 		case 2: // D
-			if (midiPitchInfo.octave < 4) {
+			if (midiPitchInfo.octave <= 4) {
 				return [40,60,150];       // #283C96  (navy blue)
 			}
 			return [55,123,225];       // #377BE1  (dark blue)
+		
+		case 3: // D# / Eb
+			if (pitchName.startsWith("e")) {
+				// Eb
+				if (midiPitchInfo.octave <= 5) {
+					// Warmer Brown
+					return [182,116,66];    // #B67442 (warmer brown)
+				}
+				else {
+					// Darker Lavendar
+					return [199,143,248];  // #C78FF8 (darker lavendar)
+				}
+			}
+			else {
+				// D#
+				return [56,143,233];       // #388FE9  (blue)
+			}
 		
 		case 4: // E
 			return (
