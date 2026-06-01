@@ -673,6 +673,9 @@ function colorForFreq(freq)
 		case 0: // C
 			return [255,210,160];     // #FFD2A0 (peach)
 		
+		case 1: // C#  (NOTE: Almost never "Db"...)
+			return [255,218,160];     // #FFDAA0 (lighter peach)
+		
 		case 2: // D
 			if (midiPitchInfo.octave < 4) {
 				return [40,60,150];       // #283C96  (navy blue)
@@ -746,7 +749,17 @@ function colorForFreq(freq)
 				// Tuning A
 				return [244,21,21];      // #F41515 (tomato red)
 			}
-			return [255,70,70];      // #FF4646 (light red)
+			return [255,70,70];          // #FF4646 (light red)
+		
+		case 10: // A# / Bb
+			if (pitchName.startsWith("b")) {
+				// "Bb"
+				return [92,166,192];    // #5CA6C0 (teal-blue)
+			}
+			else {
+				// "A#"
+				return [251,115,115];     // #FB7373 (lighter red)
+			}
 		
 		case 11: // B
 			return [120,220,255];    // #78DCFF (sky blue)
