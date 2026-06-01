@@ -677,10 +677,17 @@ function colorForFreq(freq)
 			return [255,218,160];     // #FFDAA0 (lighter peach)
 		
 		case 2: // D
-			if (midiPitchInfo.octave <= 4) {
-				return [40,60,150];       // #283C96  (navy blue)
+			if (midiPitchInfo.octave === 5) {
+				// NOTE: This needed to be made "5" as using "4" to match "d4"
+				//       wasn't working...
+				return [46,71,182];       // #2E47B6  (navy blue - lighter version)
 			}
-			return [55,123,225];       // #377BE1  (dark blue)
+			if (midiPitchInfo.octave <= 4) {
+				// Things below d4 should be even darker...
+				return [30,92,194];       // #1E5CC2  (navy blue)
+			}
+			// For higher registers...
+			return [55,123,225];          // #377BE1  (medium-dark blue)
 		
 		case 3: // D# / Eb
 			if (pitchName.startsWith("e")) {
@@ -691,7 +698,7 @@ function colorForFreq(freq)
 				}
 				else {
 					// Darker Lavendar
-					return [199,143,248];  // #C78FF8 (darker lavendar)
+					return [199,143,248];  // #C78FF8 (darker lavender)
 				}
 			}
 			else {
@@ -700,14 +707,19 @@ function colorForFreq(freq)
 			}
 		
 		case 4: // E
-			return (
-				freq >= aTuningHz
-				? [220,180,255]       // #DCB4FF (lavendar)
-				: [182,116,66]        // #B67442 (warmer brown)
-			);
+			if (freq >= aTuningHz) {
+				// Lavender for "Higher" E's
+				if (midiPitchInfo.octave >= 7) {
+					// Lighter for higher
+					return [231,205,254];   // #E7CDFE (lavender)
+				}
+				return [220,180,255];   // #DCB4FF (lavender)
+			}
+			
+			// Brown for "Lower" E's
+			return [182,116,66];        // #B67442 (warmer brown)
 		
 		case 5: // F
-			// TODO: Decrease c7 band brightness
 			if (midiPitchInfo.octave == 7) {
 				// Desaturated yellow - As this is the "harmonic band" that is really glowy
 				return [237,222,148];      // #EDDE94 (desaturated yellow)
@@ -720,8 +732,6 @@ function colorForFreq(freq)
 				// NOTE: The octave == 3 thing is a hack for violin-layering,
 				//       where tagging if "f#" for "open G" should just resolve to "G"
 				//       (XXX: Do this earlier in the pipeline instead?)
-				
-				// FIXME: placeholder for testing
 				return [162,231,71];   // #A2E747 (darker parakeet green)
 			}
 			else {
@@ -741,14 +751,14 @@ function colorForFreq(freq)
 				// "G" below tuning A
 				return [70,190,50];  // #46BE32 (lawn green)
 			}
-			if (midiPitchInfo.octave === 7) {
-				// De-emphasize "Harmonics Band" G, as it's too overwhelming
-				return [180,255,80]; // #CBE9A3 (lighter lime green)
+			if (midiPitchInfo.octave === 7 || midiPitchInfo.octave === 8) {
+				// De-emphasize "Harmonics Band" G, as it's too overwhelming...
+				return [191,219,154]; // #BFDB9A (lighter lime green)
 			}
 			return [180,255,80];     // #B4FF50 (parakeet green)
 		
 		case 8: // G# / Ab
-			if (pitchName.startsWith("g")) {
+			if (pitchName.startsWith("g") && (aTuningHz != 432)) {
 				// "G"
 				if (midiPitchInfo.octave <= 5) {
 					// "G" below tuning A
@@ -761,6 +771,10 @@ function colorForFreq(freq)
 			}
 			else {
 				// Ab
+				// NOTE: The A=432 check to force this case to happen is a hack
+				//       to cope with some "off tuning" in this case ending up
+				//       in the G# band instead...
+				
 				return [222,39,39];      // #DE2727 (darker red)
 			}
 		
@@ -786,6 +800,10 @@ function colorForFreq(freq)
 			}
 		
 		case 11: // B
+			if (midiPitchInfo.octave < 6) {
+				// Lower B's should look more like D cases...
+				return [68,159,237];     // #449FED  (medium blue)
+			}
 			return [120,220,255];    // #78DCFF (sky blue)
 		
 		default: // Undefined / Unknown - Light Grey
