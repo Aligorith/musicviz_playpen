@@ -690,12 +690,19 @@ function colorForFreq(freq)
 			return [245,217,84];      // #F5D954 (yellow)
 		
 		case 6: // F# / Gb
-			if (pitchName.startsWith("f")) {
-				return [242,234,106];  // #F2EA6A (lighter yellow)
-			}
-			else {
+			if (pitchName.startsWith("g") || midiPitchInfo.octave === 4) {
+				// "G"
+				// NOTE: The octave == 3 thing is a hack for violin-layering,
+				//       where tagging if "f#" for "open G" should just resolve to "G"
+				//       (XXX: Do this earlier in the pipeline instead?)
+				
 				// FIXME: placeholder for testing
 				return [162,231,71];   // #A2E747 (darker parakeet green)
+			}
+			else {
+				// "F"
+				// TODO: Lower octave should be darker
+				return [242,234,106];  // #F2EA6A (lighter yellow)
 			}
 		
 		case 7: // G
@@ -712,6 +719,23 @@ function colorForFreq(freq)
 				return [180,255,80]; // #CBE9A3 (lighter lime green)
 			}
 			return [180,255,80];     // #B4FF50 (parakeet green)
+		
+		case 8: // G# / Ab
+			if (pitchName.startsWith("g")) {
+				// "G"
+				if (midiPitchInfo.octave <= 5) {
+					// "G" below tuning A
+					return [59,225,31];  // #3BE11F ("brighter forest green")
+				}
+				else {
+					// All others
+					return [197,251,126];     // #C5FB7E (brighter parakeet green)
+				}
+			}
+			else {
+				// Ab
+				return [222,39,39];      // #DE2727 (darker red)
+			}
 		
 		case 9: // A
 			if (midiPitchInfo.octave < 4) {
