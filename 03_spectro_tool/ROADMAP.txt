@@ -84,6 +84,12 @@ Spectrochrome Roadmap
   
   * Melodic-line following / tracing: Figure out an algorithm for that, and draw an overlay tracking those?
   
+  * Nearby bubbles should transition between blue and orange, and move up slightly, so they look like they're jumping up and down
+  
+  * Consider adding some delay or something on the notes being "splotted" at the playhead, to make them read better as being emitted at that point
+  
+  * Consider showing current summary of the notes being played in the left gutter?
+  
 
 * Composition / Analysis Tools:
   * Tool for detecting the rhythmic configuration

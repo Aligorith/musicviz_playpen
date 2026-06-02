@@ -16,3 +16,11 @@ Overall Roadmap
 
 * ???) Figure out next steps to better capture the "background soundscape" painting method, vs extracting polyphonic melodies
 
+---
+
+Other Experiments:
+
+* Whirlpool / Paint Mixing / Fuzzy Cloud Dot Mixing
+
+* Chinese Painting Mountains from Waveforms
+
