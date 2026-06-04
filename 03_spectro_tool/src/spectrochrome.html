@@ -154,6 +154,11 @@ input[type="range"] {
 	content: "↺";
 }
 
+/* Preferred width of the selection dropdowns inside the form-grids */
+.form-grid select {
+	width: 140px;
+}
+
 /* ************************* */
 /* Floating / Popup Panel Stuff */
 
@@ -222,7 +227,7 @@ input[type="range"] {
 /* Legend / Mappings Panel */
 
 #legendPanel {
-	max-width: 250px;
+	max-width: 300px;
 }
 
 .legendRow {
@@ -318,6 +323,34 @@ input[type="range"] {
 	
 	<!-- 1) Legend Panel -->
 	<div id="legendPanel" class="popup-panel hidden">
+		<!-- Colour Map Settings-->
+		<div class="form-grid">
+			<!-- Sharp / Flat Bias -->
+			<label class="form-property-label" for="sharpFlatBiasSelector">
+				Sharp/Flat Bias: 
+			</label>
+			<select id="sharpFlatBiasSelector" class="form-property-widget">
+				<option value="Sharps">All Sharps</option>
+				<option value="Flats">All Flats</option>
+				<option value="Common" selected>Common Variants</option>
+			</select>
+			<button id="resetSharpFlatBiasBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+			
+			<!-- Pitch Naming Style -->
+			<label class="form-property-label" for="pitchNameStyleSelector">
+				Pitch Naming Style:
+			</label>
+			<select id="pitchNameStyleSelector" class="form-property-widget">
+				<option value="ScientificNotation" selected>Scientific Pitch Notation</option>
+				<option value="Lilypond">Lilypond</option>
+			</select>
+			<button id="resetPitchNameStyleBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+		</div>
+		
+		<!-- Gap -->
+		<div style="height: 30px;"></div>
+		
+		<!-- Color swatches Region -->
 		<div class="legendRow">
 			<div class="swatch" style="background:#ffd0a0"></div>
 			C = peach/gold
