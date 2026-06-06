@@ -341,9 +341,9 @@ input[type="range"] {
 				Sharp/Flat Bias: 
 			</label>
 			<select id="sharpFlatBiasSelector" class="form-property-widget">
+				<option value="Common" selected>Common Variants</option>
 				<option value="Sharps">All Sharps</option>
 				<option value="Flats">All Flats</option>
-				<option value="Common" selected>Common Variants</option>
 			</select>
 			<button id="resetSharpFlatBiasBtn" class="form-reset-property-btn" aria-label="Reset"></button>
 		</div>
@@ -795,8 +795,12 @@ function octaveToLilypondString(octave)
 // > returns: (str) Pitch name string to use in the UI
 function getPitchNameLabel(pitchIndex, octave, octaveIsOptional=false)
 {
+	let styleName = 
+		(pitchNameStyle === LILYPOND_HYBRID_NOTATION) ? LILYPOND_NOTATION 
+		                                              : pitchNameStyle;
+	
 	let pitchName = 
-		pitchNamesTable[sharpFlatBiasMode][pitchNameStyle][pitchIndex];
+		pitchNamesTable[sharpFlatBiasMode][styleName][pitchIndex];
 	
 	let octaveString = `${octave}`;
 	if (pitchNameStyle === LILYPOND_NOTATION) {
@@ -1976,7 +1980,7 @@ document.getElementById("aTuning").onchange = () => {
 function setPitchNameStyle(styleName)
 {
 	// Update pitch name styling mode
-	pitchNameStyle = styleName;
+	pitchNameStyle = pitchNameStyleSelector.value = styleName;
 	
 	// NOTE: This should just auto-redraw the UI without having to do anything?
 	// TODO: or do we have to recalc the names?
@@ -1999,7 +2003,7 @@ document.getElementById("resetPitchNameStyleBtn").onclick = () => {
 function setSharpFlatBiasMode(biasMode)
 {
 	// Update pitch name styling mode
-	sharpFlatBiasMode = biasMode;
+	sharpFlatBiasMode = sharpFlatBiasSelector.value = biasMode;
 	
 	// Recalc the labels + spectrogram to match this...
 	enableWaitCursor();
