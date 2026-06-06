@@ -1118,6 +1118,11 @@ function identifyMidiEventForSlice(i, spec)
 // TODO: Maybe this should be async to not lock the main thread?
 function recalcSpectrogram()
 {
+	// Skip if there isn't any cached data yet
+	if (cachedSpectrogram.length == 0) {
+		return;
+	}
+	
 	// Clear the cached spectrogram image, that we're rebuilding
 	spectogramCanvasCtx.clearRect(
 		0,
@@ -1140,6 +1145,11 @@ function recalcSpectrogram()
 // TODO: Introduce an optimised method that only changes the tagged ones
 function recalcSpectrogramAndAllNoteIds()
 {
+	// Skip if there isn't any cached data yet
+	if (cachedSpectrogram.length == 0) {
+		return;
+	}
+	
 	// Reset all the relevant bits being recalculated
 	spectogramCanvasCtx.clearRect(
 		0,
@@ -1171,10 +1181,15 @@ function recalcSpectrogramAndAllNoteIds()
 // Only recalculate note id's  (see recalcSpectrogramAndAllNoteIds())
 function recalcNoteIdsOnly()
 {
+	// Skip if there isn't any cached data yet
+	if (cachedSpectrogram.length == 0) {
+		return;
+	}
+	
 	console.log("Recalculating all note id's...")
 	midiEvents.length = 0;
 	
-	// Reprocess each of the cached spectogram slices...
+	// Reprocess each of the cached spectrogram slices...
 	// TODO: Update status text again with our progress
 	for (let i = 0; i < cachedSpectrogram.length; i++) {
 		// Recalculate the most likely pitches
@@ -1999,6 +2014,13 @@ document.getElementById("aTuning").onchange = () => {
 	}
 };
 
+// Reset A tuning frequency to the hardcoded default
+function resetATuningHz()
+{
+	// The standard tuning frequency
+	aTuningHz = aTuning.value = 440;
+}
+
 // ----------------------------------
 
 // Update pitch name style variable
@@ -2013,15 +2035,19 @@ function setPitchNameStyle(styleName)
 	recalcNoteIdsOnly();
 }
 
+// Reset pitch naming style
+function resetPitchNameStyle()
+{
+	setPitchNameStyle(SCIENTIFIC_NOTATION);
+}
+
 // Update the Pitch Naming Style
 document.getElementById("pitchNameStyleSelector").onchange = () => {
 	setPitchNameStyle(pitchNameStyleSelector.value);
 };
 
 // Reset pitch name style
-document.getElementById("resetPitchNameStyleBtn").onclick = () => {
-	setPitchNameStyle(SCIENTIFIC_NOTATION);
-}
+document.getElementById("resetPitchNameStyleBtn").onclick = resetPitchNameStyle;
 
 // ----------------------------------
 
@@ -2041,15 +2067,19 @@ function setSharpFlatBiasMode(biasMode)
 	clearWaitCursor();
 }
 
+// Reset Sharp/Flat Bias Mode
+function resetSharpFlatBiasMode()
+{
+	setSharpFlatBiasMode(COMMON_BIAS_MODE);
+}
+
 // Update the Sharp/Flat Bias Mode
 document.getElementById("sharpFlatBiasSelector").onchange = () => {
 	setSharpFlatBiasMode(sharpFlatBiasSelector.value);
 };
 
 // Reset sharp/flat bias mode
-document.getElementById("resetSharpFlatBiasBtn").onclick = () => {
-	setSharpFlatBiasMode(COMMON_BIAS_MODE);
-}
+document.getElementById("resetSharpFlatBiasBtn").onclick = resetSharpFlatBiasMode;
 
 // ----------------------------------
 
@@ -2063,6 +2093,13 @@ function setBrightnessBoost(value)
 	recalcSpectrogram();
 	
 	clearWaitCursor();
+}
+
+// Reset brightness boost to default values
+function resetBrightnessBoost()
+{
+	// NOTE: 1 here is the initial value of the slider (as per the HTML)
+	setBrightnessBoost(1);
 }
 
 document.getElementById("brightnessSlider").addEventListener(
@@ -2081,10 +2118,7 @@ document.getElementById("brightnessSlider").addEventListener(
 	}
 );
 
-document.getElementById("resetBrightnessBtn").onclick = () => {
-	// NOTE: 1 here is the initial value of the slider (as per the HTML)
-	setBrightnessBoost(1);
-};
+document.getElementById("resetBrightnessBtn").onclick = resetBrightnessBoost;
 
 // ----------------------------------
 
@@ -2111,6 +2145,15 @@ function applyTuningOffsetUpdate()
 	clearWaitCursor();
 }
 
+// Reset Tuning Offset value
+function resetTuningOffset()
+{
+	// NOTE: Resetting is a two-step operation, given the need to decouple
+	//       fast-ui-feedback from recomputed spectrogram data (slow)
+	setTuningOffsetValues(0);
+	applyTuningOffsetUpdate();
+}
+
 document.getElementById("tuningSlider").addEventListener(
 	"input",
 	e => {
@@ -2132,12 +2175,7 @@ document.getElementById("tuningSlider").addEventListener(
 	}
 );
 
-document.getElementById("resetTuningOffsetBtn").onclick = () => {
-	// NOTE: Resetting is a two-step operation, given the need to decouple
-	//       fast-ui-feedback from recomputed spectrogram data (slow)
-	setTuningOffsetValues(0);
-	applyTuningOffsetUpdate();
-};
+document.getElementById("resetTuningOffsetBtn").onclick = resetTuningOffset;
 
 // ----------------------------------
 
@@ -2234,10 +2272,22 @@ document.getElementById("analyzeBtn").onclick = analyseAudio;
 document.getElementById("exportBtn").onclick = exportDetectedNotes;
 
 
-// ============== Main Entrypoint ======================
+// State Setup =============================================
+
+// Synchronise or Reset UI element state to match the current "App" state in JS
+function syncResetState()
+{
+	resetPitchNameStyle();
+	resetSharpFlatBiasMode();
+	resetATuningHz();
+	resetTuningOffset();
+	resetBrightnessBoost();
+}
+
+// Main Entrypoint =========================================
 
 // Ensure internal values are set to match what the widgets have set
-// TODO: initState();
+syncResetState();
 
 // Start rendering loop
 render();
