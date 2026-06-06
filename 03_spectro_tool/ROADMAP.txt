@@ -43,8 +43,6 @@ Spectrochrome Roadmap
 
 * Add ability to select per color (in the legend) using popup swatches, and then have these changes be reflected in the overall visualisation
 
-* Expose control in UI for selecting between the sharp/flat color labelling preference
-  
 * Add ability to adjust the minimum magnitude via tweaks, then re-analyse
 
 * Change the numeric tweaks to have a number input widget
