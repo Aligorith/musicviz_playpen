@@ -2008,8 +2008,9 @@ function setPitchNameStyle(styleName)
 	// Update pitch name styling mode
 	pitchNameStyle = pitchNameStyleSelector.value = styleName;
 	
-	// NOTE: This should just auto-redraw the UI without having to do anything?
-	// TODO: or do we have to recalc the names?
+	// Force recalculation of the names, otherwise the "label" arg
+	// still keeps using the old ones only...
+	recalcNoteIdsOnly();
 }
 
 // Update the Pitch Naming Style
