@@ -342,7 +342,7 @@ input[type="range"] {
 			</label>
 			<select id="pitchNameStyleSelector" class="form-property-widget">
 				<option value="ScientificNotation" selected>Scientific Pitch Notation</option>
-				<option value="Lilypond">Lilypond</option>
+				<option value="LilypondNotation">Lilypond</option>
 			</select>
 			<button id="resetPitchNameStyleBtn" class="form-reset-property-btn" aria-label="Reset"></button>
 		</div>
@@ -392,7 +392,7 @@ input[type="range"] {
 
 
 <script>
-// ============= Canvas Defines ====================
+// Canvas Defines ==================================
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
 
@@ -402,7 +402,7 @@ const ctx = canvas.getContext("2d");
 const spectogramCanvas = document.createElement("canvas");
 const spectogramCanvasCtx = spectogramCanvas.getContext("2d");
 
-// ================ Audio ==========================
+// Audio ===========================================
 
 const audioCtx =
 	new (
@@ -430,7 +430,7 @@ const INVALID_HIDDEN_SCRUBBER_IDX = -9999;
 // Position of the scrubber (in window x-coordinates - pixels)
 let scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
 
-// =============== Recording ====================
+// Recording =====================================
 
 let recorder = null;
 let chunks = [];
@@ -456,7 +456,7 @@ let brightnessBoost = 1;
 let tuningOffset = 0;
 
 
-// Viz State ==================================
+// Viz State Constants ==================================
 
 // Min/Max Range of Frequencies able to be shown:
 // This cuts out the really low (< C2) and high (> C8) frequencies,
@@ -475,7 +475,7 @@ const TIMELINE_GUTTER = 28;
 // Current maximum width of the spectrogram viewing area
 let spectogramWidth = canvas.width - LEFT_GUTTER;
 
-// ---------------
+// Viz State Data (Computed) ============================
 
 // List of note-events identified
 const midiEvents = [];
@@ -494,7 +494,7 @@ let fixedColumnWidth = 1;
 //       in processAudio()
 let fftToFreqFactor = 1;
 
-// =============== UI Defines / Utils ====================
+// UI Defines / Utils ===================================
 
 // UI Labels for toggle buttons ...............
 const playStateActionTxt          = "▶ Play";
@@ -567,18 +567,30 @@ function colorWithAlpha(rgbTuple, alpha)
 	return `rgba(${rgbTuple[0]}, ${rgbTuple[1]}, ${rgbTuple[2]}, ${alpha})`;
 }
 
-// ============= Coordinate Conversion Utils ==============
+// Coordinate Conversion Utils ===================================
 
+// Convert canvas.x coordinates into time (in seconds) since start of the clip
+// < x: (float :: px) Horizontal-axis screen coordinates relative to the canvas area
+// > returns: (float :: secs) Time in seconds, relative to the start of the audio clip
 function xToTime(x)
 {
 	return ((x - LEFT_GUTTER) / spectogramWidth) * audioDuration;
 }
 
+// Convert time in seconds (since the start of the clip) into the x-coordinate
+// on the canvas that this time is displayed.
+// < t: (float :: secs) Time in seconds since the start of the clip
+// > returns: (float :: px) X-axis pixel coordinate in canvas space events at
+//                          this point in time will be drawn at.
 function timeToX(t)
 {
 	return ((t / audioDuration) * spectogramWidth) + LEFT_GUTTER;
 }
 
+// Convert a frequency (in Hz) into the corresponding canvas.y pixel coordinate
+// to draw this frequency at
+// < freq: (float :: Hz) Frequency in Hz
+// > returns: (float :: px) Y-axis pixel coordinates on the canvas to draw this frequency at
 function freqToY(freq)
 {
 	return (
@@ -595,8 +607,11 @@ function freqToY(freq)
 	);
 }
 
-// ================ Time Utils ==========================
+// Time Utils ==================================================
 
+// Compute the time in seconds elapsed since the given startTime
+// < startTime: (float :: ms) Epoch timestamp marking the start of the operation
+// > returns: (float :: secs) Time in seconds taken so far
 function elapsedTime(startTime)
 {
 	const msPerSecond = 1000;
@@ -1819,6 +1834,7 @@ function debounce(delay, callback)
 
 // ----------------------------------
 
+// Update the A tuning frequency when the dropdown changes
 document.getElementById("aTuning").onchange = () => {
 	// Flush the value from the dropdown to the value used internally
 	const newATuningHz = parseInt(aTuning.value);
