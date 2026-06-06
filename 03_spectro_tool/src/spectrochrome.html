@@ -439,7 +439,7 @@ let recording = false;
 let inputFileName = "audio";
 let recordVersion = 1;
 
-const recordDest = audioCtx.createMediaStreamDestination();
+let recordDest = null;
 
 // (bool) Show faint "ghosted" copy of the whole spectrogram in the background when recording
 let showGhostBackdropWhenRendering = true;
@@ -1486,7 +1486,10 @@ function stopPlayback()
 		catch(e) {
 		}
 		
-		recordDest.disconnect();
+		if (recordDest != null) {
+			recordDest.disconnect();
+			recordDest = null;
+		}
 		
 		playbackSource.disconnect();
 		playbackSource = null;
@@ -1497,6 +1500,9 @@ function stopPlayback()
 	// Do this to try stopping laptops chewing away 30% CPU
 	// constantly running this.
 	cancelAnimationFrame(render);
+	
+	// Clear scrubber position so it doesn't hang around
+	scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
 	
 	// Reset UI state
 	playbackRunning = false;
@@ -1647,6 +1653,7 @@ async function startRecording()
 	chunks = [];
 	
 	const canvasStream = canvas.captureStream(60);
+	recordDest = audioCtx.createMediaStreamDestination(); // create a new one
 	
 	const combined = new MediaStream([
 		...canvasStream.getVideoTracks(),
@@ -1694,8 +1701,13 @@ async function startRecording()
 		
 		URL.revokeObjectURL(url);
 		
+		recordDest = null;
+		
 		recording = false;
 		setStartRecordingButtonState();
+		
+		// For good measure, otherwise the "play/pause button stays on "pause"
+		stopPlayback();
 	};
 	
 	recorder.start();
