@@ -497,6 +497,113 @@ let fixedColumnWidth = 1;
 //       in processAudio()
 let fftToFreqFactor = 1;
 
+
+// Audio Processing Constants =================================
+
+const TWO_PI = 2 * Math.PI;
+
+// --------------------------------------
+
+const semitonesPerOctave = 12;
+const midiRefPitch = 69;
+
+const fftSize = 4096;
+const hop = 1024;
+
+// --------------------------------------
+
+// Minimum "magnitude" in the spectrogram needed for a pitch to be considered
+// for the "dominant pitch" detection
+let minimumPitchStrength = 30;
+
+// --------------------------------------
+
+// Pitch-name Notation Style ID's
+// NOTE: Cannot use these constants to have the JSON below resolve to the values of these
+const SCIENTIFIC_NOTATION = "ScientificNotation";
+const LILYPOND_NOTATION   = "LilypondNotation";
+const LILYPOND_HYBRID_NOTATION = "LilypondHybridNotation";
+
+// Sharp/Flat Bias Mode ID's
+// NOTE: Cannot use these constants to have the JSON below resolve to the values of these
+const SHARP_BIAS_MODE = "Sharps";
+const FLAT_BIAS_MODE = "Flats";
+const COMMON_BIAS_MODE = "Common";
+
+
+// Semitone number / index corresponding to "C"
+const C_PITCH_INDEX = 0;
+
+// Octave for "Middle C"
+const MIDDLE_C_OCTAVE = 4;
+
+// .......................
+
+// Sharp-Based Pitch Names
+const PITCH_NAMES_SHARPS = {
+	"ScientificNotation" : [
+		"c","c#","d","d#",
+		"e","f","f#","g",
+		"g#","a","a#","b"
+	],
+	"LilypondNotation" : [
+		"c","cIS","d","dIS",
+		"e","f","fis","g",
+		"gis","a","ais","b"
+	]
+};
+
+// Flat-Based Pitch Names
+const PITCH_NAMES_FLATS = {
+	"ScientificNotation" : [
+		"c","d♭","d","e♭",
+		"e","f","g♭","g",
+		"a♭","a","b♭","b"
+	],
+	"LilypondNotation" : [
+		"c","des","d","ees",
+		"e","f","ges","g",
+		"aes","a","bes","b"
+	]
+};
+
+// Common Useful Sharp/Flat Names
+// NOTE: These are only useful for my typical usages
+// NOTE: A-Flat / G-Sharp is the only ambiguous one...
+const PITCH_NAMES_COMMON = {
+	"ScientificNotation" : [
+		"c","c#","d","e♭",
+		"e","f","f#","g",
+		"g#","a","b♭","b"
+	],
+	"LilypondNotation" : [
+		"c","cis","d","ees",
+		"e","f","fis","g",
+		"gis","a","bes","b"
+	]
+};
+
+// .......................
+
+// Table for looking up pitch names
+// Key 1) sharpFlatBiasMode  (i.e. here)
+// Key 2) pitchNameStyle     (i.e. within each table linked here)
+// Key 3) pitchIndex
+const pitchNamesTable = {
+	"Sharps"  : PITCH_NAMES_SHARPS,
+	"Flats"   : PITCH_NAMES_FLATS,
+	"Common"  : PITCH_NAMES_COMMON
+};
+
+// .......................
+
+// Style of notation used  (i.e. "Scientific Pitch Notation" vs "Lilypond")
+let pitchNameStyle = SCIENTIFIC_NOTATION;
+
+// Sharp/Flat Bias Mode
+let sharpFlatBiasMode = COMMON_BIAS_MODE;
+
+
 // UI Defines / Utils ===================================
 
 // UI Labels for toggle buttons ...............
@@ -631,110 +738,6 @@ function formatTime(s)
 	);
 }
 
-// Audio Processing Constants =================================
-
-const TWO_PI = 2 * Math.PI;
-
-// --------------------------------------
-
-const semitonesPerOctave = 12;
-const midiRefPitch = 69;
-
-const fftSize = 4096;
-const hop = 1024;
-
-// --------------------------------------
-
-// Minimum "magnitude" in the spectrogram needed for a pitch to be considered
-// for the "dominant pitch" detection
-let minimumPitchStrength = 30;
-
-// --------------------------------------
-
-// Pitch-name Notation Style ID's
-// NOTE: Cannot use these constants to have the JSON below resolve to the values of these
-const SCIENTIFIC_NOTATION = "ScientificNotation";
-const LILYPOND_NOTATION   = "LilypondNotation";
-const LILYPOND_HYBRID_NOTATION = "LilypondHybridNotation";
-
-// Sharp/Flat Bias Mode ID's
-// NOTE: Cannot use these constants to have the JSON below resolve to the values of these
-const SHARP_BIAS_MODE = "Sharps";
-const FLAT_BIAS_MODE = "Flats";
-const COMMON_BIAS_MODE = "Common";
-
-
-// Semitone number / index corresponding to "C"
-const C_PITCH_INDEX = 0;
-
-// Octave for "Middle C"
-const MIDDLE_C_OCTAVE = 4;
-
-// .......................
-
-// Sharp-Based Pitch Names
-const PITCH_NAMES_SHARPS = {
-	"ScientificNotation" : [
-		"c","c#","d","d#",
-		"e","f","f#","g",
-		"g#","a","a#","b"
-	],
-	"LilypondNotation" : [
-		"c","cIS","d","dIS",
-		"e","f","fis","g",
-		"gis","a","ais","b"
-	]
-};
-
-// Flat-Based Pitch Names
-const PITCH_NAMES_FLATS = {
-	"ScientificNotation" : [
-		"c","d♭","d","e♭",
-		"e","f","g♭","g",
-		"a♭","a","b♭","b"
-	],
-	"LilypondNotation" : [
-		"c","des","d","ees",
-		"e","f","ges","g",
-		"aes","a","bes","b"
-	]
-};
-
-// Common Useful Sharp/Flat Names
-// NOTE: These are only useful for my typical usages
-// NOTE: A-Flat / G-Sharp is the only ambiguous one...
-const PITCH_NAMES_COMMON = {
-	"ScientificNotation" : [
-		"c","c#","d","e♭",
-		"e","f","f#","g",
-		"g#","a","b♭","b"
-	],
-	"LilypondNotation" : [
-		"c","cis","d","ees",
-		"e","f","fis","g",
-		"gis","a","bes","b"
-	]
-};
-
-// .......................
-
-// Table for looking up pitch names
-// Key 1) sharpFlatBiasMode  (i.e. here)
-// Key 2) pitchNameStyle     (i.e. within each table linked here)
-// Key 3) pitchIndex
-const pitchNamesTable = {
-	"Sharps"  : PITCH_NAMES_SHARPS,
-	"Flats"   : PITCH_NAMES_FLATS,
-	"Common"  : PITCH_NAMES_COMMON
-};
-
-// .......................
-
-// Style of notation used  (i.e. "Scientific Pitch Notation" vs "Lilypond")
-let pitchNameStyle = SCIENTIFIC_NOTATION;
-
-// Sharp/Flat Bias Mode
-let sharpFlatBiasMode = COMMON_BIAS_MODE;
 
 // Audio Processing Logic =====================================
 
