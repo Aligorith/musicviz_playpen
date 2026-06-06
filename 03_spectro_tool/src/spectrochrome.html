@@ -1486,6 +1486,8 @@ function stopPlayback()
 		catch(e) {
 		}
 		
+		recordDest.disconnect();
+		
 		playbackSource.disconnect();
 		playbackSource = null;
 	}
@@ -1518,7 +1520,10 @@ function playAt(offset)
 	playbackSource.buffer = audioBuffer;
 	
 	playbackSource.connect(audioCtx.destination);
-	playbackSource.connect(recordDest);
+	
+	if (recording) {
+		playbackSource.connect(recordDest);
+	}
 	
 	// Reset relative offsets, as audioCtx.currentTime is a readonly
 	// monotonically increasing internal timers, and we use the time
@@ -1694,8 +1699,12 @@ async function startRecording()
 	};
 	
 	recorder.start();
-	recording = true;
+	if (recorder.state !== "recording") {
+		alert("Media Recorder not recording!");
+		return;
+	}
 	
+	recording = true;
 	setStopRecordingButtonState();
 	
 	// always start from beginning
@@ -1966,7 +1975,6 @@ document.getElementById("restartBtn").onclick = () => {
 document.getElementById("recordBtn").onclick = () => {
 	if (recording) {
 		recorder.stop();
-		
 	}
 	else {
 		startRecording();
