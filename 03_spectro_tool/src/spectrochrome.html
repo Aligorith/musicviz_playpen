@@ -616,6 +616,37 @@ const stopRecordingStateActionTxt = "■ Recording";
 const SCRUBBER_COLOR = [255, 140, 40];
 const BUBBLE_COLOR = [80, 120, 255];
 
+// ----------------------------------
+
+// Standard debounce threshold for the slider updates (in ms)
+const STD_DEBOUNCE_DELAY_MS = 500;
+
+// For interactive slider events, use "Debounce" Pattern for deferring / batching
+// events until the last in a stream of rapidly occurring updates on an interactive 
+// element
+//
+// < delay: (uint :: ms) Delay in ms for how long to wait for activity to die down
+//                       before letting callback() run
+// < callback: (fn()) Callback function to perform when the rapid stream of events
+//                    stops hitting the triggering event listener.
+//
+// NOTE: From https://stackoverflow.com/questions/75988682/debounce-in-javascript
+function debounce(delay, callback)
+{
+	// Timer-ID for keeping track of if we have a pending event we're waiting on...
+	let batchingTimerId;
+	
+	return (...args) => {
+		// Reset the timer, as a new event came in...
+		clearTimeout(batchingTimerId);
+		
+		// Re-register the timer, with a new function now
+		batchingTimerId = setTimeout(() => {
+			callback();
+		}, delay);
+	};
+}
+
 // -----------------------
 
 function enableWaitCursor()
@@ -1948,38 +1979,7 @@ resize();
 
 // Button Event Handlers =============================
 
-// Standard debounce threshold for the sliders (in ms)
-const STD_DEBOUNCE_DELAY_MS = 500;
-
-// For interactive slider events, use "Debounce" Pattern for deferring / batching
-// events until the last in a stream of rapidly occurring updates on an interactive 
-// element
-//
-// < delay: (uint :: ms) Delay in ms for how long to wait for activity to die down
-//                       before letting callback() run
-// < callback: (fn()) Callback function to perform when the rapid stream of events
-//                    stops hitting the triggering event listener.
-//
-// NOTE: From https://stackoverflow.com/questions/75988682/debounce-in-javascript
-function debounce(delay, callback)
-{
-	// Timer-ID for keeping track of if we have a pending event we're waiting on...
-	let batchingTimerId;
-	
-	return (...args) => {
-		// Reset the timer, as a new event came in...
-		clearTimeout(batchingTimerId);
-		
-		// Re-register the timer, with a new function now
-		batchingTimerId = setTimeout(() => {
-			callback();
-		}, delay);
-	};
-}
-
-// ----------------------------------
-
-// Update the A tuning frequency when the dropdown changes
+// Update the "A tuning frequency" when the dropdown changes
 document.getElementById("aTuning").onchange = () => {
 	// Flush the value from the dropdown to the value used internally
 	const newATuningHz = parseInt(aTuning.value);
