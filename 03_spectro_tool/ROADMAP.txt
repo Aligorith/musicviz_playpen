@@ -36,10 +36,11 @@ Spectrochrome Roadmap
 
 * Fix the "stutter" bug when recording sometimes, where it freezes for the first few seconds, then randomly jump starts. (Happens after adjusting brightness or something)
 
+* When starting the script on the page, need to make sure the internal state matches what the widgets are defining (some of which may be carried over from the previous state of the page)
+
 
 == Enhancements ==
 * Changing the filename should clear the spectrogram
-* Changing tuning (A=) should result in recalculation (like for the tuning slider)
 
 * Add ability to select per color (in the legend) using popup swatches, and then have these changes be reflected in the overall visualisation
 

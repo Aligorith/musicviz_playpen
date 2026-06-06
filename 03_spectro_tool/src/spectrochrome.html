@@ -1819,6 +1819,27 @@ function debounce(delay, callback)
 
 // ----------------------------------
 
+document.getElementById("aTuning").onchange = () => {
+	// Flush the value from the dropdown to the value used internally
+	const newATuningHz = parseInt(aTuning.value);
+	if (newATuningHz != aTuningHz) {
+		console.log(`Updating aTuningHz to ${aTuningHz}`);
+		aTuningHz = newATuningHz;
+	}
+	
+	// Only trigger recalc if there is data to already cached data to recompute
+	if (cachedSpectrogram.length > 0) {
+		enableWaitCursor();
+		
+		console.log(`Retuning with new A=${aTuningHz} Hz (and tuningOffset = ${tuningOffset})`);
+		recalcSpectrogramAndAllNoteIds();
+		
+		clearWaitCursor();
+	}
+};
+
+// ----------------------------------
+
 // Update the brightnessBoost value, with the given float value.
 // ! This causes a recomputation of the spectogram, which can be slow...
 function setBrightnessBoost(value)
@@ -2001,6 +2022,9 @@ document.getElementById("exportBtn").onclick = exportDetectedNotes;
 
 
 // ============== Main Entrypoint ======================
+
+// Ensure internal values are set to match what the widgets have set
+// TODO: initState();
 
 // Start rendering loop
 render();
