@@ -324,7 +324,18 @@ input[type="range"] {
 	<!-- 1) Legend Panel -->
 	<div id="legendPanel" class="popup-panel hidden">
 		<!-- Colour Map Settings-->
-		<div class="form-grid">
+		<div class="form-grid">			
+			<!-- Pitch Naming Style -->
+			<label class="form-property-label" for="pitchNameStyleSelector">
+				Pitch Naming Style:
+			</label>
+			<select id="pitchNameStyleSelector" class="form-property-widget">
+				<option value="ScientificNotation" selected>Scientific Pitch Notation (SPN)</option>
+				<option value="LilypondNotation">Lilypond</option>
+				<option value="LilypondHybridNotation">Lilypond + SPN</option>
+			</select>
+			<button id="resetPitchNameStyleBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+			
 			<!-- Sharp / Flat Bias -->
 			<label class="form-property-label" for="sharpFlatBiasSelector">
 				Sharp/Flat Bias: 
@@ -335,16 +346,6 @@ input[type="range"] {
 				<option value="Common" selected>Common Variants</option>
 			</select>
 			<button id="resetSharpFlatBiasBtn" class="form-reset-property-btn" aria-label="Reset"></button>
-			
-			<!-- Pitch Naming Style -->
-			<label class="form-property-label" for="pitchNameStyleSelector">
-				Pitch Naming Style:
-			</label>
-			<select id="pitchNameStyleSelector" class="form-property-widget">
-				<option value="ScientificNotation" selected>Scientific Pitch Notation</option>
-				<option value="LilypondNotation">Lilypond</option>
-			</select>
-			<button id="resetPitchNameStyleBtn" class="form-reset-property-btn" aria-label="Reset"></button>
 		</div>
 		
 		<!-- Gap -->
@@ -632,46 +633,106 @@ function formatTime(s)
 
 const TWO_PI = 2 * Math.PI;
 
+// --------------------------------------
+
 const semitonesPerOctave = 12;
 const midiRefPitch = 69;
 
 const fftSize = 4096;
 const hop = 1024;
 
-// Sharp-Based Pitch Names
-const PITCH_NAMES_SHARPS = [
-	"c","c#","d","d#",
-	"e","f","f#","g",
-	"g#","a","a#","b"
-];
-
-// Flat-Based Pitch Names
-const PITCH_NAMES_FLATS = [
-	"c","d♭","d","e♭",
-	"e","f","g♭","g",
-	"a♭","a","b♭","b"
-];
-
-// Common Useful Sharp/Flat Names
-// NOTE: These are only useful for my typical usages
-// NOTE: A-Flat / G-Sharp is the only ambiguous one...
-const PITCH_NAMES_COMMON = [
-	"c","c#","d","e♭",
-	"e","f","f#","g",
-	"g#","a","b♭","b"
-];
-
-const pitchNameModeOptions = {
-	"Sharps": PITCH_NAMES_SHARPS,
-	"Flats":  PITCH_NAMES_FLATS,
-	"Common": PITCH_NAMES_COMMON
-};
-let pitchNamesMode = "Common";
-
+// --------------------------------------
 
 // Minimum "magnitude" in the spectrogram needed for a pitch to be considered
 // for the "dominant pitch" detection
 let minimumPitchStrength = 30;
+
+// --------------------------------------
+
+// Pitch-name Notation Style ID's
+// NOTE: Cannot use these constants to have the JSON below resolve to the values of these
+const SCIENTIFIC_NOTATION = "ScientificNotation";
+const LILYPOND_NOTATION   = "LilypondNotation";
+const LILYPOND_HYBRID_NOTATION = "LilypondHybridNotation";
+
+// Sharp/Flat Bias Mode ID's
+// NOTE: Cannot use these constants to have the JSON below resolve to the values of these
+const SHARP_BIAS_MODE = "Sharps";
+const FLAT_BIAS_MODE = "Flats";
+const COMMON_BIAS_MODE = "Common";
+
+
+// Semitone number / index corresponding to "C"
+const C_PITCH_INDEX = 0;
+
+// Octave for "Middle C"
+const MIDDLE_C_OCTAVE = 4;
+
+// .......................
+
+// Sharp-Based Pitch Names
+const PITCH_NAMES_SHARPS = {
+	"ScientificNotation" : [
+		"c","c#","d","d#",
+		"e","f","f#","g",
+		"g#","a","a#","b"
+	],
+	"LilypondNotation" : [
+		"c","cIS","d","dIS",
+		"e","f","fis","g",
+		"gis","a","ais","b"
+	]
+};
+
+// Flat-Based Pitch Names
+const PITCH_NAMES_FLATS = {
+	"ScientificNotation" : [
+		"c","d♭","d","e♭",
+		"e","f","g♭","g",
+		"a♭","a","b♭","b"
+	],
+	"LilypondNotation" : [
+		"c","des","d","ees",
+		"e","f","ges","g",
+		"aes","a","bes","b"
+	]
+};
+
+// Common Useful Sharp/Flat Names
+// NOTE: These are only useful for my typical usages
+// NOTE: A-Flat / G-Sharp is the only ambiguous one...
+const PITCH_NAMES_COMMON = {
+	"ScientificNotation" : [
+		"c","c#","d","e♭",
+		"e","f","f#","g",
+		"g#","a","b♭","b"
+	],
+	"LilypondNotation" : [
+		"c","cis","d","ees",
+		"e","f","fis","g",
+		"gis","a","bes","b"
+	]
+};
+
+// .......................
+
+// Table for looking up pitch names
+// Key 1) sharpFlatBiasMode  (i.e. here)
+// Key 2) pitchNameStyle     (i.e. within each table linked here)
+// Key 3) pitchIndex
+const pitchNamesTable = {
+	"Sharps"  : PITCH_NAMES_SHARPS,
+	"Flats"   : PITCH_NAMES_FLATS,
+	"Common"  : PITCH_NAMES_COMMON
+};
+
+// .......................
+
+// Style of notation used  (i.e. "Scientific Pitch Notation" vs "Lilypond")
+let pitchNameStyle = SCIENTIFIC_NOTATION;
+
+// Sharp/Flat Bias Mode
+let sharpFlatBiasMode = COMMON_BIAS_MODE;
 
 // Audio Processing Logic =====================================
 
@@ -698,16 +759,68 @@ function tunedMidi(freq)
 	return { midi: midi, pitch: pitch, octave: octave };
 }
 
-// Given a MidiPitchInfo object, get a UI name for the pitch that represents
-// < m: (MidiPitchInfo) The midi pitch info object to decompose from
-function midiToLabel(m)
+// Convert an octave number into a LilyPond Octave string
+// < octave: (int) Octave index
+// > returns: (str) A Lilypond style octave string, using `'` or `,`
+function octaveToLilypondString(octave)
 {
-	let pitchName = pitchNameModeOptions[pitchNamesMode][m.pitch];
+	if (octave >= MIDDLE_C_OCTAVE) {
+		// "Middle C" == c4 == "c'" == "octave = 4"
+		// i.e. These are all the "treble clef" ones...
+		return "'".repeat(octave - MIDDLE_C_OCTAVE + 1);
+	}
+	else if (octave == 3) {
+		// The one below Middle C
+		return "";
+	}
+	else if (octave == 2) {
+		// Lowest we actually go in the UI...
+		return ",";
+	}
+	else if (octave == 1) {
+		// "c1" - We shouldn't really reach this
+		return ",,";
+	}
+	else {
+		// "c0" - We shouldn't get any lower
+		return ",,,";
+	}
+}
+
+// Given a midi pitch-semitone (0-12) and an octave value, return a 
+// "pitch name label" for the UI
+// < pitchIndex: (int :: 0 <= i < 12) Semitone index, starting from "C"
+// < octave: (int) Octave index
+// < (octaveIsOptional): (bool) If true, the octave is wrapped in parentheses
+// > returns: (str) Pitch name string to use in the UI
+function getPitchNameLabel(pitchIndex, octave, octaveIsOptional=false)
+{
+	let pitchName = 
+		pitchNamesTable[sharpFlatBiasMode][pitchNameStyle][pitchIndex];
+	
+	let octaveString = `${octave}`;
+	if (pitchNameStyle === LILYPOND_NOTATION) {
+		octaveString = octaveToLilypondString(octave);
+	}
+	else if (pitchNameStyle == LILYPOND_HYBRID_NOTATION) {
+		octaveString = octaveToLilypondString(octave) + `(${octave})`;
+	}
 	
 	// Convert to a pitch name label for the UI
-	// TODO: Allow converting between "scientific pitch notation" (i.e. "c4"),
-	//       and "Lilypond Pitch Notation" (i.e. "c'")
-	return `${pitchName}(${m.octave})`
+	if (octaveIsOptional) {
+		return `${pitchName}(${octaveString})`;
+	}
+	else {
+		return `${pitchName}${octaveString}`;
+	}
+}
+
+// Given a MidiPitchInfo object, get a UI name for the pitch that represents
+// < m: (MidiPitchInfo) The midi pitch info object to decompose from
+// > returns: (str) String representing the pitch name + octave
+function midiToLabel(m)
+{
+	return getPitchNameLabel(m.pitch, m.octave, true);
 }
 
 // Get the color to render the given frequency as
@@ -716,7 +829,7 @@ function colorForFreq(freq)
 {
 	const midiPitchInfo = tunedMidi(freq);
 	
-	let pitchName = pitchNameModeOptions[pitchNamesMode][midiPitchInfo.pitch];
+	let pitchName = midiToLabel(midiPitchInfo);
 	let octave = midiPitchInfo.octave;
 	
 	switch (midiPitchInfo.pitch) {
@@ -727,12 +840,12 @@ function colorForFreq(freq)
 			return [255,218,160];     // #FFDAA0 (lighter peach)
 		
 		case 2: // D
-			if (octave === 5) {
+			if (octave === MIDDLE_C_OCTAVE + 1) {
 				// NOTE: This needed to be made "5" as using "4" to match "d4"
 				//       wasn't working...
 				return [46,71,182];       // #2E47B6  (navy blue - lighter version)
 			}
-			if (octave <= 4) {
+			if (octave <= MIDDLE_C_OCTAVE) {
 				// Things below d4 should be even darker...
 				return [30,92,194];       // #1E5CC2  (navy blue)
 			}
@@ -1222,11 +1335,11 @@ function drawCMarkers()
 		ctx.lineTo(16, y);
 		ctx.stroke();
 		
-		if (octave === 4) {
+		if (octave === MIDDLE_C_OCTAVE) {
 			// C4
 			ctx.font = "bold 12px monospace";
 			
-			const label = "c4";
+			const label = getPitchNameLabel(C_PITCH_INDEX, MIDDLE_C_OCTAVE);
 			const tw = ctx.measureText(label).width;
 			
 			ctx.fillStyle = colorWithAlpha(MARKER_COLOR, 0.10);
@@ -1249,9 +1362,11 @@ function drawCMarkers()
 		}
 		else {
 			// All other C's
+			const label = getPitchNameLabel(C_PITCH_INDEX, octave);
+			
 			ctx.fillStyle = colorWithAlpha(MARKER_COLOR, 0.75);
 			ctx.font = "11px monospace";
-			ctx.fillText(`c${octave}`, 24, y+3)
+			ctx.fillText(label, 24, y+3)
 		}
 	}
 }
@@ -1803,7 +1918,7 @@ resize();
 
 // ============ Button Event Handlers ==============
 
-// Standard debounc threshold for the sliders (in ms)
+// Standard debounce threshold for the sliders (in ms)
 const STD_DEBOUNCE_DELAY_MS = 500;
 
 // For interactive slider events, use "Debounce" Pattern for deferring / batching

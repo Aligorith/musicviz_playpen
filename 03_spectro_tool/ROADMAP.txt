@@ -11,10 +11,7 @@ Spectrochrome Roadmap
   * Abstract line-drawing)
   * Abstract text drawing
 
-* Introduce docstrings for each of the methods
-
 * Make "MidiPitchInfo" a proper type
-  * Implement also support for Scientific Notation (c4) to Lilypond Notation (c')
   
 * Refactor out the "progress estimate" stuff to an "ProgressEstimator" type
 
@@ -37,6 +34,8 @@ Spectrochrome Roadmap
 * Fix the "stutter" bug when recording sometimes, where it freezes for the first few seconds, then randomly jump starts. (Happens after adjusting brightness or something)
 
 * When starting the script on the page, need to make sure the internal state matches what the widgets are defining (some of which may be carried over from the previous state of the page)
+
+* Trying to click / scrub while analysing will yield an error about unattached buffer during promise
 
 
 == Enhancements ==
