@@ -423,6 +423,8 @@ let scrubPreviewSource = null;
 let scrubbing = false;
 let lastScrubPreviewTime = -1;
 
+let analysisInProgress = false;
+
 // ----------------------------------------------
 
 // Placeholder / Invalid Position for scrubber
@@ -1115,6 +1117,7 @@ function recalcSpectrogramAndAllNoteIds()
 	midiEvents.length = 0;
 	
 	console.log("Recalculating spectrogram and all note id's...");
+	
 	// Reprocess each of the cached spectogram slices...
 	// TODO: Update status text again with our progress
 	for (let i = 0; i < cachedSpectrogram.length; i++) {
@@ -1131,12 +1134,27 @@ function recalcSpectrogramAndAllNoteIds()
 	}
 }
 
+// Only recalculate note id's  (see recalcSpectrogramAndAllNoteIds())
+function recalcNoteIdsOnly()
+{
+	console.log("Recalculating all note id's...")
+	midiEvents.length = 0;
+	
+	// Reprocess each of the cached spectogram slices...
+	// TODO: Update status text again with our progress
+	for (let i = 0; i < cachedSpectrogram.length; i++) {
+		// Recalculate the most likely pitches
+		identifyMidiEventForSlice(i, cachedSpectrogram[i]);
+	}
+}
+
 // ---------------------------
 
 // Entry-point to process the audio file
 async function processAudio(buffer)
 {
 	enableWaitCursor();
+	analysisInProgress = true;
 	
 	audioBuffer = buffer;
 	audioDuration = buffer.duration;
@@ -1210,6 +1228,7 @@ async function processAudio(buffer)
 	updateStatusText(
 		`Ready.   Processing took ${totalTimeElapsed.toFixed(1)}s`);
 	
+	analysisInProgress = false;
 	clearWaitCursor();
 }
 
@@ -1896,7 +1915,7 @@ function exportDetectedNotes()
 	URL.revokeObjectURL(url);
 }
 
-// =========== Window Resize Handling ==============
+// Window Resize Handling ==============================
 
 // Handle window resizing
 // TODO: Canvas gets blanked for the portions not using this scale. 
@@ -1914,13 +1933,17 @@ function resize()
 	spectogramCanvas.width = spectogramWidth;
 	spectogramCanvas.height = innerHeight;
 	
-	// TODO: Trigger repaint / recalcs?
+	// Trigger repaint / recalcs?
+	// TODO: Shouldn't do this while still analysing
+	if (!analysisInProgress) {
+		recalcSpectrogram();
+	}
 }
 
 addEventListener("resize", resize);
 resize();
 
-// ============ Button Event Handlers ==============
+// Button Event Handlers =============================
 
 // Standard debounce threshold for the sliders (in ms)
 const STD_DEBOUNCE_DELAY_MS = 500;
