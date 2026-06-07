@@ -61,11 +61,6 @@ Spectrochrome Roadmap
 
 * Include the other strong-pitches info into the exported table (with the relative weights also), as well as note on/off/duration type info  
   * Present this export info as a table in a popup panel, allowing live inspection before exporting
-  
-
-* Speed up the analysis processing
-  * Run via a profiler, to see what is so slow
-  * Optionally use an external FFT library  (i.e. "FFT.js" instead of the slow O(n^2) naive one included)
 
 * Reduce CPU usage when IDLE
   * Investigate pausing render() updates when window has been idle for a while,

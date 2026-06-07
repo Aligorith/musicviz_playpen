@@ -392,7 +392,9 @@ input[type="range"] {
 <canvas id="canvas"></canvas>
 
 
-<script>
+<script type="module">
+import FFT from 'https://esm.sh/fft.js';
+
 // Canvas Defines ==================================
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
@@ -1031,7 +1033,7 @@ function dominantPitchAtTime(t)
 // ---------------------------
 
 // Compute FFT  (naive implementation)
-function fft(sig)
+function fft_naive(sig)
 {
 	const N = sig.length;
 	const out = new Float32Array(N / 2);
@@ -1052,6 +1054,44 @@ function fft(sig)
 	
 	return out;
 }
+
+// Compute FFT - Using fft.js if defined
+// NOTE: This doesn't do the full spectrum (i.e. negative values), 
+//       as we only need bins (0..N/2-1)
+function fft_fast(sig)
+{
+	const N = sig.length;
+	
+	const fft = new FFT(N);
+	const spectrum = fft.createComplexArray();
+	
+	fft.realTransform(spectrum, sig);
+	
+	const mags = new Float32Array(N / 2);
+	for (let k = 0; k < N / 2; k++) {
+		const re = spectrum[2 * k];
+		const im = spectrum[2 * k + 1];
+		
+		mags[k] = Math.hypot(re, im);
+	}
+	
+	return mags;
+}
+
+// Compute FFT - Entrypoint
+function fft(sig)
+{
+	if ((typeof FFT) != undefined) {
+		// Use fft.js
+		return fft_fast(sig);
+	}
+	else {
+		// Fallback to slower naive approach
+		return fft_naive(sig);
+	}
+}
+
+// ---------------------------
 
 // Called from processAudio to identify the dominant pitch(s)
 // for the current spectrogram slice ("spec")
