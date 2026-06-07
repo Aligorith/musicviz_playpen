@@ -11,10 +11,7 @@ Spectrochrome Roadmap
   * Abstract line-drawing)
   * Abstract text drawing
 
-* Introduce docstrings for each of the methods
-
 * Make "MidiPitchInfo" a proper type
-  * Implement also support for Scientific Notation (c4) to Lilypond Notation (c')
   
 * Refactor out the "progress estimate" stuff to an "ProgressEstimator" type
 
@@ -28,21 +25,25 @@ Spectrochrome Roadmap
 
 * Fix bug where processing pauses if/when the tab loses focus, and then completely dies when we come back and look at it (or start interacting with it)
   * Option 1:  Create a "progress popup panel, with progressbar", + button to resume / cancel stalled operations. This will work by storing the "in-progress" Promise, and triggering it to get run again if it got stalled out for whatever reason?
+  (NOTE: It seems we really have to move to the web-workers architecture, which requires multiple files)
 
 * On some machines, the cursor updates aren't reliable, e.g.:
   * Wait cursor doesn't show when doing tuning tweaks
   * Wait cursor doesn't clear after analysis, until moving the mouse
 
+* Fix the "stutter" bug when recording sometimes, where it freezes for the first few seconds, then randomly jump starts. (Happens after adjusting brightness or something)
+
+* Trying to click / scrub while analysing will yield an error about unattached buffer during promise
+
 
 == Enhancements ==
 * Changing the filename should clear the spectrogram
-* Changing tuning (A=) should result in recalculation (like for the tuning slider)
 
 * Add ability to select per color (in the legend) using popup swatches, and then have these changes be reflected in the overall visualisation
 
-* Expose control in UI for selecting between the sharp/flat color labelling preference
-  
 * Add ability to adjust the minimum magnitude via tweaks, then re-analyse
+
+* Change the numeric tweaks to have a number input widget
 
 * Ability to reclassify specific frequencies (e.g. "f#4 -> g4") to cope with "off" tunings, without having to adjust everything.  
   * TODO: Need option to control whether this will reset when a tuning offset is then applied?  Or does it shift with that?
