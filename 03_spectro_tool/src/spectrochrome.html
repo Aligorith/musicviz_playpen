@@ -288,22 +288,6 @@ input[type="range"] {
 	<!-- 1) Tweaks Panel -->
 	<div id="tweaksPanel" class="popup-panel hidden">
 		<div class="form-grid">
-			<!-- Tuning Offset -->
-			<label class="form-property-label" for="tuningSlider">
-				Tuning Offset:
-			</label>
-			<input
-					id="tuningSlider"
-					class="form-property-widget"
-					type="range"
-					min="-12"
-					max="12"
-					step="0.01"
-					value="0"
-				/>
-			<span id="tuningLabel" class="form-property-value">0.00 st</span>
-			<button id="resetTuningOffsetBtn" class="form-reset-property-btn" aria-label="Reset"></button>
-		
 			<!-- Brightness Slider -->
 			<label class="form-property-label" for="brightnessSlider">
 				Brightness:
@@ -318,6 +302,69 @@ input[type="range"] {
 					value="1"
 				/>
 			<button id="resetBrightnessBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+			
+			<!-- Tuning Offset -->
+			<label class="form-property-label" for="tuningOffsetSlider">
+				Tuning Offset<br/>(Semitones):
+			</label>
+			<input
+					id="tuningOffsetSlider"
+					class="form-property-widget"
+					type="range"
+					min="-12"
+					max="12"
+					step="0.01"
+					value="0"
+				/>
+			<input
+					id="tuningOffsetNumInput"
+					class="form-property-value"
+					type="number"
+					min="-12"
+					max="12"
+					step="0.1"
+					value="0.0"
+				/>
+			<button id="resetTuningOffsetBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+			
+			<!-- Minimum Intensity -->
+			<label class="form-property-label" for="minPitchStrengthSlider">
+				Minimum Note Intensity:
+			</label>
+			<input
+					id="minPitchStrengthSlider"
+					class="form-property-widget"
+					type="range"
+					min="0.0"
+					max="5000"
+					step="10.0"
+					value="30"
+				/>
+			<input
+					id="minPitchStrengthNumInput"
+					class="form-property-value"
+					type="number"
+					min="0.0"
+					max="5000"
+					step="10.0"
+					value="30"
+					list="minPitchStrengthDataList"
+				/>
+			<button id="resetMinPitchStrengthBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+			
+			<datalist id="minPitchStrengthDataList">
+				<option value="0.0"></option>
+				<option value="1.0"></option>
+				<option value="10.0"></option>
+				<option value="30.0"></option>
+				<option value="50.0"></option>
+				<option value="60.0"></option>
+				<option value="100.0"></option>
+				<option value="300.0"></option>
+				<option value="500.0"></option>
+				<option value="1000.0"></option>
+				<option value="2000.0"></option>
+			</datalist>
 		</div>
 	</div>
 	
@@ -1152,10 +1199,28 @@ function identifyMidiEventForSlice(i, spec)
 
 // ---------------------------
 
+// Clear the cached spectrogram canvas
+function clearSpectrogramCanvasCache()
+{
+	// Clear the cached spectrogram image, that we're rebuilding
+	spectogramCanvasCtx.clearRect(
+		0,
+		0,
+		spectogramCanvas.width,
+		spectogramCanvas.height
+	);
+}
+
+// Clear cache of notes identified
+function clearDetectedNotesList()
+{
+	midiEvents.length = 0;
+}
+
+// ---------------------------
+
 // Recalculate the contents of the cached spectogram when some settings change
 // (e.g. color assignments / brightness values)
-//
-// TODO: Maybe this should be async to not lock the main thread?
 function recalcSpectrogram()
 {
 	// Skip if there isn't any cached data yet
@@ -1164,12 +1229,7 @@ function recalcSpectrogram()
 	}
 	
 	// Clear the cached spectrogram image, that we're rebuilding
-	spectogramCanvasCtx.clearRect(
-		0,
-		0,
-		spectogramCanvas.width,
-		spectogramCanvas.height
-	);
+	clearSpectrogramCanvasCache();
 	
 	// Go through all the cached spectrogram data slices,
 	// redrawing these to the cache canvas.
@@ -1191,14 +1251,8 @@ function recalcSpectrogramAndAllNoteIds()
 	}
 	
 	// Reset all the relevant bits being recalculated
-	spectogramCanvasCtx.clearRect(
-		0,
-		0,
-		spectogramCanvas.width,
-		spectogramCanvas.height
-	);
-	
-	midiEvents.length = 0;
+	clearSpectrogramCanvasCache();
+	clearDetectedNotesList();
 	
 	console.log("Recalculating spectrogram and all note id's...");
 	
@@ -1227,7 +1281,7 @@ function recalcNoteIdsOnly()
 	}
 	
 	console.log("Recalculating all note id's...")
-	midiEvents.length = 0;
+	clearDetectedNotesList();
 	
 	// Reprocess each of the cached spectrogram slices...
 	// TODO: Update status text again with our progress
@@ -1248,14 +1302,8 @@ async function processAudio(buffer)
 	audioBuffer = buffer;
 	audioDuration = buffer.duration;
 	
-	midiEvents.length = 0;
-	
-	spectogramCanvasCtx.clearRect(
-		0,
-		0,
-		spectogramCanvas.width,
-		spectogramCanvas.height
-	);
+	clearSpectrogramCanvasCache();
+	clearDetectedNotesList();
 	
 	cachedSpectrogram = [];
 	
@@ -2167,10 +2215,9 @@ document.getElementById("resetBrightnessBtn").onclick = resetBrightnessBoost;
 //   (and also the spectrogram colouring)
 function setTuningOffsetValues(value)
 {
-	tuningSlider.value = tuningOffset = value;
-	
-	document.getElementById("tuningLabel").textContent =
-		tuningOffset.toFixed(2) + " st";
+	tuningOffset = value;
+	tuningOffsetSlider.value = tuningOffset;
+	tuningOffsetNumInput.value = tuningOffset.toFixed(2);
 }
 
 // Actually perform all the expensive recomputations associated with a recent
@@ -2194,28 +2241,99 @@ function resetTuningOffset()
 	applyTuningOffsetUpdate();
 }
 
-document.getElementById("tuningSlider").addEventListener(
+// Event listener for "TuningOffset" slider / numinput
+// < e: (Event)
+function onTuningOffsetWidgetChanged(e)
+{
+	// Only flush the tuning slider updates to all the properties that
+	// depend on it (e.g. UI label) so that user has feedback on what
+	// they are setting, and can fine-tune before it triggers an update.
+	//
+	// NOTE: This step will end up flushing the just-parsed value back to
+	//       the slider it just go read from. But this simplifies the update
+	//       handling for all other cases.
+	setTuningOffsetValues(parseFloat(e.target.value));
+	
+	debounce(STD_DEBOUNCE_DELAY_MS, () => {
+		// Now, only actually perform the heavy recalc from this
+		// (or another subsequent update) if debounce() allows it to 
+		// happen in a throttled manner.
+		applyTuningOffsetUpdate();
+	})();
+}
+
+document.getElementById("tuningOffsetSlider").addEventListener(
 	"input",
-	e => {
-		// Only flush the tuning slider updates to all the properties that
-		// depend on it (e.g. UI label) so that user has feedback on what
-		// they are setting, and can fine-tune before it triggers an update.
-		//
-		// NOTE: This step will end up flushing the just-parsed value back to
-		//       the slider it just go read from. But this simplifies the update
-		//       handling for all other cases.
-		setTuningOffsetValues(parseFloat(e.target.value));
-		
-		debounce(STD_DEBOUNCE_DELAY_MS, () => {
-			// Now, only actually perform the heavy recalc from this
-			// (or another subsequent update) if debounce() allows it to 
-			// happen in a throttled manner.
-			applyTuningOffsetUpdate();
-		})();
-	}
+	onTuningOffsetWidgetChanged
 );
 
+document.getElementById("tuningOffsetNumInput").onchange = onTuningOffsetWidgetChanged;
+
 document.getElementById("resetTuningOffsetBtn").onclick = resetTuningOffset;
+
+// ----------------------------------
+
+// Update the "minPitchStrength" value, with the given float value.
+// ! This causes all the detected pitch values to need to be re-generated
+//   (and also the spectrogram colouring)
+function setMinPitchStrengthValues(value)
+{
+	minimumPitchStrength = value;
+	minPitchStrengthSlider.value = minimumPitchStrength;
+	minPitchStrengthNumInput.value = minimumPitchStrength.toFixed(1);
+}
+
+// Actually perform all the expensive recomputations associated with a recent
+// "minimum pitch strength" update.
+function applyMinPitchStrengthUpdate()
+{
+	enableWaitCursor();
+	
+	console.log(`Recalculating dominant notes after min-pitch-strength change...`);
+	recalcNoteIdsOnly();
+	
+	clearWaitCursor();
+}
+
+// Reset "Min Pitch Strength" value
+function resetMinPitchStrength()
+{
+	// NOTE: Resetting is a two-step operation, given the need to decouple
+	//       fast-ui-feedback from recomputed spectrogram data (slow)
+	setMinPitchStrengthValues(0);
+	applyMinPitchStrengthUpdate();
+}
+
+// Event listener for "minPitchStrength" slider / numinput
+// < e: (Event)
+function onMinPitchStrengthWidgetChanged(e)
+{
+	// Only flush the slider updates to all the properties that
+	// depend on it (e.g. UI label) so that user has feedback on what
+	// they are setting, and can fine-tune before it triggers an update.
+	//
+	// NOTE: This step will end up flushing the just-parsed value back to
+	//       the slider it just go read from. But this simplifies the update
+	//       handling for all other cases.
+	setMinPitchStrengthValues(parseFloat(e.target.value));
+	
+	debounce(STD_DEBOUNCE_DELAY_MS, () => {
+		// Now, only actually perform the heavy recalc from this
+		// (or another subsequent update) if debounce() allows it to 
+		// happen in a throttled manner.
+		applyMinPitchStrengthUpdate();
+	})();
+}
+
+document.getElementById("minPitchStrengthSlider").addEventListener(
+	"input",
+	onMinPitchStrengthWidgetChanged
+);
+
+document.getElementById("minPitchStrengthNumInput").onchange = onMinPitchStrengthWidgetChanged;
+
+document.getElementById("resetMinPitchStrengthBtn").onclick = resetMinPitchStrength;
+
 
 // ----------------------------------
 
@@ -2321,6 +2439,7 @@ function syncResetState()
 	resetSharpFlatBiasMode();
 	resetATuningHz();
 	resetTuningOffset();
+	resetMinPitchStrength();
 	resetBrightnessBoost();
 }
 
