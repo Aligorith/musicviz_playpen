@@ -288,6 +288,21 @@ input[type="range"] {
 	<!-- 1) Tweaks Panel -->
 	<div id="tweaksPanel" class="popup-panel hidden">
 		<div class="form-grid">
+			<!-- Brightness Slider -->
+			<label class="form-property-label" for="brightnessSlider">
+				Brightness:
+			</label>
+			<input
+					id="brightnessSlider"
+					class="form-property-widget"
+					type="range"
+					min="0.2"
+					max="4"
+					step="0.05"
+					value="1"
+				/>
+			<button id="resetBrightnessBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+			
 			<!-- Tuning Offset -->
 			<label class="form-property-label" for="tuningOffsetSlider">
 				Tuning Offset<br/>(Semitones):
@@ -311,21 +326,6 @@ input[type="range"] {
 					value="0.0"
 				/>
 			<button id="resetTuningOffsetBtn" class="form-reset-property-btn" aria-label="Reset"></button>
-		
-			<!-- Brightness Slider -->
-			<label class="form-property-label" for="brightnessSlider">
-				Brightness:
-			</label>
-			<input
-					id="brightnessSlider"
-					class="form-property-widget"
-					type="range"
-					min="0.2"
-					max="4"
-					step="0.05"
-					value="1"
-				/>
-			<button id="resetBrightnessBtn" class="form-reset-property-btn" aria-label="Reset"></button>
 		</div>
 	</div>
 	
