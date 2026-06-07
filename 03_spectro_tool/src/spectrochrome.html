@@ -1199,10 +1199,28 @@ function identifyMidiEventForSlice(i, spec)
 
 // ---------------------------
 
+// Clear the cached spectrogram canvas
+function clearSpectrogramCanvasCache()
+{
+	// Clear the cached spectrogram image, that we're rebuilding
+	spectogramCanvasCtx.clearRect(
+		0,
+		0,
+		spectogramCanvas.width,
+		spectogramCanvas.height
+	);
+}
+
+// Clear cache of notes identified
+function clearDetectedNotesList()
+{
+	midiEvents.length = 0;
+}
+
+// ---------------------------
+
 // Recalculate the contents of the cached spectogram when some settings change
 // (e.g. color assignments / brightness values)
-//
-// TODO: Maybe this should be async to not lock the main thread?
 function recalcSpectrogram()
 {
 	// Skip if there isn't any cached data yet
@@ -1211,12 +1229,7 @@ function recalcSpectrogram()
 	}
 	
 	// Clear the cached spectrogram image, that we're rebuilding
-	spectogramCanvasCtx.clearRect(
-		0,
-		0,
-		spectogramCanvas.width,
-		spectogramCanvas.height
-	);
+	clearSpectrogramCanvasCache();
 	
 	// Go through all the cached spectrogram data slices,
 	// redrawing these to the cache canvas.
@@ -1238,14 +1251,8 @@ function recalcSpectrogramAndAllNoteIds()
 	}
 	
 	// Reset all the relevant bits being recalculated
-	spectogramCanvasCtx.clearRect(
-		0,
-		0,
-		spectogramCanvas.width,
-		spectogramCanvas.height
-	);
-	
-	midiEvents.length = 0;
+	clearSpectrogramCanvasCache();
+	clearDetectedNotesList();
 	
 	console.log("Recalculating spectrogram and all note id's...");
 	
@@ -1274,7 +1281,7 @@ function recalcNoteIdsOnly()
 	}
 	
 	console.log("Recalculating all note id's...")
-	midiEvents.length = 0;
+	clearDetectedNotesList();
 	
 	// Reprocess each of the cached spectrogram slices...
 	// TODO: Update status text again with our progress
@@ -1295,14 +1302,8 @@ async function processAudio(buffer)
 	audioBuffer = buffer;
 	audioDuration = buffer.duration;
 	
-	midiEvents.length = 0;
-	
-	spectogramCanvasCtx.clearRect(
-		0,
-		0,
-		spectogramCanvas.width,
-		spectogramCanvas.height
-	);
+	clearSpectrogramCanvasCache();
+	clearDetectedNotesList();
 	
 	cachedSpectrogram = [];
 	
