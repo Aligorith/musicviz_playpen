@@ -289,11 +289,11 @@ input[type="range"] {
 	<div id="tweaksPanel" class="popup-panel hidden">
 		<div class="form-grid">
 			<!-- Tuning Offset -->
-			<label class="form-property-label" for="tuningSlider">
-				Tuning Offset:
+			<label class="form-property-label" for="tuningOffsetSlider">
+				Tuning Offset<br/>(Semitones):
 			</label>
 			<input
-					id="tuningSlider"
+					id="tuningOffsetSlider"
 					class="form-property-widget"
 					type="range"
 					min="-12"
@@ -301,7 +301,15 @@ input[type="range"] {
 					step="0.01"
 					value="0"
 				/>
-			<span id="tuningLabel" class="form-property-value">0.00 st</span>
+			<input
+					id="tuningOffsetNumInput"
+					class="form-property-value"
+					type="number"
+					min="-12"
+					max="12"
+					step="0.1"
+					value="0.0"
+				/>
 			<button id="resetTuningOffsetBtn" class="form-reset-property-btn" aria-label="Reset"></button>
 		
 			<!-- Brightness Slider -->
@@ -2167,10 +2175,9 @@ document.getElementById("resetBrightnessBtn").onclick = resetBrightnessBoost;
 //   (and also the spectrogram colouring)
 function setTuningOffsetValues(value)
 {
-	tuningSlider.value = tuningOffset = value;
-	
-	document.getElementById("tuningLabel").textContent =
-		tuningOffset.toFixed(2) + " st";
+	tuningOffset = value;
+	tuningOffsetSlider.value = tuningOffset;
+	tuningOffsetNumInput.value = tuningOffset.toFixed(2);
 }
 
 // Actually perform all the expensive recomputations associated with a recent
@@ -2194,26 +2201,33 @@ function resetTuningOffset()
 	applyTuningOffsetUpdate();
 }
 
-document.getElementById("tuningSlider").addEventListener(
+// Event listener for "TuningOffset" slider / numinput
+// < e: (Event)
+function onTuningOffsetWidgetChanged(e)
+{
+	// Only flush the tuning slider updates to all the properties that
+	// depend on it (e.g. UI label) so that user has feedback on what
+	// they are setting, and can fine-tune before it triggers an update.
+	//
+	// NOTE: This step will end up flushing the just-parsed value back to
+	//       the slider it just go read from. But this simplifies the update
+	//       handling for all other cases.
+	setTuningOffsetValues(parseFloat(e.target.value));
+	
+	debounce(STD_DEBOUNCE_DELAY_MS, () => {
+		// Now, only actually perform the heavy recalc from this
+		// (or another subsequent update) if debounce() allows it to 
+		// happen in a throttled manner.
+		applyTuningOffsetUpdate();
+	})();
+}
+
+document.getElementById("tuningOffsetSlider").addEventListener(
 	"input",
-	e => {
-		// Only flush the tuning slider updates to all the properties that
-		// depend on it (e.g. UI label) so that user has feedback on what
-		// they are setting, and can fine-tune before it triggers an update.
-		//
-		// NOTE: This step will end up flushing the just-parsed value back to
-		//       the slider it just go read from. But this simplifies the update
-		//       handling for all other cases.
-		setTuningOffsetValues(parseFloat(e.target.value));
-		
-		debounce(STD_DEBOUNCE_DELAY_MS, () => {
-			// Now, only actually perform the heavy recalc from this
-			// (or another subsequent update) if debounce() allows it to 
-			// happen in a throttled manner.
-			applyTuningOffsetUpdate();
-		})();
-	}
+	onTuningOffsetWidgetChanged
 );
+
+document.getElementById("tuningOffsetNumInput").onchange = onTuningOffsetWidgetChanged;
 
 document.getElementById("resetTuningOffsetBtn").onclick = resetTuningOffset;
 
