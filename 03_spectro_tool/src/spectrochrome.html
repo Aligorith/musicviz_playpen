@@ -326,6 +326,45 @@ input[type="range"] {
 					value="0.0"
 				/>
 			<button id="resetTuningOffsetBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+			
+			<!-- Minimum Intensity -->
+			<label class="form-property-label" for="minPitchStrengthSlider">
+				Minimum Note Intensity:
+			</label>
+			<input
+					id="minPitchStrengthSlider"
+					class="form-property-widget"
+					type="range"
+					min="0.0"
+					max="5000"
+					step="10.0"
+					value="30"
+				/>
+			<input
+					id="minPitchStrengthNumInput"
+					class="form-property-value"
+					type="number"
+					min="0.0"
+					max="5000"
+					step="10.0"
+					value="30"
+					list="minPitchStrengthDataList"
+				/>
+			<button id="resetMinPitchStrengthBtn" class="form-reset-property-btn" aria-label="Reset"></button>
+			
+			<datalist id="minPitchStrengthDataList">
+				<option value="0.0"></option>
+				<option value="1.0"></option>
+				<option value="10.0"></option>
+				<option value="30.0"></option>
+				<option value="50.0"></option>
+				<option value="60.0"></option>
+				<option value="100.0"></option>
+				<option value="300.0"></option>
+				<option value="500.0"></option>
+				<option value="1000.0"></option>
+				<option value="2000.0"></option>
+			</datalist>
 		</div>
 	</div>
 	
@@ -2233,6 +2272,70 @@ document.getElementById("resetTuningOffsetBtn").onclick = resetTuningOffset;
 
 // ----------------------------------
 
+// Update the "minPitchStrength" value, with the given float value.
+// ! This causes all the detected pitch values to need to be re-generated
+//   (and also the spectrogram colouring)
+function setMinPitchStrengthValues(value)
+{
+	minimumPitchStrength = value;
+	minPitchStrengthSlider.value = minimumPitchStrength;
+	minPitchStrengthNumInput.value = minimumPitchStrength.toFixed(1);
+}
+
+// Actually perform all the expensive recomputations associated with a recent
+// "minimum pitch strength" update.
+function applyMinPitchStrengthUpdate()
+{
+	enableWaitCursor();
+	
+	console.log(`Recalculating dominant notes after min-pitch-strength change...`);
+	recalcNoteIdsOnly();
+	
+	clearWaitCursor();
+}
+
+// Reset "Min Pitch Strength" value
+function resetMinPitchStrength()
+{
+	// NOTE: Resetting is a two-step operation, given the need to decouple
+	//       fast-ui-feedback from recomputed spectrogram data (slow)
+	setMinPitchStrengthValues(0);
+	applyMinPitchStrengthUpdate();
+}
+
+// Event listener for "minPitchStrength" slider / numinput
+// < e: (Event)
+function onMinPitchStrengthWidgetChanged(e)
+{
+	// Only flush the slider updates to all the properties that
+	// depend on it (e.g. UI label) so that user has feedback on what
+	// they are setting, and can fine-tune before it triggers an update.
+	//
+	// NOTE: This step will end up flushing the just-parsed value back to
+	//       the slider it just go read from. But this simplifies the update
+	//       handling for all other cases.
+	setMinPitchStrengthValues(parseFloat(e.target.value));
+	
+	debounce(STD_DEBOUNCE_DELAY_MS, () => {
+		// Now, only actually perform the heavy recalc from this
+		// (or another subsequent update) if debounce() allows it to 
+		// happen in a throttled manner.
+		applyMinPitchStrengthUpdate();
+	})();
+}
+
+document.getElementById("minPitchStrengthSlider").addEventListener(
+	"input",
+	onMinPitchStrengthWidgetChanged
+);
+
+document.getElementById("minPitchStrengthNumInput").onchange = onMinPitchStrengthWidgetChanged;
+
+document.getElementById("resetMinPitchStrengthBtn").onclick = resetMinPitchStrength;
+
+
+// ----------------------------------
+
 
 document.getElementById("legendBtn").onclick = () => {
 	const p = document.getElementById("legendPanel");
@@ -2335,6 +2438,7 @@ function syncResetState()
 	resetSharpFlatBiasMode();
 	resetATuningHz();
 	resetTuningOffset();
+	resetMinPitchStrength();
 	resetBrightnessBoost();
 }
 
