@@ -757,6 +757,82 @@ function colorWithAlpha(rgbTuple, alpha)
 	return `rgba(${rgbTuple[0]}, ${rgbTuple[1]}, ${rgbTuple[2]}, ${alpha})`;
 }
 
+// -----------------------
+
+// Draw a horizontal line
+function drawHLine(ctx, xs, xe, y, lineColor="white", lineWidth=1.0)
+{
+	ctx.strokeStyle = lineColor;
+	ctx.lineWidth = lineWidth;
+	
+	ctx.beginPath();
+	ctx.moveTo(xs, y);
+	ctx.lineTo(xe, y);
+	ctx.stroke();
+}
+
+// Draw a vertical line
+function drawVLine(ctx, x, ys, ye, lineColor="white", lineWidth=1.0)
+{
+	ctx.strokeStyle = lineColor;
+	ctx.lineWidth = lineWidth;
+	
+	ctx.beginPath();
+	ctx.moveTo(x, ys);
+	ctx.lineTo(x, ye);
+	ctx.stroke();
+}
+
+// Draw filled rounded rect in a canvas context
+function drawFilledRoundedRect(
+	ctx,
+	topLeftX, topLeftY,
+	width, height,
+	radii,
+	fillColor)
+{
+	ctx.beginPath();
+	ctx.roundRect(
+		topLeftX, topLeftY,
+		width, height,
+		radii);
+	
+	ctx.fillStyle = fillColor;
+	ctx.fill();
+}
+
+// Draw rounded rect outline in a canvas context
+function drawOutlineRoundedRect(
+	ctx,
+	topLeftX, topLeftY,
+	width, height,
+	radii,
+	strokeColor="white",
+	lineWidth=1.0)
+{
+	ctx.strokeStype = strokeColor;
+	ctx.lineWidth = lineWidth;
+	
+	ctx.beginPath();
+	ctx.roundRect(
+		topLeftX, topLeftY,
+		width, height,
+		radii);
+	ctx.stroke();
+}
+
+// Draw text string in a canvas context
+function drawText(ctx, text, x, y, color="white", font=undefined)
+{
+	ctx.fillStyle = color;
+	
+	if (font != undefined) {
+		ctx.font = font;
+	}
+	
+	ctx.fillText(text, x, y);
+}
+
 // Coordinate Conversion Utils ===================================
 
 // Convert canvas.x coordinates into time (in seconds) since start of the clip
@@ -1446,15 +1522,12 @@ function drawTimeline()
 		const x = LEFT_GUTTER + s * px;
 		const major = (s % 10 === 0);
 		
-		ctx.strokeStyle = "white";
-		
-		ctx.beginPath();
-		ctx.moveTo(x,y);
-		ctx.lineTo(
+		drawVLine(
+			ctx,
 			x,
-			y - (major ? 24 : 12)
-		);
-		ctx.stroke();
+			y,
+			y - (major ? 24 : 12));
+		
 		
 		if (major) {
 			ctx.fillStyle = "white";
@@ -1488,16 +1561,17 @@ function drawCMarkers()
 		const MARKER_COLOR = [255, 255, 255];
 		const y = freqToY(freq);
 		
-		ctx.strokeStyle = colorWithAlpha(MARKER_COLOR, 0.25);
-		
-		ctx.beginPath();
-		ctx.moveTo(0, y);
-		ctx.lineTo(16, y);
-		ctx.stroke();
+		drawHLine(
+			ctx,
+			0,
+			16,
+			y,
+			colorWithAlpha(MARKER_COLOR, 0.25));
 		
 		if (octave === MIDDLE_C_OCTAVE) {
 			// C4
-			ctx.font = "bold 12px monospace";
+			const labelFont = "bold 12px monospace";
+			ctx.font = labelFont;
 			
 			const label = getPitchNameLabel(C_PITCH_INDEX, MIDDLE_C_OCTAVE);
 			const tw = ctx.measureText(label).width;
@@ -1517,16 +1591,24 @@ function drawCMarkers()
 			ctx.strokeStyle = colorWithAlpha(MARKER_COLOR, 0.55);
 			ctx.stroke();
 			
-			ctx.fillStyle = "white";
-			ctx.fillText(label, 23, y+2)
+			drawText(ctx,
+				label,
+				23,
+				y + 2,
+				"white",
+				labelFont);
 		}
 		else {
 			// All other C's
 			const label = getPitchNameLabel(C_PITCH_INDEX, octave);
+			const labelFont = "11px monospace";
 			
-			ctx.fillStyle = colorWithAlpha(MARKER_COLOR, 0.75);
-			ctx.font = "11px monospace";
-			ctx.fillText(label, 24, y+3)
+			drawText(ctx,
+				label,
+				24,
+				y + 3,
+				colorWithAlpha(MARKER_COLOR, 0.75),
+				labelFont);
 		}
 	}
 }
@@ -1573,17 +1655,14 @@ function drawBubbles()
 				);
 			
 			// Orange Fill for label background
-			ctx.fillStyle = colorWithAlpha(SCRUBBER_COLOR, 0.92);
-			
-			ctx.beginPath();
-			ctx.roundRect(
+			drawFilledRoundedRect(ctx,
 				bx,
 				bubbleY - 25, //bubbleY - 12,
 				w,
 				22,
-				10
+				10,
+				colorWithAlpha(SCRUBBER_COLOR, 0.92)
 			);
-			ctx.fill();
 			
 			// Label Text
 			ctx.fillStyle = "white";
@@ -1691,23 +1770,22 @@ function render()
 		// Scrubber Line
 		ctx.save();
 		
-		ctx.strokeStyle = colorWithAlpha(SCRUBBER_COLOR, 0.85);
-		ctx.lineWidth = 2;
-		
 		if (recording) {
 			// Show glow if recording
 			ctx.shadowBlur = 15;
 			ctx.shadowColor = colorWithAlpha(SCRUBBER_COLOR, 0.95);
 		}
 		
-		ctx.beginPath();
-		ctx.moveTo(scrubberPosition, 0);
-		ctx.lineTo(scrubberPosition, canvas.height);
-		ctx.stroke();
+		drawVLine(ctx,
+			scrubberPosition,
+			0,
+			canvas.height,
+			colorWithAlpha(SCRUBBER_COLOR, 0.85),
+			2.0);
 		
 		ctx.restore();
 		
-		// Top Tag/Bubble - Time + Pitch
+		// Top Tag/Bubble - Time + Pitch:
 		const t = xToTime(scrubberPosition);
 		const pitch = dominantPitchAtTime(t);
 		
@@ -1717,7 +1795,8 @@ function render()
 		const pitchNameForLabel = (pitch) ? pitch.label : "--";
 		const label =`${formatTime(t)} ${pitchNameForLabel}`;
 		
-		ctx.font = "12px monospace";
+		const bubbleFont = "12px monospace";
+		ctx.font = bubbleFont;
 		
 		const tw = ctx.measureText(label).width;
 		const bx =
@@ -1726,39 +1805,36 @@ function render()
 				scrubberPosition + 10
 			);
 		
-		ctx.fillStyle = colorWithAlpha(SCRUBBER_COLOR, 0.95);
-		
-		ctx.beginPath();
-		ctx.roundRect(
+		// Bubble Background
+		drawFilledRoundedRect(ctx,
 			bx,
 			bubbleY,
 			tw + 44,
 			24,
-			8
-		);
-		ctx.fill();
+			8,
+			colorWithAlpha(SCRUBBER_COLOR, 0.95));
 		
 		if (pitch) {
+			// Pitch Indicator in Bubble
 			const c = colorForFreq(pitch.freq);
-			ctx.fillStyle = colorFromTuple(c);
 			
-			ctx.beginPath();
-			ctx.roundRect(
-				bx+8,
-				bubbleY+5,
+			drawFilledRoundedRect(ctx,
+				bx + 8,
+				bubbleY + 5,
 				14,
 				14,
-				4
-			);
-			ctx.fill();
+				4,
+				colorFromTuple(c));
 		}
 		
-		ctx.fillStyle = "white";
-		ctx.fillText(
+		// Bubble Text
+		drawText(
+			ctx,
 			label,
-			bx+30,
-			bubbleY+16
-		);
+			bx + 30,
+			bubbleY + 16,
+			"white",
+			bubbleFont);
 	}
 }
 

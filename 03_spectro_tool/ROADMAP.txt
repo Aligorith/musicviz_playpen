@@ -6,11 +6,6 @@ Spectrochrome Roadmap
   * Properly figure out all those magic numbers for the layouts
   * Convert all constants to CONSTANT_CASE
 
-* Make wrapper for all the drawing logic
-  * Abstract filled-rounded-rect-with-text drawing
-  * Abstract line-drawing)
-  * Abstract text drawing
-
 * Make "MidiPitchInfo" a proper type
   
 * Refactor out the "progress estimate" stuff to an "ProgressEstimator" type
