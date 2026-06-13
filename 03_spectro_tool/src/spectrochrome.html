@@ -165,7 +165,7 @@ input[type="range"] {
 /* The host container for the popup panels */
 .popup-panel-host {
 	position: fixed;
-	  
+	
 	top: 40px;
 	right: 20px;
 	
@@ -1868,6 +1868,7 @@ function stopPlayback()
 	cancelAnimationFrame(render);
 	
 	// Clear scrubber position so it doesn't hang around
+	// XXX: Redraw once more before cancelling the animation redraw?
 	scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
 	
 	// Reset UI state

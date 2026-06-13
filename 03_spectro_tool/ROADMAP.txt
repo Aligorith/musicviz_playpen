@@ -56,6 +56,9 @@ Spectrochrome Roadmap
 
 * Include the other strong-pitches info into the exported table (with the relative weights also), as well as note on/off/duration type info  
   * Present this export info as a table in a popup panel, allowing live inspection before exporting
+  
+* Human sensitivity attenuation pass
+* Audio volume adjustments (for playback + analysis)
 
 * Reduce CPU usage when IDLE
   * Investigate pausing render() updates when window has been idle for a while,
