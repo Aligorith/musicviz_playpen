@@ -97,6 +97,17 @@ input[type="range"] {
 	width: 140px;
 }
 
+table {
+	border-collapse: collapse;
+	/*font-family: Arial, sans-serif;*/
+}
+
+th, td {
+	border: 1px solid #666;
+	padding: 6px 12px;
+	text-align: center;
+}
+
 /* ************************* */
 /* Settings Form Styles */
 
@@ -156,7 +167,8 @@ input[type="range"] {
 
 /* Preferred width of the selection dropdowns inside the form-grids */
 .form-grid select {
-	width: 140px;
+	min-width: 140px;
+	max-width: 320px;
 }
 
 /* ************************* */
@@ -227,15 +239,49 @@ input[type="range"] {
 /* Legend / Mappings Panel */
 
 #legendPanel {
-	max-width: 300px;
+	max-width: 370px;
 }
 
 .swatch {
 	width: 18px;
 	height: 18px;
 	border-radius: 5px;
-	margin-right: 10px;
 }
+
+/* The two left columns form one visual column */
+.colormap-table-note-col {
+	border-right: none !important;
+	width: 40px;
+	font-weight: bold;
+}
+
+.colormap-table-accidental-col {
+	border-left: none !important;
+	width: 60px;
+	text-align: left;
+}
+
+/* Natural notes */
+.natural .colormap-table-note-col,
+.natural .colormap-table-accidental-col {
+	background: white;
+	color: black;
+}
+
+/* Accidentals */
+.accidental .colormap-table-note-col,
+.accidental .colormap-table-accidental-col {
+	background: black;
+	color: white;
+}
+
+/* Swatch Containing Cells */
+.colormap-table-cell {
+	display: flex;
+	justify-content: center; /* horizontal */
+	align-items: center;     /* vertical */
+}
+
 
 </style>
 </head>
@@ -2148,13 +2194,138 @@ resize();
 
 // Color Map Table ===================================
 
+// Column Labels in the Color Table
+const COLOR_MAP_COLUMNS = ["2", "3", "4", "5", "6", "7", "8"];
+
+// Rows in the Color Table
+// FIXME: The names need to come from the sharp/flat bias...
+//        FIXME: Each sharp/flat version needs a separate entry here!
+//        TODO: Need a way of highlighting which ones the current bias-scheme uses
+const COLOR_MAP_ROWS = [
+	{ labelA: "C",  labelB: "",   id: "c",      accidental: false },
+	{ labelA: "",   labelB: "C#", id: "cSharp", accidental: true  },
+	
+	{ labelA: "D",  labelB: "",   id: "d",      accidental: false },
+	{ labelA: "",   labelB: "Eb", id: "eFlat",  accidental: true  },
+	
+	{ labelA: "E",  labelB: "",   id: "e",      accidental: false },
+	
+	{ labelA: "F",  labelB: "",   id: "f",      accidental: false },
+	{ labelA: "",   labelB: "F#", id: "fSharp", accidental: true  },
+	
+	{ labelA: "G",  labelB: "",   id: "g",      accidental: false },
+	{ labelA: "",   labelB: "Ab", id: "gSharp",  accidental: true  },
+	
+	{ labelA: "A",  labelB: "",   id: "a",      accidental: false },
+	{ labelA: "",   labelB: "Bb", id: "bFlat",  accidental: true  },
+	
+	{ labelA: "B",  labelB: "",   id: "b",      accidental: false }
+];
+
+// Current color-map values
+// * Top Level = Rows = Semitone Idx's
+// * Per-Row   = Map of Octave Id = Hex/RGB Color
+let colorMapTableData = [];
+
+// Populate colorMapTableData
+function populateColorMapTableData()
+{
+	// NOTE: This may be replaced eventually by a hardcoded table?
+	// FIXME: Need to encode both sharp and flat versions, so need to recode to use the row-template thing instead
+	for (let i = 0; i < semitonesPerOctave; i++) {
+		let rowMap = {};
+		COLOR_MAP_COLUMNS.forEach(octave => {
+			const semitoneName = getSemitoneName(i);
+			const pitchId = `${semitoneName}${octave}`;
+			
+			const colorTuple = defaultColorForPitch(semitoneName, i, octave);
+			console.log(`Colormap: ${i} - ${pitchId} = ${colorTuple}`);
+			const colorValue = colorFromTuple(colorTuple);
+			rowMap[pitchId] = colorValue; 
+		});
+		console.log(`rowMap = ${rowMap}`);
+		colorMapTableData.push(rowMap);
+	}
+	
+	console.log("colorMapTableData: --------------");
+	console.log(colorMapTableData);
+	console.log("----------------");
+}
+
+populateColorMapTableData();
+
+
 // Initialise the colorMapTable element, which is just an empty placeholder initially
 // to avoid having to hand-code all those elements
 function initColorTable()
 {
 	const table = document.getElementById("colorMapTable");
+	if (table == null) {
+		console.error("colorMapTable element not found in HTML");
+		return;
+	}
+	
+	// Add heading row
+	const thead = document.createElement("thead");
+	const headerRow = document.createElement("tr");
+	
+	const noteKeysHeader = document.createElement("th");
+	noteKeysHeader.colSpan = 2;
+	headerRow.appendChild(noteKeysHeader);
+	
+	COLOR_MAP_COLUMNS.forEach(octave => {
+		const th = document.createElement("th");
+		th.textContent = `c${octave}`;
+		headerRow.appendChild(th);
+	});
+	
+	thead.appendChild(headerRow);
+	table.appendChild(thead);
+	
+	// Body - Per-Semitone Rows
+	const tbody = document.createElement("tbody");
+	
+	for (let i = 0; i < semitonesPerOctave; i++) {
+		const semitoneName = getSemitoneName(i);
+		const row = COLOR_MAP_ROWS[i];
+		
+		const tr = document.createElement("tr");
+		tr.className = 
+			row.accidental ? "color-map-key-accidental" : "color-map-key-natural";
+		
+		const tdNote = document.createElement("td");
+		tdNote.className = "colormap-table-note-col";
+		tdNote.textContent = (row.accidental) ? "" : semitoneName;
+		tr.appendChild(tdNote);
+		
+		const tdAlias = document.createElement("td");
+		tdAlias.className = "colormap-table-accidental-col";
+		tdAlias.textContent = (row.accidental) ? semitoneName : "";
+		tr.appendChild(tdAlias);
+		
+		COLOR_MAP_COLUMNS.forEach(octave => {
+			const td = document.createElement("td");
+			td.class = "colormap-table-cell";
+			
+			const swatch = document.createElement("div");
+			swatch.className = "swatch";
+			swatch.id = `colorSwatch_${row.id}${octave}`;
+			
+			// FIXME: Split out this function for the keys
+			let pitchId = `${semitoneName}${octave}`;
+			let color = colorMapTableData[i][pitchId];
+			console.log(`HTML color for r=${i} c=${octave} (${pitchId}) == ${color}`);
+			swatch.style.background = color;
+			
+			td.appendChild(swatch);
+			tr.appendChild(td);
+		});
+		
+		tbody.appendChild(tr);
+	}
+	
+	table.appendChild(tbody);
 }
-
 
 // Button Event Handlers =============================
 
