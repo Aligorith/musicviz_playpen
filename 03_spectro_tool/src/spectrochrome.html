@@ -261,16 +261,26 @@ th, td {
 	text-align: left;
 }
 
-/* Natural notes */
-.natural .colormap-table-note-col,
-.natural .colormap-table-accidental-col {
+/* Natural notes
+ * - Only the "key" columns should get coloured white
+ * - The rest of the row however should stay uncoloured
+ */
+.colormap-key-natural .colormap-table-note-col {
+	background: white;
+	color: black;
+}
+.colormap-key-natural .colormap-table-accidental-col {
 	background: white;
 	color: black;
 }
 
-/* Accidentals */
-.accidental .colormap-table-note-col,
-.accidental .colormap-table-accidental-col {
+
+/* Accidentals - Only the "black-key" column part is darkened */
+.colormap-key-accidental .colormap-table-note-col {
+	background: white;
+	color: black;
+}
+.colormap-key-accidental .colormap-table-accidental-col {
 	background: black;
 	color: white;
 }
@@ -2290,7 +2300,7 @@ function initColorTable()
 		
 		const tr = document.createElement("tr");
 		tr.className = 
-			row.accidental ? "color-map-key-accidental" : "color-map-key-natural";
+			row.accidental ? "colormap-key-accidental" : "colormap-key-natural";
 		
 		const tdNote = document.createElement("td");
 		tdNote.className = "colormap-table-note-col";
