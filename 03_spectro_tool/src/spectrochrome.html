@@ -433,6 +433,8 @@ input[type="range"] {
 			<div class="swatch" style="background:#78dcff"></div>
 			B = sky blue
 		</div>
+		
+		<table id="colorMapTable"></table>
 	</div>
 </div>
 
@@ -989,6 +991,7 @@ function midiToLabel(m)
 }
 
 // Get the color to render the given frequency as
+// ! This is the hardcoded logic version, that will eventually be replaced with a table lookup
 // < freq: (Num :: Hz) The frequency of the pitch in Hz
 function colorForFreq(freq)
 {
@@ -2157,6 +2160,17 @@ function resize()
 addEventListener("resize", resize);
 resize();
 
+
+// Color Map Table ===================================
+
+// Initialise the colorMapTable element, which is just an empty placeholder initially
+// to avoid having to hand-code all those elements
+function initColorTable()
+{
+	const table = document.getElementById("colorMapTable");
+}
+
+
 // Button Event Handlers =============================
 
 // Update the "A tuning frequency" when the dropdown changes
@@ -2521,6 +2535,9 @@ function syncResetState()
 }
 
 // Main Entrypoint =========================================
+
+// Initialise color table
+initColorTable();
 
 // Ensure internal values are set to match what the widgets have set
 syncResetState();
