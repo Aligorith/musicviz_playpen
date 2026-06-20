@@ -950,6 +950,20 @@ function octaveToLilypondString(octave)
 	}
 }
 
+// Given a midi pitch semitone (0-12), get a "otch name"
+// returns: (str) A pitch name string for that semitone to use in the UI
+function getSemitoneName(pitchIndex)
+{
+	let styleName = 
+		(pitchNameStyle === LILYPOND_HYBRID_NOTATION) ? LILYPOND_NOTATION 
+		                                              : pitchNameStyle;
+	
+	let pitchName = 
+		pitchNamesTable[sharpFlatBiasMode][styleName][pitchIndex];
+	
+	return pitchName;
+}
+
 // Given a midi pitch-semitone (0-12) and an octave value, return a 
 // "pitch name label" for the UI
 // < pitchIndex: (int :: 0 <= i < 12) Semitone index, starting from "C"
@@ -958,12 +972,7 @@ function octaveToLilypondString(octave)
 // > returns: (str) Pitch name string to use in the UI
 function getPitchNameLabel(pitchIndex, octave, octaveIsOptional=false)
 {
-	let styleName = 
-		(pitchNameStyle === LILYPOND_HYBRID_NOTATION) ? LILYPOND_NOTATION 
-		                                              : pitchNameStyle;
-	
-	let pitchName = 
-		pitchNamesTable[sharpFlatBiasMode][styleName][pitchIndex];
+	let pitchName = getSemitoneName(pitchIndex);
 	
 	let octaveString = `${octave}`;
 	if (pitchNameStyle === LILYPOND_NOTATION) {
@@ -990,17 +999,14 @@ function midiToLabel(m)
 	return getPitchNameLabel(m.pitch, m.octave, true);
 }
 
-// Get the color to render the given frequency as
-// ! This is the hardcoded logic version, that will eventually be replaced with a table lookup
-// < freq: (Num :: Hz) The frequency of the pitch in Hz
-function colorForFreq(freq)
+// Get the default color for each semitone + octave combination
+// ! This is the hardcoded logic version, that may eventually be removed
+// < pitchName: (str) For resolving sharp/flat variants of sharp/flats
+// < pitchIdx: (0 - 12) Semitone index
+// < octave: (int) Scientific Pitch Notation octave number
+function defaultColorForPitch(pitchName, pitchIdx, octave)
 {
-	const midiPitchInfo = tunedMidi(freq);
-	
-	let pitchName = midiToLabel(midiPitchInfo);
-	let octave = midiPitchInfo.octave;
-	
-	switch (midiPitchInfo.pitch) {
+	switch (pitchIdx) {
 		case 0: // C
 			return [255,210,160];     // #FFD2A0 (peach)
 		
@@ -1038,8 +1044,8 @@ function colorForFreq(freq)
 			}
 		
 		case 4: // E
-			if (freq >= aTuningHz) {
-				// Lavender for "Higher" E's
+			if (octave >= 5) {
+				// Lavender for "Higher" E's (freq >= aTuningHz)
 				if (octave >= 7) {
 					// Lighter for higher
 					return [231,205,254];   // #E7CDFE (lavender)
@@ -1139,6 +1145,27 @@ function colorForFreq(freq)
 		
 		default: // Undefined / Unknown - Light Grey
 			return [180,180,180];
+	}
+}
+
+// Get the color to render the given frequency as
+// < freq: (Num :: Hz) The frequency of the pitch in Hz
+function colorForFreq(freq)
+{
+	const midiPitchInfo = tunedMidi(freq);
+	
+	let pitchName = midiToLabel(midiPitchInfo);
+	let pitchIdx = midiPitchInfo.pitch;
+	let octave = midiPitchInfo.octave;
+	
+	/*if (colorMapTableData.length != 0) {
+		// FIXME: Review how this lookup is happening
+		return colorMapTableData[getPitchNameLabel(pitchIdx, octave, false, true)];
+	}
+	else */
+	{
+		// Fallback: Look up default color for this pitch from the hardcoded color logic
+		return defaultColorForPitch(pitchName, pitchIdx, octave);
 	}
 }
 
