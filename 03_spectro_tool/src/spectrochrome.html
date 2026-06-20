@@ -2239,17 +2239,11 @@ function populateColorMapTableData()
 			const pitchId = `${semitoneName}${octave}`;
 			
 			const colorTuple = defaultColorForPitch(semitoneName, i, octave);
-			console.log(`Colormap: ${i} - ${pitchId} = ${colorTuple}`);
 			const colorValue = colorFromTuple(colorTuple);
 			rowMap[pitchId] = colorValue; 
 		});
-		console.log(`rowMap = ${rowMap}`);
 		colorMapTableData.push(rowMap);
 	}
-	
-	console.log("colorMapTableData: --------------");
-	console.log(colorMapTableData);
-	console.log("----------------");
 }
 
 populateColorMapTableData();
@@ -2314,7 +2308,6 @@ function initColorTable()
 			// FIXME: Split out this function for the keys
 			let pitchId = `${semitoneName}${octave}`;
 			let color = colorMapTableData[i][pitchId];
-			console.log(`HTML color for r=${i} c=${octave} (${pitchId}) == ${color}`);
 			swatch.style.background = color;
 			
 			td.appendChild(swatch);
