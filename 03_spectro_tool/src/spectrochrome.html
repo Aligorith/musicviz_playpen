@@ -192,6 +192,28 @@ th, td {
 	/* max-width: 1000px; */
 	overflow: hidden;
 	white-space: nowrap;
+	
+	opacity: 1;
+}
+
+.floating-panel.hidden,
+.popover-panel.hidden
+{
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* Floating Panel Only */
+.floating-panel {
+	/* Force higher than other popovers (e.g. "Legend")
+	 * NOTE: Below 1000 / 5000, they cannot be seen
+	 */
+	z-index: 10000;
+	
+	/* Always absolute / fixed positioning */
+	position: fixed;
+	
+	/* TODO: Prevent overflowing outside screen bounds */
 }
 
 /* ************************* */
@@ -226,13 +248,10 @@ th, td {
 	
 	transform: translateX(0) scale(1);
 	transform-origin: top right;
-	opacity: 1;
 }
 
 /* Popup Panels Hidden state */
 .popover-panel.hidden {
-	opacity: 0;
-	
 	transform: translateX(30px) scale(0.95);
 	
 	max-width: 0;
@@ -241,8 +260,6 @@ th, td {
 	padding-right: 0;
 	
 	margin-left: -12px;
-	
-	pointer-events: none;
 }
 
 /* ************************* */
@@ -302,6 +319,12 @@ th, td {
 	align-items: center;     /* vertical */
 }
 
+/* ************************* */
+/* Color Picker */
+
+#colorPicker {
+	
+}
 
 </style>
 </head>
@@ -343,6 +366,7 @@ th, td {
 	</div>
 </div>
 
+<!-- Container for popover panels appearing in top-right corner -->
 <div class="popover-panel-host">
 	<!-- NOTE: Panels are in right to left, starting from the top right -->
 	<!-- 1) Tweaks Panel -->
@@ -460,12 +484,92 @@ th, td {
 		
 		<!-- Color Map Table (Auto-Generated on Page Load) -->
 		<table id="colorMapTable"></table>
-		
-		<!-- -Color Picker widget to trigger picker overlays for the swatches  -->
-		<input type="color" id="colorPicker" hidden>
 	</div>
 </div>
 
+<!-- Custom Color Picker Popup -->
+<!-- TODO: Split this out into a component -->
+<div id="colorPicker" class="floating-panel hidden">
+	<!-- TODO: Introduce Preview Swatch -->
+	
+	<div class="form-grid">
+		<!-- Red Slider -->
+		<label class="form-property-label" for="colorPickerSlider_Red">
+			R:
+		</label>
+		<input
+				id="colorPickerSlider_Red"
+				class="form-property-widget"
+				type="range"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+		<input
+				id="colorPickerNumInput_Red"
+				class="form-property-value"
+				type="number"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+		
+		<!-- Green Slider -->
+		<label class="form-property-label" for="colorPickerSlider_Green">
+			G:
+		</label>
+		<input
+				id="colorPickerSlider_Green"
+				class="form-property-widget"
+				type="range"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+		<input
+				id="colorPickerNumInput_Green"
+				class="form-property-value"
+				type="number"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+		
+		<!-- Blue Slider -->
+		<label class="form-property-label" for="colorPickerSlider_Blue">
+			B:
+		</label>
+		<input
+				id="colorPickerSlider_Blue"
+				class="form-property-widget"
+				type="range"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+		<input
+				id="colorPickerNumInput_Blue"
+				class="form-property-value"
+				type="number"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+	</div>
+	
+	<!-- Close Color Picker -->
+	<!-- TODO: Separate Apply vs Cancel... -->
+	<button id="colorPickerCloseBtn">Close</button>
+</div>
+
+
+<!-- The canvas for drawing the Spectrogram Visualisation on -->
 <canvas id="canvas"></canvas>
 
 
@@ -2365,15 +2469,14 @@ function initColorTable()
 
 // ------------------------------
 
-// Get the color picker element for the swatches
-const swatchColorPicker = document.getElementById("colorPicker");
-
 // Swatch click-event handler = Pick a color
 // < e: (PointerEvent)
 // < swatch: (Element) The swatch element that was clicked
 function triggerSwatchPickColor(e, swatch)
 {
-	const picker = swatchColorPicker; // alias for shorter names here
+	const picker = document.getElementById("colorPicker");
+	const pickerCloseButton = document.getElementById("colorPickerCloseBtn");
+	
 	//const note = swatch.dataset.note;
 	
 	//picker.value = NOTE_COLORS[note];
@@ -2383,21 +2486,21 @@ function triggerSwatchPickColor(e, swatch)
 	picker.style.left = e.clientX + "px";
 	picker.style.top = e.clientY + "px";
 	
-	picker.hidden = false;
+	picker.classList.toggle("hidden");
 	
 	console.log(`Swatch colorpicker shown: ${picker} at (${picker.style.left}, ${picker.style.top})`);
 	
 	// NOTE: This fires whenever the picker changes, while it is open...
-	picker.oninput = () => {
+	pickerCloseButton.onclick = () => {
 		//NOTE_COLORS[note] = picker.value;
 		
-		swatch.style.background = picker.value;
+		//swatch.style.background = picker.value;
+		
+		// FIXME: This isn't closing it!!!?
+		console.log("Closing colorPicker popup...")
+		picker.classList.toggle("hidden");
 		
 		//invalidateSpectrogram();
-	};
-	
-	picker.onchange = () => {
-		picker.hidden = true;
 	};
 }
 
@@ -2409,6 +2512,10 @@ function triggerSwatchContextMenu(e, swatch)
 {
 	
 }
+
+// Color Picker Methods ==============================
+
+// TODO: Define UI_* wrapper API functions for defining the standard bindings for widgets, then use these here
 
 // Button Event Handlers =============================
 
