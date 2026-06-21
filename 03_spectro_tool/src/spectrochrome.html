@@ -171,11 +171,34 @@ th, td {
 	max-width: 320px;
 }
 
+
 /* ************************* */
-/* Floating / Popup Panel Stuff */
+/* Free Floating Panels */
+
+/* Basic Floating Panel
+ * NOTE: "popover-panel" uses the same base styling, hence set that here too...
+ */
+.floating-panel,
+.popover-panel 
+{
+	padding: 14px;
+	
+	background: rgba(20,20,20,0.96);
+	border-radius: 12px;
+	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+	
+	font-size: 13px;
+	
+	/* max-width: 1000px; */
+	overflow: hidden;
+	white-space: nowrap;
+}
+
+/* ************************* */
+/* Popover Panel Stuff */
 
 /* The host container for the popup panels */
-.popup-panel-host {
+.popover-panel-host {
 	position: fixed;
 	
 	top: 40px;
@@ -191,18 +214,8 @@ th, td {
 }
 
 /* Popup Panels */
-.popup-panel {
+.popover-panel {
 	flex: 0 0 auto;
-	
-	padding: 14px;
-	
-	background: rgba(20,20,20,0.96);
-	border-radius: 12px;
-	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-	
-	font-size: 13px;
-	
-	white-space: nowrap;
 	
 	transition:
 		transform 250ms ease,
@@ -214,13 +227,10 @@ th, td {
 	transform: translateX(0) scale(1);
 	transform-origin: top right;
 	opacity: 1;
-	
-	/* max-width: 1000px; */
-	overflow: hidden;
 }
 
 /* Popup Panels Hidden state */
-.popup-panel.hidden {
+.popover-panel.hidden {
 	opacity: 0;
 	
 	transform: translateX(30px) scale(0.95);
@@ -333,10 +343,10 @@ th, td {
 	</div>
 </div>
 
-<div class="popup-panel-host">
+<div class="popover-panel-host">
 	<!-- NOTE: Panels are in right to left, starting from the top right -->
 	<!-- 1) Tweaks Panel -->
-	<div id="tweaksPanel" class="popup-panel hidden">
+	<div id="tweaksPanel" class="popover-panel hidden">
 		<div class="form-grid">
 			<!-- Brightness Slider -->
 			<label class="form-property-label" for="brightnessSlider">
@@ -419,7 +429,7 @@ th, td {
 	</div>
 	
 	<!-- 1) Legend Panel -->
-	<div id="legendPanel" class="popup-panel hidden">
+	<div id="legendPanel" class="popover-panel hidden">
 		<!-- Colour Map Settings-->
 		<div class="form-grid">
 			<!-- Pitch Naming Style -->
