@@ -2325,6 +2325,12 @@ function initColorTable()
 			let color = colorMapTableData[i][pitchId];
 			swatch.style.background = color;
 			
+			// TODO: store indexing info in ".dataset" so the colorswatch can use it
+			
+			swatch.onclick = (e) => {
+				console.log(`Swatch clicked - ${swatch.id}!`);
+			};
+			
 			td.appendChild(swatch);
 			tr.appendChild(td);
 		});
@@ -2333,6 +2339,14 @@ function initColorTable()
 	}
 	
 	table.appendChild(tbody);
+}
+
+// ------------------------------
+
+// Swatch click-event handler
+function swatchClickedHandler()
+{
+	// TODO: Separate left and right clicks...
 }
 
 // Button Event Handlers =============================
