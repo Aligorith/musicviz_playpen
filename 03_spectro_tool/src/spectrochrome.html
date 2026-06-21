@@ -448,7 +448,11 @@ th, td {
 		<!-- Gap -->
 		<div style="height: 30px;"></div>
 		
+		<!-- Color Map Table (Auto-Generated on Page Load) -->
 		<table id="colorMapTable"></table>
+		
+		<!-- -Color Picker widget to trigger picker overlays for the swatches  -->
+		<input type="color" id="colorPicker" hidden>
 	</div>
 </div>
 
@@ -2329,6 +2333,14 @@ function initColorTable()
 			
 			swatch.onclick = (e) => {
 				console.log(`Swatch clicked - ${swatch.id}!`);
+				if (e.button === 2) {
+					// Right-Click
+					triggerSwatchContextMenu(e, swatch);
+				}
+				else {
+					// Left Click
+					triggerSwatchPickColor(e, swatch);
+				}
 			};
 			
 			td.appendChild(swatch);
@@ -2343,10 +2355,49 @@ function initColorTable()
 
 // ------------------------------
 
-// Swatch click-event handler
-function swatchClickedHandler()
+// Get the color picker element for the swatches
+const swatchColorPicker = document.getElementById("colorPicker");
+
+// Swatch click-event handler = Pick a color
+// < e: (PointerEvent)
+// < swatch: (Element) The swatch element that was clicked
+function triggerSwatchPickColor(e, swatch)
 {
-	// TODO: Separate left and right clicks...
+	const picker = swatchColorPicker; // alias for shorter names here
+	//const note = swatch.dataset.note;
+	
+	//picker.value = NOTE_COLORS[note];
+	picker.value = swatch.style.background;
+	
+	picker.style.position = "fixed";
+	picker.style.left = e.clientX + "px";
+	picker.style.top = e.clientY + "px";
+	
+	picker.hidden = false;
+	
+	console.log(`Swatch colorpicker shown: ${picker} at (${picker.style.left}, ${picker.style.top})`);
+	
+	// NOTE: This fires whenever the picker changes, while it is open...
+	picker.oninput = () => {
+		//NOTE_COLORS[note] = picker.value;
+		
+		swatch.style.background = picker.value;
+		
+		//invalidateSpectrogram();
+	};
+	
+	picker.onchange = () => {
+		picker.hidden = true;
+	};
+}
+
+// Swatch right-click event handler = Show a context menu
+// (e.g. for propagating events to other widgets)
+// < e: (PointerEvent)
+// < swatch: (Element) The swatch element that was clicked
+function triggerSwatchContextMenu(e, swatch)
+{
+	
 }
 
 // Button Event Handlers =============================
