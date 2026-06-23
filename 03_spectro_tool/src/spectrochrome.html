@@ -323,7 +323,15 @@ th, td {
 /* Color Picker */
 
 #colorPicker {
-	
+	position: fixed;
+
+	/* Width + Height were measured from the UI */
+	width:  295px;
+	height: 110px;
+
+	/* Prevent this from overflowing the boundaries of the viewport when moved */
+	left: clamp(0px, var(--x), calc(100vw - 295px));
+	top:  clamp(0px, var(--y), calc(100vh - 110px));
 }
 
 </style>
@@ -2483,8 +2491,8 @@ function triggerSwatchPickColor(e, swatch)
 	picker.value = swatch.style.background;
 	
 	picker.style.position = "fixed";
-	picker.style.left = e.clientX + "px";
-	picker.style.top = e.clientY + "px";
+	picker.style.setProperty("--x", e.clientX + "px");
+	picker.style.setProperty("--y", e.clientY + "px");
 	
 	picker.classList.toggle("hidden");
 	
