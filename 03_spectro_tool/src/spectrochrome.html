@@ -2473,6 +2473,8 @@ function initColorTable()
 			swatch.style.background = color;
 			
 			// TODO: store indexing info in ".dataset" so the colorswatch can use it
+			swatch.dataset.semitoneIndex = i;
+			swatch.dataset.octave = octave;
 			swatch.dataset.note = pitchId; // XXX
 			
 			swatch.onclick = (e) => {
@@ -2511,10 +2513,12 @@ function triggerSwatchPickColor(e, swatch)
 	const pickerCloseButton = document.getElementById("colorPickerCloseBtn");
 	
 	const note = swatch.dataset.note;
+	const octave = swatch.dataset.octave;
+	const semitoneIndex = swatch.dataset.octave;
 	
 	
 	pickerLabel.textContent = note; // XXX: set this to a custom property first
-	pickerPreview.style.background = swatch.style.background;
+	pickerPreview.style.background = swatch.style.background; // XXX: Should be writing this value to a proeprty for reading...
 	updateColorPickerSliders();
 	
 	picker.style.position = "fixed";
@@ -2528,11 +2532,13 @@ function triggerSwatchPickColor(e, swatch)
 	
 	// NOTE: This fires whenever the picker changes, while it is open...
 	pickerCloseButton.onclick = () => {
-		//NOTE_COLORS[note] = picker.value;
+		// Flush color back
+		swatch.style.background = pickerPreview.style.background;
 		
-		//swatch.style.background = picker.value;
+		// XXX: Abstract this logic
+		colorMapTableData[semitoneIndex][note] = pickerPreview.style.background;
 		
-		// FIXME: This isn't closing it!!!?
+		
 		console.log("Closing colorPicker popup...")
 		picker.classList.add("hidden");
 		
