@@ -2422,7 +2422,39 @@ function populateColorMapTableData()
 	}
 }
 
+// Update the table with an updated value
+// NOTE: This is abstracted out, as we cannot just edit these from
+//       within an event-handler without the edits going to a local copy
+function updateColorMapTableEntry(semitoneIndex, octave, newColorTuple)
+{
+	// XXX: Abstract this out
+	const semitoneName = getSemitoneName(semitoneIndex);
+	const pitchId = `${semitoneName}${octave}`;
+	
+	// NOTE: Color table needs to store the raw tuples, otherwise
+	//       the spectrogram drawing (i.e. using gradients) breaks
+	// NOTE: Need to do the update to first the row, then 
+	//       embedding the row back into the table
+	//colorMapTableData[semitoneIndex][note] = newColorTuple;
+	
+	let tableRow = colorMapTableData[semitoneIndex];
+	tableRow[pitchId] = newColorTuple;
+	
+	colorMapTableData[semitoneIndex] = tableRow;
+}
+
+
+// Populate color map table with initial data
 populateColorMapTableData();
+
+// ------------------------------
+
+// Pretty print color table
+function prettyPrintColorTable()
+{
+	console.log("Color Map Table:");
+	console.log(JSON.stringify(colorMapTableData));
+}
 
 // ------------------------------
 
@@ -2549,22 +2581,16 @@ function triggerSwatchPickColor(e, swatch)
 	
 	// NOTE: This fires whenever the picker changes, while it is open...
 	pickerCloseButton.onclick = () => {
-		// Flush color back
+		// Flush color back to UI
 		const newColorString = pickerPreview.style.background
 		swatch.style.background = newColorString;
 		
-		// XXX: Abstract this logic
-		// NOTE: Color table needs to store the raw tuples, otherwise
-		//       the spectogram drawing (i.e. using gradients) breaks
-		// NOTE: Need to do the update to first the row, then 
-		//       embedding the row back into the table
+		// Flush color back to the colorMapTable that is used for all the calculations...
 		const newColorTuple = rgbColorToTuple(newColorString);
-		//colorMapTableData[semitoneIndex][note] = newColorTuple;
+		updateColorMapTableEntry(semitoneIndex, octave, newColorTuple);
 		
-		let tableRow = colorMapTableData[semitoneIndex];
-		tableRow[note] = newColorTuple;
-		colorMapTableData[semitoneIndex] = tableRow;
-		
+		// Debug: Check that the new value got set
+		prettyPrintColorTable();
 		
 		// Close the picker now
 		console.log("Closing colorPicker popup...")
