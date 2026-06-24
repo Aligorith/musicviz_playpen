@@ -1186,10 +1186,7 @@ function colorForFreq(freq)
 		const pitchKey = `${semitoneName}${octave}`;
 		
 		let result = colorMapTableData[pitchIdx][pitchKey];
-		console.log(`looked up color = ${result}`);
-		
 		if (result !== undefined) {
-			console.log("    using result");
 			return result;
 		}
 	}
@@ -2534,7 +2531,7 @@ function triggerSwatchPickColor(e, swatch)
 	
 	const note = swatch.dataset.note;
 	const octave = swatch.dataset.octave;
-	const semitoneIndex = swatch.dataset.octave;
+	const semitoneIndex = swatch.dataset.semitoneIndex;
 	
 	
 	pickerLabel.textContent = note; // XXX: set this to a custom property first
@@ -2559,8 +2556,14 @@ function triggerSwatchPickColor(e, swatch)
 		// XXX: Abstract this logic
 		// NOTE: Color table needs to store the raw tuples, otherwise
 		//       the spectogram drawing (i.e. using gradients) breaks
+		// NOTE: Need to do the update to first the row, then 
+		//       embedding the row back into the table
 		const newColorTuple = rgbColorToTuple(newColorString);
-		colorMapTableData[semitoneIndex][note] = newColorTuple;
+		//colorMapTableData[semitoneIndex][note] = newColorTuple;
+		
+		let tableRow = colorMapTableData[semitoneIndex];
+		tableRow[note] = newColorTuple;
+		colorMapTableData[semitoneIndex] = tableRow;
 		
 		
 		// Close the picker now
@@ -2570,7 +2573,7 @@ function triggerSwatchPickColor(e, swatch)
 		
 		
 		// Update the spectrogram too
-		console.log(`Updating spectrogram to show new ${note} color (${newColorTuple})...`);
+		console.log(`Updating spectrogram to show new ${note} color (${newColorTuple}) at semi index = ${semitoneIndex}...`);
 		
 		enableWaitCursor();
 		recalcSpectrogram();
