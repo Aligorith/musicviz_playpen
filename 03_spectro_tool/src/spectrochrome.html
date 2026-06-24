@@ -327,11 +327,19 @@ th, td {
 
 	/* Width + Height were measured from the UI */
 	width:  295px;
-	height: 110px;
+	height: 150px;
 
 	/* Prevent this from overflowing the boundaries of the viewport when moved */
 	left: clamp(0px, var(--x), calc(100vw - 295px));
-	top:  clamp(0px, var(--y), calc(100vh - 110px));
+	top:  clamp(0px, var(--y), calc(100vh - 140px));
+}
+
+#colorPickerLabel {
+	font-weight: bold;
+}
+
+#colorPickerPreview {
+	width: 150px;
 }
 
 </style>
@@ -501,6 +509,15 @@ th, td {
 	<!-- TODO: Introduce Preview Swatch -->
 	
 	<div class="form-grid">
+		<!-- Note Name + Color Preview -->
+		<label id="colorPickerLabel" class="form-property-label" for="colorPickerPreview">
+			Note
+		</label>
+		<div id="colorPickerPreview" class="form-property-widget swatch"></div>
+		
+		<!-- TODO: Spacer -->
+		
+		
 		<!-- Red Slider -->
 		<label class="form-property-label" for="colorPickerSlider_Red">
 			R:
@@ -570,6 +587,9 @@ th, td {
 				value="128"
 			/>
 	</div>
+	
+	<!-- Gap -->
+		<div style="height: 15px;"></div>
 	
 	<!-- Close Color Picker -->
 	<!-- TODO: Separate Apply vs Cancel... -->
@@ -2446,12 +2466,14 @@ function initColorTable()
 			swatch.className = "swatch";
 			swatch.id = `colorSwatch_${row.id}${octave}`;
 			
+			
 			// FIXME: Split out this function for the keys
 			let pitchId = `${semitoneName}${octave}`;
 			let color = colorMapTableData[i][pitchId];
 			swatch.style.background = color;
 			
 			// TODO: store indexing info in ".dataset" so the colorswatch can use it
+			swatch.dataset.note = pitchId; // XXX
 			
 			swatch.onclick = (e) => {
 				console.log(`Swatch clicked - ${swatch.id}!`);
@@ -2483,18 +2505,24 @@ function initColorTable()
 function triggerSwatchPickColor(e, swatch)
 {
 	const picker = document.getElementById("colorPicker");
+	
+	const pickerLabel = document.getElementById("colorPickerLabel");
+	const pickerPreview = document.getElementById("colorPickerPreview");
 	const pickerCloseButton = document.getElementById("colorPickerCloseBtn");
 	
-	//const note = swatch.dataset.note;
+	const note = swatch.dataset.note;
 	
 	//picker.value = NOTE_COLORS[note];
 	picker.value = swatch.style.background;
+	
+	pickerLabel.textContent = note;
+	pickerPreview.style.background = swatch.style.background;
 	
 	picker.style.position = "fixed";
 	picker.style.setProperty("--x", e.clientX + "px");
 	picker.style.setProperty("--y", e.clientY + "px");
 	
-	picker.classList.toggle("hidden");
+	picker.classList.remove("hidden");
 	
 	console.log(`Swatch colorpicker shown: ${picker} at (${picker.style.left}, ${picker.style.top})`);
 	
@@ -2506,7 +2534,7 @@ function triggerSwatchPickColor(e, swatch)
 		
 		// FIXME: This isn't closing it!!!?
 		console.log("Closing colorPicker popup...")
-		picker.classList.toggle("hidden");
+		picker.classList.add("hidden");
 		
 		//invalidateSpectrogram();
 	};
