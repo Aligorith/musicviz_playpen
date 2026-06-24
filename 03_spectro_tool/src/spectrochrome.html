@@ -593,7 +593,8 @@ th, td {
 	
 	<!-- Close Color Picker -->
 	<!-- TODO: Separate Apply vs Cancel... -->
-	<button id="colorPickerCloseBtn">Close</button>
+	<button id="colorPickerCloseBtn">Apply</button>
+	<button id="colorPickerCancelBtn">Cancel</button>'
 </div>
 
 
@@ -919,6 +920,16 @@ function colorWithAlpha(rgbTuple, alpha)
 	return `rgba(${rgbTuple[0]}, ${rgbTuple[1]}, ${rgbTuple[2]}, ${alpha})`;
 }
 
+// Convert "rgb(R, G, B)" color strings to [R, G, B] tuples
+// < rgbString: (str) A string of form "rgb(R, G, B)"
+//                    where "R", "G", and "B" are ints (0 <= i <= 255)
+// > returns: ([R, G, B]) A tuple of ints where "R", G", "B" are the
+//                        values extracted from above
+function rgbColorToTuple(rgbString)
+{
+	return rgbString.match(/\d+/g).slice(0, 3).map(Number);
+}
+
 // -----------------------
 
 // Draw a horizontal line
@@ -1169,15 +1180,22 @@ function colorForFreq(freq)
 	let pitchIdx = midiPitchInfo.pitch;
 	let octave = midiPitchInfo.octave;
 	
-	/*if (colorMapTableData.length != 0) {
+	if (colorMapTableData.length != 0) {
 		// FIXME: Review how this lookup is happening
-		return colorMapTableData[getPitchNameLabel(pitchIdx, octave, false, true)];
+		const semitoneName = getSemitoneName(pitchIdx);
+		const pitchKey = `${semitoneName}${octave}`;
+		
+		let result = colorMapTableData[pitchIdx][pitchKey];
+		console.log(`looked up color = ${result}`);
+		
+		if (result !== undefined) {
+			console.log("    using result");
+			return result;
+		}
 	}
-	else */
-	{
-		// Fallback: Look up default color for this pitch from the hardcoded color logic
-		return defaultColorForPitch(pitchName, pitchIdx, octave);
-	}
+	
+	// Fallback: Look up default color for this pitch from the hardcoded color logic
+	return defaultColorForPitch(pitchName, pitchIdx, octave);
 }
 
 // Find which detected "midiEvent" note is active for the current time
@@ -2399,8 +2417,9 @@ function populateColorMapTableData()
 			const pitchId = `${semitoneName}${octave}`;
 			
 			const colorTuple = defaultColorForPitch(semitoneName, i, octave);
-			const colorValue = colorFromTuple(colorTuple);
-			rowMap[pitchId] = colorValue; 
+			
+			// NOTE: The table needs to store tuples, otherwise the lookups for drawing the spectrogram fail...
+			rowMap[pitchId] = colorTuple; 
 		});
 		colorMapTableData.push(rowMap);
 	}
@@ -2469,7 +2488,8 @@ function initColorTable()
 			
 			// FIXME: Split out this function for the keys
 			let pitchId = `${semitoneName}${octave}`;
-			let color = colorMapTableData[i][pitchId];
+			let colorTuple = colorMapTableData[i][pitchId];
+			let color = colorFromTuple(colorTuple);
 			swatch.style.background = color;
 			
 			// TODO: store indexing info in ".dataset" so the colorswatch can use it
@@ -2533,16 +2553,28 @@ function triggerSwatchPickColor(e, swatch)
 	// NOTE: This fires whenever the picker changes, while it is open...
 	pickerCloseButton.onclick = () => {
 		// Flush color back
-		swatch.style.background = pickerPreview.style.background;
+		const newColorString = pickerPreview.style.background
+		swatch.style.background = newColorString;
 		
 		// XXX: Abstract this logic
-		colorMapTableData[semitoneIndex][note] = pickerPreview.style.background;
+		// NOTE: Color table needs to store the raw tuples, otherwise
+		//       the spectogram drawing (i.e. using gradients) breaks
+		const newColorTuple = rgbColorToTuple(newColorString);
+		colorMapTableData[semitoneIndex][note] = newColorTuple;
 		
 		
+		// Close the picker now
 		console.log("Closing colorPicker popup...")
 		picker.classList.add("hidden");
 		
-		//invalidateSpectrogram();
+		
+		
+		// Update the spectrogram too
+		console.log(`Updating spectrogram to show new ${note} color (${newColorTuple})...`);
+		
+		enableWaitCursor();
+		recalcSpectrogram();
+		clearWaitCursor();
 	};
 }
 
@@ -2596,9 +2628,8 @@ function updateColorPickerSliders()
 {
 	const picker = document.getElementById("colorPickerPreview");
 	
-	const color = getComputedStyle(picker).backgroundColor;
-	const rgb = color.match(/\d+/g).slice(0, 3).map(Number);
-	
+	const colorString = getComputedStyle(picker).backgroundColor;
+	const rgb = rgbColorToTuple(colorString);
 	
 	// Block full-color updates until all components changed...
 	colorPickerRgbUpdatesOnComponentChangeAllowed = false;
