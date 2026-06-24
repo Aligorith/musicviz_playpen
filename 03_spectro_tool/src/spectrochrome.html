@@ -2512,15 +2512,15 @@ function triggerSwatchPickColor(e, swatch)
 	
 	const note = swatch.dataset.note;
 	
-	//picker.value = NOTE_COLORS[note];
-	picker.value = swatch.style.background;
 	
-	pickerLabel.textContent = note;
+	pickerLabel.textContent = note; // XXX: set this to a custom property first
 	pickerPreview.style.background = swatch.style.background;
+	updateColorPickerSliders();
 	
 	picker.style.position = "fixed";
 	picker.style.setProperty("--x", e.clientX + "px");
 	picker.style.setProperty("--y", e.clientY + "px");
+	
 	
 	picker.classList.remove("hidden");
 	
@@ -2552,6 +2552,98 @@ function triggerSwatchContextMenu(e, swatch)
 // Color Picker Methods ==============================
 
 // TODO: Define UI_* wrapper API functions for defining the standard bindings for widgets, then use these here
+
+
+// (bool) Flag to indicate whether RGB updates on slider changes are blocked
+let colorPickerRgbUpdatesOnComponentChangeAllowed = true;
+
+// Set Color Picker's Red / Green / Blue slider <-> numinput pairs
+// so that they are in sync with each other.
+// < value: (0 <= v <= 255)
+function setColorPickerValue_Red(value)
+{
+	colorPickerSlider_Red.value = colorPickerNumInput_Red.value = value;
+	
+	if (colorPickerRgbUpdatesOnComponentChangeAllowed) {
+		updateColorPickerSwatch();
+	}
+}
+function setColorPickerValue_Green(value)
+{
+	colorPickerSlider_Green.value = colorPickerNumInput_Green.value = value;
+	
+	if (colorPickerRgbUpdatesOnComponentChangeAllowed) {
+		updateColorPickerSwatch();
+	}
+}
+function setColorPickerValue_Blue(value)
+{
+	colorPickerSlider_Blue.value = colorPickerNumInput_Blue.value = value;
+	
+	if (colorPickerRgbUpdatesOnComponentChangeAllowed) {
+		updateColorPickerSwatch();
+	}
+}
+
+// Update color picker slider values from the current color
+function updateColorPickerSliders()
+{
+	const picker = document.getElementById("colorPickerPreview");
+	
+	const color = getComputedStyle(picker).backgroundColor;
+	const rgb = color.match(/\d+/g).slice(0, 3).map(Number);
+	
+	
+	// Block full-color updates until all components changed...
+	colorPickerRgbUpdatesOnComponentChangeAllowed = false;
+	
+	setColorPickerValue_Red(rgb[0]);
+	setColorPickerValue_Green(rgb[1]);
+	setColorPickerValue_Blue(rgb[2]);
+	
+	colorPickerRgbUpdatesOnComponentChangeAllowed = true;
+}
+
+// Update color picker swatch from the individual slider values
+// (assuming the sliders and numinputs are in sync now)
+function updateColorPickerSwatch()
+{
+	const picker = document.getElementById("colorPickerPreview");
+	
+	const r_value = colorPickerSlider_Red.value;
+	const g_value = colorPickerSlider_Green.value;
+	const b_value = colorPickerSlider_Blue.value;
+	
+	picker.style.background = `rgb(${r_value},${g_value},${b_value})`;
+}
+
+// Bind slider/numinput events
+// NOTE: Bind to "oninput" for the sliders instead of "onchange"
+//       here as this widget is more lightweight, and should be
+//       more responsive to interactive editing. Live-updates as
+//       the slider is dragged are important here.
+document.getElementById("colorPickerSlider_Red").oninput = () => {
+	setColorPickerValue_Red(parseInt(colorPickerSlider_Red.value));
+};
+document.getElementById("colorPickerNumInput_Red").onchange = () => {
+	setColorPickerValue_Red(parseInt(colorPickerNumInput_Red.value));
+};
+
+document.getElementById("colorPickerSlider_Green").oninput = () => {
+	setColorPickerValue_Green(parseInt(colorPickerSlider_Green.value));
+};
+document.getElementById("colorPickerNumInput_Green").onchange = () => {
+	setColorPickerValue_Green(parseInt(colorPickerNumInput_Green.value));
+};
+
+document.getElementById("colorPickerSlider_Blue").oninput = () => {
+	setColorPickerValue_Blue(parseInt(colorPickerSlider_Blue.value));
+};
+document.getElementById("colorPickerNumInput_Blue").onchange = () => {
+	setColorPickerValue_Blue(parseInt(colorPickerNumInput_Blue.value));
+};
+
+
 
 // Button Event Handlers =============================
 
