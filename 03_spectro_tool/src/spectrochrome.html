@@ -2460,7 +2460,7 @@ function prettyPrintColorTable()
 
 // Initialise the colorMapTable element, which is just an empty placeholder initially
 // to avoid having to hand-code all those elements
-function initColorTable()
+function initColorTableUI()
 {
 	const table = document.getElementById("colorMapTable");
 	if (table == null) {
@@ -3077,7 +3077,7 @@ function syncResetState()
 // Main Entrypoint =========================================
 
 // Initialise color table
-initColorTable();
+initColorTableUI();
 
 // Ensure internal values are set to match what the widgets have set
 syncResetState();
