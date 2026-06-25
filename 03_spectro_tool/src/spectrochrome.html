@@ -1180,6 +1180,10 @@ function colorForFreq(freq)
 	let octave = midiPitchInfo.octave;
 	
 	if (colorMapTableData.length != 0) {
+		// Adjust octave down, as midiPichInfo adds 1 for octave values...
+		// e.g. "c6" in the table would be retrieved for a "c5" value
+		octave--;
+		
 		// FIXME: Review how this lookup is happening
 		const semitoneName = getSemitoneName(pitchIdx);
 		const pitchKey = `${semitoneName}${octave}`;
