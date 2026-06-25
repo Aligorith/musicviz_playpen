@@ -2433,14 +2433,7 @@ function updateColorMapTableEntry(semitoneIndex, octave, newColorTuple)
 	
 	// NOTE: Color table needs to store the raw tuples, otherwise
 	//       the spectrogram drawing (i.e. using gradients) breaks
-	// NOTE: Need to do the update to first the row, then 
-	//       embedding the row back into the table
-	//colorMapTableData[semitoneIndex][note] = newColorTuple;
-	
-	let tableRow = colorMapTableData[semitoneIndex];
-	tableRow[pitchId] = newColorTuple;
-	
-	colorMapTableData[semitoneIndex] = tableRow;
+	colorMapTableData[semitoneIndex][pitchId] = newColorTuple;
 }
 
 
@@ -2579,7 +2572,9 @@ function triggerSwatchPickColor(e, swatch)
 	
 	console.log(`Swatch colorpicker shown: ${picker} at (${picker.style.left}, ${picker.style.top})`);
 	
-	// NOTE: This fires whenever the picker changes, while it is open...
+	
+	// Register handler for applying the color picker's chosen value back to the table
+	// TODO: Maybe this should be pulled out?
 	pickerApplyButton.onclick = () => {
 		// Flush color back to UI
 		const newColorString = pickerPreview.style.background
@@ -2595,7 +2590,6 @@ function triggerSwatchPickColor(e, swatch)
 		// Close the picker now
 		console.log("Closing colorPicker popup...")
 		picker.classList.add("hidden");
-		
 		
 		
 		// Update the spectrogram too
@@ -2620,9 +2614,9 @@ function triggerSwatchContextMenu(e, swatch)
 
 // TODO: Define UI_* wrapper API functions for defining the standard bindings for widgets, then use these here
 
-
 // (bool) Flag to indicate whether RGB updates on slider changes are blocked
 let colorPickerRgbUpdatesOnComponentChangeAllowed = true;
+
 
 // Set Color Picker's Red / Green / Blue slider <-> numinput pairs
 // so that they are in sync with each other.
