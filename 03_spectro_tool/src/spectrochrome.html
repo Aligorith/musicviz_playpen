@@ -592,8 +592,7 @@ th, td {
 		<div style="height: 15px;"></div>
 	
 	<!-- Close Color Picker -->
-	<!-- TODO: Separate Apply vs Cancel... -->
-	<button id="colorPickerCloseBtn">Apply</button>
+	<button id="colorPickerApplyBtn">Apply</button>
 	<button id="colorPickerCancelBtn">Cancel</button>'
 </div>
 
@@ -2560,7 +2559,7 @@ function triggerSwatchPickColor(e, swatch)
 	
 	const pickerLabel = document.getElementById("colorPickerLabel");
 	const pickerPreview = document.getElementById("colorPickerPreview");
-	const pickerCloseButton = document.getElementById("colorPickerCloseBtn");
+	const pickerApplyButton = document.getElementById("colorPickerApplyBtn");
 	
 	const note = swatch.dataset.note;
 	const octave = swatch.dataset.octave;
@@ -2581,7 +2580,7 @@ function triggerSwatchPickColor(e, swatch)
 	console.log(`Swatch colorpicker shown: ${picker} at (${picker.style.left}, ${picker.style.top})`);
 	
 	// NOTE: This fires whenever the picker changes, while it is open...
-	pickerCloseButton.onclick = () => {
+	pickerApplyButton.onclick = () => {
 		// Flush color back to UI
 		const newColorString = pickerPreview.style.background
 		swatch.style.background = newColorString;
@@ -2710,6 +2709,11 @@ document.getElementById("colorPickerNumInput_Blue").onchange = () => {
 	setColorPickerValue_Blue(parseInt(colorPickerNumInput_Blue.value));
 };
 
+// Close Color Picker
+document.getElementById("colorPickerCancelBtn").onclick = () => {
+	const picker = document.getElementById("colorPicker");
+	picker.classList.add("hidden");
+}
 
 
 // Button Event Handlers =============================
