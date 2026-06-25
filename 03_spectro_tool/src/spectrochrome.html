@@ -1192,6 +1192,7 @@ function colorForFreq(freq)
 	}
 	
 	// Fallback: Look up default color for this pitch from the hardcoded color logic
+	// NOTE: This is being used for the "high" frequencies above c9
 	return defaultColorForPitch(pitchName, pitchIdx, octave);
 }
 
