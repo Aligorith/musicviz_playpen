@@ -1120,7 +1120,7 @@ function octaveToLilypondString(octave)
 	}
 }
 
-// Given a midi pitch semitone (0-12), get a "otch name"
+// Given a midi pitch semitone (0-11), get a "pitch name"
 // returns: (str) A pitch name string for that semitone to use in the UI
 function getSemitoneName(pitchIndex)
 {
@@ -1134,7 +1134,35 @@ function getSemitoneName(pitchIndex)
 	return pitchName;
 }
 
-// Given a midi pitch-semitone (0-12) and an octave value, return a 
+// Get semitone name for colormap table keys
+// > returns: (str) The "semitoneName" part of the result of getColormapTableKey()
+//
+// NOTE: This is a variant of getSemitoneName() that does just what we want
+//       and is optimised for this usecase, to avoid introducing branches into
+//       that code that will be confusing to manage.
+function getColormapTableSemitoneName(pitchIndex)
+{
+	// Force use to use only one notation, as we can't maintain both for the table
+	let semitoneName =
+		pitchNamesTable[sharpFlatBiasMode][SCIENTIFIC_NOTATION][pitchIndex];
+		
+	return semitoneName;
+}
+
+// Given a midi pitch semitone (0-11) + an octave value, return a color map ID
+// for looking up the relevant color
+// < pitchIndex: (int :: 0 <= i < 12) Semitone index, starting from "C"
+// < octave: (int) Octave index
+// > returns: (str) The "pitchKey" string for looking up the relevant color from the colorMapTable
+function getColormapTableKey(pitchIndex, octave)
+{
+	let semitoneName = getColormapTableSemitoneName(pitchIndex);
+	
+	// Combine pitchName and octave-number for the key to use
+	return `${semitoneName}${octave}`;
+}
+
+// Given a midi pitch-semitone (0-11) and an octave value, return a 
 // "pitch name label" for the UI
 // < pitchIndex: (int :: 0 <= i < 12) Semitone index, starting from "C"
 // < octave: (int) Octave index
@@ -1184,9 +1212,8 @@ function colorForFreq(freq)
 		// e.g. "c6" in the table would be retrieved for a "c5" value
 		octave--;
 		
-		// FIXME: Review how this lookup is happening
-		const semitoneName = getSemitoneName(pitchIdx);
-		const pitchKey = `${semitoneName}${octave}`;
+		// Get the key to do the colormap lookup
+		const pitchKey = getColormapTableKey(pitchIdx, octave);
 		
 		let result = colorMapTableData[pitchIdx][pitchKey];
 		if (result !== undefined) {
@@ -2414,8 +2441,8 @@ function populateColorMapTableData()
 	for (let i = 0; i < semitonesPerOctave; i++) {
 		let rowMap = {};
 		COLOR_MAP_COLUMNS.forEach(octave => {
-			const semitoneName = getSemitoneName(i);
-			const pitchId = `${semitoneName}${octave}`;
+			const semitoneName = getColormapTableSemitoneName(i);
+			const pitchId = getColormapTableKey(i, octave);
 			
 			const colorTuple = defaultColorForPitch(semitoneName, i, octave);
 			
@@ -2431,13 +2458,11 @@ function populateColorMapTableData()
 //       within an event-handler without the edits going to a local copy
 function updateColorMapTableEntry(semitoneIndex, octave, newColorTuple)
 {
-	// XXX: Abstract this out
-	const semitoneName = getSemitoneName(semitoneIndex);
-	const pitchId = `${semitoneName}${octave}`;
+	const pitchKey = getColormapTableKey(semitoneIndex, octave);
 	
 	// NOTE: Color table needs to store the raw tuples, otherwise
 	//       the spectrogram drawing (i.e. using gradients) breaks
-	colorMapTableData[semitoneIndex][pitchId] = newColorTuple;
+	colorMapTableData[semitoneIndex][pitchKey] = newColorTuple;
 }
 
 
@@ -2511,17 +2536,16 @@ function initColorTableUI()
 			swatch.className = "swatch";
 			swatch.id = `colorSwatch_${row.id}${octave}`;
 			
-			
-			// FIXME: Split out this function for the keys
-			let pitchId = `${semitoneName}${octave}`;
-			let colorTuple = colorMapTableData[i][pitchId];
+			let pitchKey = getColormapTableKey(i, octave);
+			let colorTuple = colorMapTableData[i][pitchKey];
 			let color = colorFromTuple(colorTuple);
 			swatch.style.background = color;
 			
-			// TODO: store indexing info in ".dataset" so the colorswatch can use it
+			// Store the indexing info in the "dataset" stuff on the colorswatch
+			// so that we can retrieve it from there later.
 			swatch.dataset.semitoneIndex = i;
 			swatch.dataset.octave = octave;
-			swatch.dataset.note = pitchId; // XXX
+			swatch.dataset.pitchKey = pitchKey; // XXX
 			
 			swatch.onclick = (e) => {
 				console.log(`Swatch clicked - ${swatch.id}!`);
@@ -2558,13 +2582,13 @@ function triggerSwatchPickColor(e, swatch)
 	const pickerPreview = document.getElementById("colorPickerPreview");
 	const pickerApplyButton = document.getElementById("colorPickerApplyBtn");
 	
-	const note = swatch.dataset.note;
+	const note = swatch.dataset.pitchKey;
 	const octave = swatch.dataset.octave;
 	const semitoneIndex = swatch.dataset.semitoneIndex;
 	
 	
-	pickerLabel.textContent = note; // XXX: set this to a custom property first
-	pickerPreview.style.background = swatch.style.background; // XXX: Should be writing this value to a proeprty for reading...
+	pickerLabel.textContent = getPitchNameLabel(semitoneIndex, octave);
+	pickerPreview.style.background = swatch.style.background; // XXX: Should be writing this value to a property for reading...
 	updateColorPickerSliders();
 	
 	picker.style.position = "fixed";
