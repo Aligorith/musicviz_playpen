@@ -1419,10 +1419,10 @@ function recalcSpectrogramAndAllNoteIds()
 	
 	console.log("Recalculating spectrogram and all note id's...");
 	
-	// Reprocess each of the cached spectogram slices...
+	// Reprocess each of the cached spectrogram slices...
 	// TODO: Update status text again with our progress
 	for (let i = 0; i < cachedSpectrogram.length; i++) {
-		// Redraw colours (which may haved changed due to the tuning)
+		// Redraw colours (which may have changed due to the tuning)
 		redrawSpectrogramColumn(
 			i,
 			cachedSpectrogram[i]
