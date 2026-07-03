@@ -342,6 +342,14 @@ th, td {
 	width: 150px;
 }
 
+/* "Color Picker Reset" - Explicit placement on the right
+ * NOTE: The way this is done is a bit hacky, but it works!
+ */
+#colorPickerResetBtn {
+	position: relative;
+	right: -45%;
+}
+
 </style>
 </head>
 
@@ -589,11 +597,13 @@ th, td {
 	</div>
 	
 	<!-- Gap -->
-		<div style="height: 15px;"></div>
+	<div style="height: 15px;"></div>
 	
-	<!-- Close Color Picker -->
+	<!-- Color Picker Buttons -->
 	<button id="colorPickerApplyBtn">Apply</button>
-	<button id="colorPickerCancelBtn">Cancel</button>'
+	<button id="colorPickerCancelBtn">Cancel</button>
+	
+	<button id="colorPickerResetBtn">Reset</button>
 </div>
 
 
@@ -2571,6 +2581,17 @@ function initColorTableUI()
 
 // ------------------------------
 
+// Swatch right-click event handler = Show a context menu
+// (e.g. for propagating events to other widgets)
+// < e: (PointerEvent)
+// < swatch: (Element) The swatch element that was clicked
+function triggerSwatchContextMenu(e, swatch)
+{
+	
+}
+
+// ------------------------------
+
 // Swatch click-event handler = Pick a color
 // < e: (PointerEvent)
 // < swatch: (Element) The swatch element that was clicked
@@ -2629,14 +2650,14 @@ function triggerSwatchPickColor(e, swatch)
 	};
 }
 
-// Swatch right-click event handler = Show a context menu
-// (e.g. for propagating events to other widgets)
-// < e: (PointerEvent)
-// < swatch: (Element) The swatch element that was clicked
-function triggerSwatchContextMenu(e, swatch)
+// Reset color picker color to default
+function colorPickerResetToDefault()
 {
-	
+	// TODO
 }
+
+// Register color pick button handlers
+document.getElementById("colorPickerResetBtn").onclick = colorPickerResetToDefault;
 
 // Color Picker Methods ==============================
 
