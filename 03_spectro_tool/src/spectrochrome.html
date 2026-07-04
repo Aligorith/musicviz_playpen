@@ -2294,6 +2294,15 @@ const COLOR_MAP_ROWS = [
 // < octave: (int) Scientific Pitch Notation octave number
 function defaultColorForPitch(pitchName, pitchIdx, octave)
 {
+	// Ensure all args are of the right types
+	if (typeof pitchIdx == "string") {
+		pitchIdx = parseInt(pitchIdx);
+	}
+	if (typeof octave == "string") {
+		octave = parseInt(octave);
+	}
+	
+	// Now do the lookup
 	switch (pitchIdx) {
 		case 0: // C
 			return [255,210,160];     // #FFD2A0 (peach)
