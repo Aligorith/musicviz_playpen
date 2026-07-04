@@ -2602,6 +2602,7 @@ function triggerSwatchPickColor(e, swatch)
 	const pickerLabel = document.getElementById("colorPickerLabel");
 	const pickerPreview = document.getElementById("colorPickerPreview");
 	const pickerApplyButton = document.getElementById("colorPickerApplyBtn");
+	const pickerResetButton = document.getElementById("colorPickerResetBtn");
 	
 	const semitoneIndex = swatch.dataset.semitoneIndex;
 	const octave = swatch.dataset.octave;
@@ -2621,11 +2622,15 @@ function triggerSwatchPickColor(e, swatch)
 	
 	console.log(`Swatch colorpicker shown: ${picker} at (${picker.style.left}, ${picker.style.top})`);
 	
-	// Replace the apply button's "onclick" handler for the apply, as we need to bind
-	// the swatch that we're dealing with to the colorPickerApply() function,
+	// Replace the apply/reset button"onclick" handlers, as we need to bind
+	// the swatch that we're dealing with to these functions,
 	// as there's no other easy way to send that through
 	pickerApplyButton.onclick = () => {
 		colorPickerApply(swatch);
+	}
+	
+	pickerResetButton.onclick = () => {
+		colorPickerResetToDefault(swatch);
 	}
 }
 
@@ -2650,7 +2655,7 @@ function colorPickerApply(swatch)
 	updateColorMapTableEntry(semitoneIndex, octave, newColorTuple);
 	
 	// Debug: Check that the new value got set
-	prettyPrintColorTable();
+	//prettyPrintColorTable();
 	
 	// Close the picker now
 	console.log("Closing colorPicker popup...")
@@ -2666,13 +2671,25 @@ function colorPickerApply(swatch)
 }
 
 // Reset color picker color to default
-function colorPickerResetToDefault()
+function colorPickerResetToDefault(swatch)
 {
-	// TODO: Reset color picker + table value to the default for this note
+	const pickerPreview = document.getElementById("colorPickerPreview");
+	
+	const semitoneIndex = swatch.dataset.semitoneIndex;
+	const octave = swatch.dataset.octave;
+	const uiNoteName = getPitchNameLabel(semitoneIndex, octave);
+	
+	// Reset the color in the UI, then apply that, even though this is slightly less efficient
+	// NOTE: This depends on the implementation details above, which read from the preview
+	const defaultColorTuple = defaultColorForPitch(uiNoteName, semitoneIndex, octave);
+	const defaultColorString = colorFromTuple(defaultColorTuple);
+	
+	console.log(`Resetting ${uiNoteName} to ${defaultColorString} - semi = ${semitoneIndex}, octave = ${octave}, tuple = ${defaultColorTuple}`);
+	pickerPreview.style.background = defaultColorString;
+	
+	// Apply this via the "Apply" button
+	colorPickerApply(swatch);
 }
-
-// Register color pick button handlers
-document.getElementById("colorPickerResetBtn").onclick = colorPickerResetToDefault;
 
 // Close Color Picker
 document.getElementById("colorPickerCancelBtn").onclick = () => {
