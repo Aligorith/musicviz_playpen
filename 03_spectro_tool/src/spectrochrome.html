@@ -2603,63 +2603,84 @@ function triggerSwatchPickColor(e, swatch)
 	const pickerPreview = document.getElementById("colorPickerPreview");
 	const pickerApplyButton = document.getElementById("colorPickerApplyBtn");
 	
-	const note = swatch.dataset.pitchKey;
-	const octave = swatch.dataset.octave;
 	const semitoneIndex = swatch.dataset.semitoneIndex;
+	const octave = swatch.dataset.octave;
+	const uiNoteName = getPitchNameLabel(semitoneIndex, octave);
 	
-	
-	pickerLabel.textContent = getPitchNameLabel(semitoneIndex, octave);
+	pickerLabel.textContent = uiNoteName;
 	pickerPreview.style.background = swatch.style.background; // XXX: Should be writing this value to a property for reading...
 	updateColorPickerSliders();
 	
+	// Set picker to show near the swatch, while respecting the screen bounds
 	picker.style.position = "fixed";
 	picker.style.setProperty("--x", e.clientX + "px");
 	picker.style.setProperty("--y", e.clientY + "px");
 	
-	
+	// Make the picker visible
 	picker.classList.remove("hidden");
 	
 	console.log(`Swatch colorpicker shown: ${picker} at (${picker.style.left}, ${picker.style.top})`);
 	
-	
-	// Register handler for applying the color picker's chosen value back to the table
-	// TODO: Maybe this should be pulled out?
+	// Replace the apply button's "onclick" handler for the apply, as we need to bind
+	// the swatch that we're dealing with to the colorPickerApply() function,
+	// as there's no other easy way to send that through
 	pickerApplyButton.onclick = () => {
-		// Flush color back to UI
-		const newColorString = pickerPreview.style.background
-		swatch.style.background = newColorString;
-		
-		// Flush color back to the colorMapTable that is used for all the calculations...
-		const newColorTuple = rgbColorToTuple(newColorString);
-		updateColorMapTableEntry(semitoneIndex, octave, newColorTuple);
-		
-		// Debug: Check that the new value got set
-		prettyPrintColorTable();
-		
-		// Close the picker now
-		console.log("Closing colorPicker popup...")
-		picker.classList.add("hidden");
-		
-		
-		// Update the spectrogram too
-		console.log(`Updating spectrogram to show new ${note} color (${newColorTuple}) at semi index = ${semitoneIndex}...`);
-		
-		enableWaitCursor();
-		recalcSpectrogram();
-		clearWaitCursor();
-	};
+		colorPickerApply(swatch);
+	}
+}
+
+// Apply color from color picker back to swatch + colorTable + spectrogram
+// < swatch: (DOMElement) The DOM element (i.e. a div) used to render the swatch
+function colorPickerApply(swatch)
+{
+	const picker = document.getElementById("colorPicker");
+	const pickerPreview = document.getElementById("colorPickerPreview");
+	
+	const pitchKey = swatch.dataset.pitchKey;
+	const semitoneIndex = swatch.dataset.semitoneIndex;
+	const octave = swatch.dataset.octave;
+	const uiNoteName = getPitchNameLabel(semitoneIndex, octave);
+	
+	// Flush color back to UI
+	const newColorString = pickerPreview.style.background
+	swatch.style.background = newColorString;
+	
+	// Flush color back to the colorMapTable that is used for all the calculations...
+	const newColorTuple = rgbColorToTuple(newColorString);
+	updateColorMapTableEntry(semitoneIndex, octave, newColorTuple);
+	
+	// Debug: Check that the new value got set
+	prettyPrintColorTable();
+	
+	// Close the picker now
+	console.log("Closing colorPicker popup...")
+	picker.classList.add("hidden");
+	
+	
+	// Update the spectrogram too
+	console.log(`Updating spectrogram to show new ${uiNoteName} color (${newColorTuple}) at semi index = ${semitoneIndex} (for pitchKey=${pitchKey})...`);
+	
+	enableWaitCursor();
+	recalcSpectrogram();
+	clearWaitCursor();
 }
 
 // Reset color picker color to default
 function colorPickerResetToDefault()
 {
-	// TODO
+	// TODO: Reset color picker + table value to the default for this note
 }
 
 // Register color pick button handlers
 document.getElementById("colorPickerResetBtn").onclick = colorPickerResetToDefault;
 
-// Color Picker Methods ==============================
+// Close Color Picker
+document.getElementById("colorPickerCancelBtn").onclick = () => {
+	const picker = document.getElementById("colorPicker");
+	picker.classList.add("hidden");
+}
+
+// Color Picker UI (Slider) Methods ==============================
 
 // TODO: Define UI_* wrapper API functions for defining the standard bindings for widgets, then use these here
 
@@ -2751,12 +2772,6 @@ document.getElementById("colorPickerSlider_Blue").oninput = () => {
 document.getElementById("colorPickerNumInput_Blue").onchange = () => {
 	setColorPickerValue_Blue(parseInt(colorPickerNumInput_Blue.value));
 };
-
-// Close Color Picker
-document.getElementById("colorPickerCancelBtn").onclick = () => {
-	const picker = document.getElementById("colorPicker");
-	picker.classList.add("hidden");
-}
 
 
 // Button Event Handlers =============================
