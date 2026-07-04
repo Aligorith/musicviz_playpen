@@ -2622,14 +2622,17 @@ function triggerSwatchPickColor(e, swatch)
 	updateColorPickerSliders();
 	
 	// Set picker to show near the swatch, while respecting the screen bounds
+	let showAtX = e.clientX + "px";
+	let showAtY = e.clientY + "px";
+	
 	picker.style.position = "fixed";
-	picker.style.setProperty("--x", e.clientX + "px");
-	picker.style.setProperty("--y", e.clientY + "px");
+	picker.style.setProperty("--x", showAtX);
+	picker.style.setProperty("--y", showAtY);
 	
 	// Make the picker visible
 	picker.classList.remove("hidden");
 	
-	console.log(`Swatch colorpicker shown: ${picker} at (${picker.style.left}, ${picker.style.top})`);
+	console.log(`Swatch colorpicker shown: ${picker} at (${showAtX}, ${showAtY})`);
 	
 	// Replace the apply/reset button"onclick" handlers, as we need to bind
 	// the swatch that we're dealing with to these functions,
