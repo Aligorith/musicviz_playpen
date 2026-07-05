@@ -2457,19 +2457,26 @@ function populateColorMapTableData()
 {
 	// NOTE: This may be replaced eventually by a hardcoded table?
 	// FIXME: Need to encode both sharp and flat versions, so need to recode to use the row-template thing instead
-	for (let i = 0; i < semitonesPerOctave; i++) {
+	COLOR_MAP_ROWS.forEach(rowInfo => {
+		const semitoneIndex = rowInfo.semitoneIndex;
+		
+		// Construct color mapping between this each octave version
+		// this semitone, and the corresponding color.
 		let rowMap = {};
+		
 		COLOR_MAP_COLUMNS.forEach(octave => {
-			const semitoneName = getColormapTableSemitoneName(i);
-			const pitchId = getColormapTableKey(i, octave);
+			// FIXME: need to handle both variants of the semitone, so can't do it this way!!!
+			const semitoneName = getColormapTableSemitoneName(semitoneIndex);
+			const pitchId = getColormapTableKey(semitoneIndex, octave);
 			
-			const colorTuple = defaultColorForPitch(semitoneName, i, octave);
+			const colorTuple = defaultColorForPitch(semitoneName, semitoneIndex, octave);
 			
 			// NOTE: The table needs to store tuples, otherwise the lookups for drawing the spectrogram fail...
 			rowMap[pitchId] = colorTuple; 
 		});
+		
 		colorMapTableData.push(rowMap);
-	}
+	});
 }
 
 // Update the table with an updated value
@@ -2529,9 +2536,10 @@ function initColorTableUI()
 	// Body - Per-Semitone Rows
 	const tbody = document.createElement("tbody");
 	
-	for (let i = 0; i < semitonesPerOctave; i++) {
-		const semitoneName = getSemitoneName(i);
-		const row = COLOR_MAP_ROWS[i];
+	COLOR_MAP_ROWS.forEach(rowInfo => {
+		const semitoneIndex = rowInfo.semitoneIndex;
+		const semitoneName = getSemitoneName(semitoneIndex);
+		const row = COLOR_MAP_ROWS[semitoneIndex];
 		
 		const tr = document.createElement("tr");
 		tr.className = 
@@ -2555,14 +2563,14 @@ function initColorTableUI()
 			swatch.className = "swatch";
 			swatch.id = `colorSwatch_${row.id}${octave}`;
 			
-			let pitchKey = getColormapTableKey(i, octave);
-			let colorTuple = colorMapTableData[i][pitchKey];
+			let pitchKey = getColormapTableKey(semitoneIndex, octave);
+			let colorTuple = colorMapTableData[semitoneIndex][pitchKey];
 			let color = colorFromTuple(colorTuple);
 			swatch.style.background = color;
 			
 			// Store the indexing info in the "dataset" stuff on the colorswatch
 			// so that we can retrieve it from there later.
-			swatch.dataset.semitoneIndex = i;
+			swatch.dataset.semitoneIndex = semitoneIndex;
 			swatch.dataset.octave = octave;
 			swatch.dataset.pitchKey = pitchKey; // XXX
 			
@@ -2583,7 +2591,7 @@ function initColorTableUI()
 		});
 		
 		tbody.appendChild(tr);
-	}
+	});
 	
 	table.appendChild(tbody);
 }
