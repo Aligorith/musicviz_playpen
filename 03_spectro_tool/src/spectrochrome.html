@@ -2596,6 +2596,16 @@ function initColorTableUI()
 	table.appendChild(tbody);
 }
 
+// Function for updating the Color Map Table to:
+// 1) Only show the rows that should currently be visible according to the
+//    sharp/flats bias mode
+// 2) Adjust the label names if switching between Scientific and Lilypond naming modes
+function updateColorTableRows()
+{
+	/// TODO: Should we painstakingly update, or just rebuild from scratch?
+	console.log("Trigger color map table update...");
+}
+
 // ------------------------------
 
 // Swatch right-click event handler = Show a context menu
@@ -2849,6 +2859,9 @@ function setPitchNameStyle(styleName)
 	// Update pitch name styling mode
 	pitchNameStyle = pitchNameStyleSelector.value = styleName;
 	
+	// Update color map table
+	updateColorTableRows();
+	
 	// Force recalculation of the names, otherwise the "label" arg
 	// still keeps using the old ones only...
 	recalcNoteIdsOnly();
@@ -2876,6 +2889,9 @@ function setSharpFlatBiasMode(biasMode)
 {
 	// Update pitch name styling mode
 	sharpFlatBiasMode = sharpFlatBiasSelector.value = biasMode;
+	
+	// Update color map table
+	updateColorTableRows();
 	
 	// Recalc the labels + spectrogram to match this...
 	enableWaitCursor();
@@ -3177,6 +3193,7 @@ function syncResetState()
 // Main Entrypoint =========================================
 
 // Initialise color table
+// NOTE: updateColorTableRows() will fire when the name/bias values get set next
 initColorTableUI();
 
 // Ensure internal values are set to match what the widgets have set
