@@ -762,12 +762,12 @@ const MIDDLE_C_OCTAVE = 4;
 
 // Sharp-Based Pitch Names
 const PITCH_NAMES_SHARPS = {
-	"ScientificNotation" : [
+	[SCIENTIFIC_NOTATION] : [
 		"c","c#","d","d#",
 		"e","f","f#","g",
 		"g#","a","a#","b"
 	],
-	"LilypondNotation" : [
+	[LILYPOND_NOTATION] : [
 		"c","cis","d","dis",
 		"e","f","fis","g",
 		"gis","a","ais","b"
@@ -776,12 +776,12 @@ const PITCH_NAMES_SHARPS = {
 
 // Flat-Based Pitch Names
 const PITCH_NAMES_FLATS = {
-	"ScientificNotation" : [
+	[SCIENTIFIC_NOTATION] : [
 		"c","d♭","d","e♭",
 		"e","f","g♭","g",
 		"a♭","a","b♭","b"
 	],
-	"LilypondNotation" : [
+	[LILYPOND_NOTATION] : [
 		"c","des","d","ees",
 		"e","f","ges","g",
 		"aes","a","bes","b"
@@ -792,12 +792,12 @@ const PITCH_NAMES_FLATS = {
 // NOTE: These are only useful for my typical usages
 // NOTE: A-Flat / G-Sharp is the only ambiguous one...
 const PITCH_NAMES_COMMON = {
-	"ScientificNotation" : [
+	[SCIENTIFIC_NOTATION] : [
 		"c","c#","d","e♭",
 		"e","f","f#","g",
 		"g#","a","b♭","b"
 	],
-	"LilypondNotation" : [
+	[LILYPOND_NOTATION] : [
 		"c","cis","d","ees",
 		"e","f","fis","g",
 		"gis","a","bes","b"
@@ -811,9 +811,9 @@ const PITCH_NAMES_COMMON = {
 // Key 2) pitchNameStyle     (i.e. within each table linked here)
 // Key 3) pitchIndex
 const pitchNamesTable = {
-	"Sharps"  : PITCH_NAMES_SHARPS,
-	"Flats"   : PITCH_NAMES_FLATS,
-	"Common"  : PITCH_NAMES_COMMON
+	[SHARP_BIAS_MODE]  : PITCH_NAMES_SHARPS,
+	[FLAT_BIAS_MODE]   : PITCH_NAMES_FLATS,
+	[COMMON_BIAS_MODE] : PITCH_NAMES_COMMON
 };
 
 // .......................
