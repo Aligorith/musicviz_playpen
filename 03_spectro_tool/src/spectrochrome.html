@@ -870,6 +870,30 @@ function debounce(delay, callback)
 
 // -----------------------
 
+// Hide "heavy processing" steps behind wait cursor before/after
+// and using "setTimeout()" to stop that heavy processing locking
+// up the UI thread preventing the enableWaitCursor() from having
+// any effect...
+//
+// < callback: (fn()) A lambda defining the "heavy action" to run
+function performHeavyAction(callback)
+{
+	// Set the wait cursor first
+	enableWaitCursor();
+	
+	// Now introduce a setTimeout() so that the UI has a chance to
+	// respond to the new waitcursor.
+	setTimeout(() => {
+		// Run the callback
+		callback();
+		
+		// Clear the wait cursor
+		clearWaitCursor();
+	}, 20);
+}
+
+// -----------------------
+
 function enableWaitCursor()
 {
 	document.documentElement.classList.add("is-processing");
@@ -2695,9 +2719,7 @@ function colorPickerApply(swatch)
 	// Update the spectrogram too
 	console.log(`Updating spectrogram to show new ${uiNoteName} color (${newColorTuple}) at semi index = ${semitoneIndex} (for pitchKey=${pitchKey})...`);
 	
-	enableWaitCursor();
-	recalcSpectrogram();
-	clearWaitCursor();
+	performHeavyAction(recalcSpectrogram);
 }
 
 // Reset color picker color to default
@@ -2834,12 +2856,10 @@ document.getElementById("aTuning").onchange = () => {
 	
 	// Only trigger recalc if there is data to already cached data to recompute
 	if (cachedSpectrogram.length > 0) {
-		enableWaitCursor();
-		
-		console.log(`Retuning with new A=${aTuningHz} Hz (and tuningOffset = ${tuningOffset})`);
-		recalcSpectrogramAndAllNoteIds();
-		
-		clearWaitCursor();
+		performHeavyAction(() => {
+			console.log(`Retuning with new A=${aTuningHz} Hz (and tuningOffset = ${tuningOffset})`);
+			recalcSpectrogramAndAllNoteIds();
+		});
 	}
 };
 
@@ -2894,12 +2914,10 @@ function setSharpFlatBiasMode(biasMode)
 	updateColorTableRows();
 	
 	// Recalc the labels + spectrogram to match this...
-	enableWaitCursor();
-	
-	console.log("Updating spectrogram + note names for sharp/flat bias change...");
-	recalcSpectrogramAndAllNoteIds();
-	
-	clearWaitCursor();
+	performHeavyAction(() => {
+		console.log("Updating spectrogram + note names for sharp/flat bias change...");
+		recalcSpectrogramAndAllNoteIds();
+	});
 }
 
 // Reset Sharp/Flat Bias Mode
@@ -2922,12 +2940,8 @@ document.getElementById("resetSharpFlatBiasBtn").onclick = resetSharpFlatBiasMod
 // ! This causes a recomputation of the spectogram, which can be slow...
 function setBrightnessBoost(value)
 {
-	enableWaitCursor();
-	
 	brightnessSlider.value = brightnessBoost = value;
-	recalcSpectrogram();
-	
-	clearWaitCursor();
+	performHeavyAction(recalcSpectrogram);
 }
 
 // Reset brightness boost to default values
@@ -2971,12 +2985,10 @@ function setTuningOffsetValues(value)
 // tuning update change.
 function applyTuningOffsetUpdate()
 {
-	enableWaitCursor();
-	
-	console.log(`Retuning with A=${aTuningHz} Hz and tuningOffset = ${tuningOffset}`);
-	recalcSpectrogramAndAllNoteIds();
-	
-	clearWaitCursor();
+	performHeavyAction(() => {
+		console.log(`Retuning with A=${aTuningHz} Hz and tuningOffset = ${tuningOffset}`);
+		recalcSpectrogramAndAllNoteIds();
+	});
 }
 
 // Reset Tuning Offset value
@@ -3034,12 +3046,10 @@ function setMinPitchStrengthValues(value)
 // "minimum pitch strength" update.
 function applyMinPitchStrengthUpdate()
 {
-	enableWaitCursor();
-	
-	console.log(`Recalculating dominant notes after min-pitch-strength change...`);
-	recalcNoteIdsOnly();
-	
-	clearWaitCursor();
+	performHeavyAction(() => {
+		console.log(`Recalculating dominant notes after min-pitch-strength change...`);
+		recalcNoteIdsOnly();
+	});
 }
 
 // Reset "Min Pitch Strength" value
