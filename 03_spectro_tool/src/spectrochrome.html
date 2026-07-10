@@ -508,6 +508,25 @@ th, td {
 		
 		<!-- Color Map Table (Auto-Generated on Page Load) -->
 		<table id="colorMapTable"></table>
+		
+		<!-- Gap -->
+		<div style="height: 30px;"></div>
+		
+		<!-- Load/Save Color Map -->
+		<div class="rightControls">
+			<!-- Invisible File Pickers - As direct file access unavailable -->
+			<input id="loadColorMapFilename" type="file" style="visibility:hidden;">
+			
+			<!-- Visible Load/Save Color Map Buttons -->
+			<button id="loadColorMapBtn"
+			        title="Load ColorMap table from a file">
+				Load ColorMap
+			</button>
+			<button id="saveColorMapBtn"
+			        title="Save ColorMap table to a file">
+				Export ColorMap
+			</button>
+		</div>
 	</div>
 </div>
 
@@ -2527,6 +2546,98 @@ function prettyPrintColorTable()
 	console.log("Color Map Table:");
 	console.log(JSON.stringify(colorMapTableData));
 }
+
+// ------------------------------
+
+// Colormap Extension
+const COLORMAP_FILENAME_EXTN = ".colormap";
+
+// Last used filename for saving a colormap
+let lastUsedColormapName = "MyColorMap.colormap";
+
+// Load ColorMap table from a file (with file picker)
+function loadColorMapFromFile()
+{
+	// Read the selected filename to load from
+	const f = document.getElementById("loadColorMapFilename").files[0];
+	if (!f) {
+		console.error("No colormap selected to load from");
+		return;
+	}
+	
+	// Try to load JSON from that file
+	const reader = new FileReader();
+	reader.onload = function(e) {
+		console.log(`Loaded ColorMap from ${f.name}`);
+		
+		const fileContents = e.target.result; // Get the file contents
+		const fileJson = JSON.parse(fileContents);
+		
+		// TODO: Validate the file...
+		console.log(`  Loaded ColorMap: ${fileJson}`);
+		
+		colorMapTableData = fileJson;
+		
+		// Trigger refresh...
+		console.log("Redrawing with new colormap...");
+		performHeavyAction(recalcSpectrogram);
+	};
+	reader.readAsText(f); // Read the selected file as text
+}
+
+// Save ColorMap to a file (with file picker)
+// < filename: (str) Filename hint to save as
+function saveColorMapToFile(filename)
+{
+	console.log(`Saving ColorMap as ${filename}...`)
+	
+	// Generate the JSON
+	const colormapJson = JSON.stringify(colorMapTableData);
+	
+	const blob =
+		new Blob(
+			[colormapJson],
+			{
+				type: "text/json"
+			}
+		);
+	
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = filename;
+	a.click();
+	
+	URL.revokeObjectURL(url);
+}
+
+// Event Bindings - Load Colormap
+document.getElementById("loadColorMapBtn").onclick = () => {
+	// Trigger the file picker
+	// NOTE: As per https://stackoverflow.com/a/8595592, 
+	//       we use "visibility:hidden" not "display:none"
+	//       otherwise click won't work
+	document.getElementById("loadColorMapFilename").click();
+};
+document.getElementById("loadColorMapFilename").onchange = loadColorMapFromFile;
+
+// Event Bindings - Save Colormap
+document.getElementById("saveColorMapBtn").onclick = () => {
+	// Get a filename to save under
+	let filename = prompt("Save colormap as:", lastUsedColormapName);
+	if (filename != null) {
+		// Validate filename
+		if (!filename.endsWith(COLORMAP_FILENAME_EXTN)) {
+			filename = filename + COLORMAP_FILENAME_EXTN;
+		}
+		
+		// Save this name as the basis for the next one
+		lastUsedColormapName = filename;
+		
+		// Perform colormap saving
+		saveColorMapToFile(filename);
+	}
+};
 
 // ------------------------------
 
