@@ -21,6 +21,9 @@ Overall Roadmap
 Other Experiments:
 
 * Whirlpool / Paint Mixing / Fuzzy Cloud Dot Mixing
+  * e.g. Inkwash - https://github.com/johnowhitaker/inkwash
 
 * Chinese Painting Mountains from Waveforms
+  * e.g.  See https://github.com/LingDong-/shan-shui-inf
+
 

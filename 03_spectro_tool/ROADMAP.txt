@@ -4,12 +4,6 @@ Spectrochrome Roadmap
 == Refactoring ==
 * Perform a round of code cleanup to tidy up the crazy formatting + bad code
   * Properly figure out all those magic numbers for the layouts
-  * Convert all constants to CONSTANT_CASE
-
-* Make wrapper for all the drawing logic
-  * Abstract filled-rounded-rect-with-text drawing
-  * Abstract line-drawing)
-  * Abstract text drawing
 
 * Make "MidiPitchInfo" a proper type
   
@@ -19,10 +13,18 @@ Spectrochrome Roadmap
 
 * Tooltip-showing-component
 
+* Finish colormap table todo's
+  * The UI should adapt to Pitch Naming Style + Sharp/Flat Bias changes
+  * Cannot set certain sharp / flat colours, as the relevant rows are not displayed in the table in the UI
+  * Context menu support for copying colours to related colors
+
+* Refactor color picker to use Javascript variable value storage, instead of storing in the HTML elements and having to transform in/out of that form each time any manipulations are performed
+
+* Unify "pitchIdx" / "pitchIndex" / "semitoneIndex" variable naming styles
+
+
 
 == High Priority Defect Fixes ==
-* Resuming playback following clicking "stop" doesn't work?
-
 * Fix bad resizing behaviour (i.e. requires refactoring the drawing to draw to a cache buffer, instead of directly to a frame buffer that can get corrupted) - see "v51_prompt"
 
 * Fix scrubbing crackling issues (i.e. need gain-fading on the pipeline) - see "v53_prompt"
@@ -32,7 +34,6 @@ Spectrochrome Roadmap
   (NOTE: It seems we really have to move to the web-workers architecture, which requires multiple files)
 
 * On some machines, the cursor updates aren't reliable, e.g.:
-  * Wait cursor doesn't show when doing tuning tweaks
   * Wait cursor doesn't clear after analysis, until moving the mouse
 
 * Fix the "stutter" bug when recording sometimes, where it freezes for the first few seconds, then randomly jump starts. (Happens after adjusting brightness or something)
@@ -41,10 +42,6 @@ Spectrochrome Roadmap
 
 
 == Enhancements ==
-* Changing the filename should clear the spectrogram
-
-* Add ability to select per color (in the legend) using popup swatches, and then have these changes be reflected in the overall visualisation
-
 * Ability to reclassify specific frequencies (e.g. "f#4 -> g4") to cope with "off" tunings, without having to adjust everything.  
   * TODO: Need option to control whether this will reset when a tuning offset is then applied?  Or does it shift with that?
   * Related is the ability to tag specific dominant pitches identified.   (Will then need to keep a list of these, to stop the "adjust tuning" tool overwriting it - i.e. by reapplying this override on top of what the )
@@ -61,6 +58,9 @@ Spectrochrome Roadmap
 
 * Include the other strong-pitches info into the exported table (with the relative weights also), as well as note on/off/duration type info  
   * Present this export info as a table in a popup panel, allowing live inspection before exporting
+  
+* Human sensitivity attenuation pass
+* Audio volume adjustments (for playback + analysis)
 
 * Reduce CPU usage when IDLE
   * Investigate pausing render() updates when window has been idle for a while,

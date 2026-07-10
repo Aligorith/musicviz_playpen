@@ -97,6 +97,17 @@ input[type="range"] {
 	width: 140px;
 }
 
+table {
+	border-collapse: collapse;
+	/*font-family: Arial, sans-serif;*/
+}
+
+th, td {
+	border: 1px solid #666;
+	padding: 6px 12px;
+	text-align: center;
+}
+
 /* ************************* */
 /* Settings Form Styles */
 
@@ -156,16 +167,62 @@ input[type="range"] {
 
 /* Preferred width of the selection dropdowns inside the form-grids */
 .form-grid select {
-	width: 140px;
+	min-width: 140px;
+	max-width: 320px;
+}
+
+
+/* ************************* */
+/* Free Floating Panels */
+
+/* Basic Floating Panel
+ * NOTE: "popover-panel" uses the same base styling, hence set that here too...
+ */
+.floating-panel,
+.popover-panel 
+{
+	padding: 14px;
+	
+	background: rgba(20,20,20,0.96);
+	border-radius: 12px;
+	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+	
+	font-size: 13px;
+	
+	/* max-width: 1000px; */
+	overflow: hidden;
+	white-space: nowrap;
+	
+	opacity: 1;
+}
+
+.floating-panel.hidden,
+.popover-panel.hidden
+{
+	opacity: 0;
+	pointer-events: none;
+}
+
+/* Floating Panel Only */
+.floating-panel {
+	/* Force higher than other popovers (e.g. "Legend")
+	 * NOTE: Below 1000 / 5000, they cannot be seen
+	 */
+	z-index: 10000;
+	
+	/* Always absolute / fixed positioning */
+	position: fixed;
+	
+	/* TODO: Prevent overflowing outside screen bounds */
 }
 
 /* ************************* */
-/* Floating / Popup Panel Stuff */
+/* Popover Panel Stuff */
 
 /* The host container for the popup panels */
-.popup-panel-host {
+.popover-panel-host {
 	position: fixed;
-	  
+	
 	top: 40px;
 	right: 20px;
 	
@@ -179,18 +236,8 @@ input[type="range"] {
 }
 
 /* Popup Panels */
-.popup-panel {
+.popover-panel {
 	flex: 0 0 auto;
-	
-	padding: 14px;
-	
-	background: rgba(20,20,20,0.96);
-	border-radius: 12px;
-	box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-	
-	font-size: 13px;
-	
-	white-space: nowrap;
 	
 	transition:
 		transform 250ms ease,
@@ -201,16 +248,10 @@ input[type="range"] {
 	
 	transform: translateX(0) scale(1);
 	transform-origin: top right;
-	opacity: 1;
-	
-	/* max-width: 1000px; */
-	overflow: hidden;
 }
 
 /* Popup Panels Hidden state */
-.popup-panel.hidden {
-	opacity: 0;
-	
+.popover-panel.hidden {
 	transform: translateX(30px) scale(0.95);
 	
 	max-width: 0;
@@ -219,28 +260,94 @@ input[type="range"] {
 	padding-right: 0;
 	
 	margin-left: -12px;
-	
-	pointer-events: none;
 }
 
 /* ************************* */
 /* Legend / Mappings Panel */
 
 #legendPanel {
-	max-width: 300px;
-}
-
-.legendRow {
-	display: flex;
-	align-items: center;
-	margin-bottom: 8px;
+	max-width: 370px;
 }
 
 .swatch {
 	width: 18px;
 	height: 18px;
 	border-radius: 5px;
-	margin-right: 10px;
+}
+
+/* The two left columns form one visual column */
+.colormap-table-note-col {
+	border-right: none !important;
+	width: 40px;
+	font-weight: bold;
+}
+
+.colormap-table-accidental-col {
+	border-left: none !important;
+	width: 60px;
+	text-align: left;
+}
+
+/* Natural notes
+ * - Only the "key" columns should get coloured white
+ * - The rest of the row however should stay uncoloured
+ */
+.colormap-key-natural .colormap-table-note-col {
+	background: linear-gradient(to right, #f8f4e3, #e3d8c8);;
+	color: black;
+}
+.colormap-key-natural .colormap-table-accidental-col {
+	background: linear-gradient(to right, #f8f4e3, #e3d8c8);;
+	color: black;
+}
+
+
+/* Accidentals - Only the "black-key" column part is darkened */
+.colormap-key-accidental .colormap-table-note-col {
+	background: linear-gradient(to right, #f8f4e3, #e3d8c8);;
+	color: black;
+}
+.colormap-key-accidental .colormap-table-accidental-col {
+	background: black;
+	color: white;
+}
+
+/* Swatch Containing Cells */
+.colormap-table-cell {
+	display: flex;
+	justify-content: center; /* horizontal */
+	align-items: center;     /* vertical */
+}
+
+/* ************************* */
+/* Color Picker */
+
+#colorPicker {
+	position: fixed;
+
+	/* Width + Height were measured from the UI */
+	width:  295px;
+	height: 150px;
+
+	/* Prevent this from overflowing the boundaries of the viewport when moved */
+	left: clamp(0px, var(--x), calc(100vw - 295px));
+	top:  clamp(0px, var(--y), calc(100vh - 140px));
+}
+
+#colorPickerLabel {
+	font-weight: bold;
+}
+
+#colorPickerPreview {
+	width: 150px;
+}
+
+/* "Color Picker Reset" - Explicit placement on the right
+ * NOTE: The way this is done is a bit hacky, but it works!
+ */
+#colorPickerResetBtn {
+	position: relative;
+	right: -45%;
 }
 
 </style>
@@ -283,10 +390,11 @@ input[type="range"] {
 	</div>
 </div>
 
-<div class="popup-panel-host">
+<!-- Container for popover panels appearing in top-right corner -->
+<div class="popover-panel-host">
 	<!-- NOTE: Panels are in right to left, starting from the top right -->
 	<!-- 1) Tweaks Panel -->
-	<div id="tweaksPanel" class="popup-panel hidden">
+	<div id="tweaksPanel" class="popover-panel hidden">
 		<div class="form-grid">
 			<!-- Brightness Slider -->
 			<label class="form-property-label" for="brightnessSlider">
@@ -369,7 +477,7 @@ input[type="range"] {
 	</div>
 	
 	<!-- 1) Legend Panel -->
-	<div id="legendPanel" class="popup-panel hidden">
+	<div id="legendPanel" class="popover-panel hidden">
 		<!-- Colour Map Settings-->
 		<div class="form-grid">
 			<!-- Pitch Naming Style -->
@@ -398,44 +506,127 @@ input[type="range"] {
 		<!-- Gap -->
 		<div style="height: 30px;"></div>
 		
-		<!-- Color swatches Region -->
-		<div class="legendRow">
-			<div class="swatch" style="background:#ffd0a0"></div>
-			C = peach/gold
-		</div>
+		<!-- Color Map Table (Auto-Generated on Page Load) -->
+		<table id="colorMapTable"></table>
 		
-		<div class="legendRow">
-			<div class="swatch" style="background:#203c96"></div>
-			D = navy blue
-		</div>
+		<!-- Gap -->
+		<div style="height: 30px;"></div>
 		
-		<div class="legendRow">
-			<div class="swatch" style="background:#d8b0ff"></div>
-			E = lavender
-		</div>
-		
-		<div class="legendRow">
-			<div class="swatch" style="background:#F5D954"></div>
-			F = yellow
-		</div>
-		
-		<div class="legendRow">
-			<div class="swatch" style="background:#46be32"></div>
-			G = lawn green
-		</div>
-		
-		<div class="legendRow">
-			<div class="swatch" style="background:#ff5050"></div>
-			A = red
-		</div>
-		
-		<div class="legendRow">
-			<div class="swatch" style="background:#78dcff"></div>
-			B = sky blue
+		<!-- Load/Save Color Map -->
+		<div class="rightControls">
+			<!-- Invisible File Pickers - As direct file access unavailable -->
+			<input id="loadColorMapFilename" type="file" style="visibility:hidden;">
+			
+			<!-- Visible Load/Save Color Map Buttons -->
+			<button id="loadColorMapBtn"
+			        title="Load ColorMap table from a file">
+				Load ColorMap
+			</button>
+			<button id="saveColorMapBtn"
+			        title="Save ColorMap table to a file">
+				Export ColorMap
+			</button>
 		</div>
 	</div>
 </div>
 
+<!-- Custom Color Picker Popup -->
+<!-- TODO: Split this out into a component -->
+<div id="colorPicker" class="floating-panel hidden">
+	<!-- TODO: Introduce Preview Swatch -->
+	
+	<div class="form-grid">
+		<!-- Note Name + Color Preview -->
+		<label id="colorPickerLabel" class="form-property-label" for="colorPickerPreview">
+			Note
+		</label>
+		<div id="colorPickerPreview" class="form-property-widget swatch"></div>
+		
+		<!-- TODO: Spacer -->
+		
+		
+		<!-- Red Slider -->
+		<label class="form-property-label" for="colorPickerSlider_Red">
+			R:
+		</label>
+		<input
+				id="colorPickerSlider_Red"
+				class="form-property-widget"
+				type="range"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+		<input
+				id="colorPickerNumInput_Red"
+				class="form-property-value"
+				type="number"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+		
+		<!-- Green Slider -->
+		<label class="form-property-label" for="colorPickerSlider_Green">
+			G:
+		</label>
+		<input
+				id="colorPickerSlider_Green"
+				class="form-property-widget"
+				type="range"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+		<input
+				id="colorPickerNumInput_Green"
+				class="form-property-value"
+				type="number"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+		
+		<!-- Blue Slider -->
+		<label class="form-property-label" for="colorPickerSlider_Blue">
+			B:
+		</label>
+		<input
+				id="colorPickerSlider_Blue"
+				class="form-property-widget"
+				type="range"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+		<input
+				id="colorPickerNumInput_Blue"
+				class="form-property-value"
+				type="number"
+				min="0"
+				max="255"
+				step="1"
+				value="128"
+			/>
+	</div>
+	
+	<!-- Gap -->
+	<div style="height: 15px;"></div>
+	
+	<!-- Color Picker Buttons -->
+	<button id="colorPickerApplyBtn">Apply</button>
+	<button id="colorPickerCancelBtn">Cancel</button>
+	
+	<button id="colorPickerResetBtn">Reset</button>
+</div>
+
+
+<!-- The canvas for drawing the Spectrogram Visualisation on -->
 <canvas id="canvas"></canvas>
 
 
@@ -504,9 +695,15 @@ let aTuningHz = 440;
 
 // "Tweaks" Panel Items ---------
 
+// "Boost" factor to brighten dim layouts
 let brightnessBoost = 1;
+
+// Offset to all pitch values in semitones (to adjust minor off-tuning)
 let tuningOffset = 0;
 
+// Minimum "magnitude" in the spectrogram needed for a pitch to be considered
+// for the "dominant pitch" detection
+let minimumPitchStrength = 30;
 
 // Viz State Constants ==================================
 
@@ -542,7 +739,7 @@ let fixedColumnWidth = 1;
 // Factor that each "b" or "bin" value from the FFT "spec" array
 // needs to be multiplied by to obtain a frequency value.
 //
-// NOTE: Calculated as "audioCtx.sampleRate / fftSize"
+// NOTE: Calculated as "audioCtx.sampleRate / FFT_SIZE"
 //       in processAudio()
 let fftToFreqFactor = 1;
 
@@ -553,17 +750,11 @@ const TWO_PI = 2 * Math.PI;
 
 // --------------------------------------
 
-const semitonesPerOctave = 12;
-const midiRefPitch = 69;
+const SEMITONES_PER_OCTAVE = 12;
+const MIDI_REF_PITCH = 69;
 
-const fftSize = 4096;
-const hop = 1024;
-
-// --------------------------------------
-
-// Minimum "magnitude" in the spectrogram needed for a pitch to be considered
-// for the "dominant pitch" detection
-let minimumPitchStrength = 30;
+const FFT_SIZE = 4096;
+const HOP = 1024;
 
 // --------------------------------------
 
@@ -590,13 +781,13 @@ const MIDDLE_C_OCTAVE = 4;
 
 // Sharp-Based Pitch Names
 const PITCH_NAMES_SHARPS = {
-	"ScientificNotation" : [
+	[SCIENTIFIC_NOTATION] : [
 		"c","c#","d","d#",
 		"e","f","f#","g",
 		"g#","a","a#","b"
 	],
-	"LilypondNotation" : [
-		"c","cIS","d","dIS",
+	[LILYPOND_NOTATION] : [
+		"c","cis","d","dis",
 		"e","f","fis","g",
 		"gis","a","ais","b"
 	]
@@ -604,12 +795,12 @@ const PITCH_NAMES_SHARPS = {
 
 // Flat-Based Pitch Names
 const PITCH_NAMES_FLATS = {
-	"ScientificNotation" : [
+	[SCIENTIFIC_NOTATION] : [
 		"c","d♭","d","e♭",
 		"e","f","g♭","g",
 		"a♭","a","b♭","b"
 	],
-	"LilypondNotation" : [
+	[LILYPOND_NOTATION] : [
 		"c","des","d","ees",
 		"e","f","ges","g",
 		"aes","a","bes","b"
@@ -620,12 +811,12 @@ const PITCH_NAMES_FLATS = {
 // NOTE: These are only useful for my typical usages
 // NOTE: A-Flat / G-Sharp is the only ambiguous one...
 const PITCH_NAMES_COMMON = {
-	"ScientificNotation" : [
+	[SCIENTIFIC_NOTATION] : [
 		"c","c#","d","e♭",
 		"e","f","f#","g",
 		"g#","a","b♭","b"
 	],
-	"LilypondNotation" : [
+	[LILYPOND_NOTATION] : [
 		"c","cis","d","ees",
 		"e","f","fis","g",
 		"gis","a","bes","b"
@@ -639,9 +830,9 @@ const PITCH_NAMES_COMMON = {
 // Key 2) pitchNameStyle     (i.e. within each table linked here)
 // Key 3) pitchIndex
 const pitchNamesTable = {
-	"Sharps"  : PITCH_NAMES_SHARPS,
-	"Flats"   : PITCH_NAMES_FLATS,
-	"Common"  : PITCH_NAMES_COMMON
+	[SHARP_BIAS_MODE]  : PITCH_NAMES_SHARPS,
+	[FLAT_BIAS_MODE]   : PITCH_NAMES_FLATS,
+	[COMMON_BIAS_MODE] : PITCH_NAMES_COMMON
 };
 
 // .......................
@@ -656,10 +847,10 @@ let sharpFlatBiasMode = COMMON_BIAS_MODE;
 // UI Defines / Utils ===================================
 
 // UI Labels for toggle buttons ...............
-const playStateActionTxt          = "▶ Play";
-const pauseStateActionTxt         = "⏸ Pause";
-const recordStateActionTxt        = "⬤ Record";
-const stopRecordingStateActionTxt = "■ Recording";
+const PLAY_STATE_ACTION_TXT           = "▶ Play";
+const PAUSE_STATE_ACTION_TXT          = "⏸ Pause";
+const RECORD_STATE_ACTION_TXT         = "⬤ Record";
+const STOP_RECORDING_STATE_ACTION_TXT = "■ Recording";
 
 // Color Defines ..............................
 const SCRUBBER_COLOR = [255, 140, 40];
@@ -669,6 +860,9 @@ const BUBBLE_COLOR = [80, 120, 255];
 
 // Standard debounce threshold for the slider updates (in ms)
 const STD_DEBOUNCE_DELAY_MS = 500;
+
+// Timer-ID for keeping track of if we have a pending event we're waiting on...
+let batchingTimerId = undefined;
 
 // For interactive slider events, use "Debounce" Pattern for deferring / batching
 // events until the last in a stream of rapidly occurring updates on an interactive 
@@ -682,9 +876,6 @@ const STD_DEBOUNCE_DELAY_MS = 500;
 // NOTE: From https://stackoverflow.com/questions/75988682/debounce-in-javascript
 function debounce(delay, callback)
 {
-	// Timer-ID for keeping track of if we have a pending event we're waiting on...
-	let batchingTimerId;
-	
 	return (...args) => {
 		// Reset the timer, as a new event came in...
 		clearTimeout(batchingTimerId);
@@ -694,6 +885,30 @@ function debounce(delay, callback)
 			callback();
 		}, delay);
 	};
+}
+
+// -----------------------
+
+// Hide "heavy processing" steps behind wait cursor before/after
+// and using "setTimeout()" to stop that heavy processing locking
+// up the UI thread preventing the enableWaitCursor() from having
+// any effect...
+//
+// < callback: (fn()) A lambda defining the "heavy action" to run
+function performHeavyAction(callback)
+{
+	// Set the wait cursor first
+	enableWaitCursor();
+	
+	// Now introduce a setTimeout() so that the UI has a chance to
+	// respond to the new waitcursor.
+	setTimeout(() => {
+		// Run the callback
+		callback();
+		
+		// Clear the wait cursor
+		clearWaitCursor();
+	}, 20);
 }
 
 // -----------------------
@@ -717,23 +932,23 @@ function updateStatusText(text)
 
 function setPlayButtonState()
 {
-	document.getElementById("playPauseBtn").textContent = playStateActionTxt;
+	document.getElementById("playPauseBtn").textContent = PLAY_STATE_ACTION_TXT;
 }
 
 function setPauseButtonState()
 {
-	document.getElementById("playPauseBtn").textContent = pauseStateActionTxt;
+	document.getElementById("playPauseBtn").textContent = PAUSE_STATE_ACTION_TXT;
 }
 
 function setStartRecordingButtonState()
 {
-	document.getElementById("recordBtn").textContent = recordStateActionTxt;
+	document.getElementById("recordBtn").textContent = RECORD_STATE_ACTION_TXT;
 	clearWaitCursor();
 }
 
 function setStopRecordingButtonState()
 {
-	document.getElementById("recordBtn").textContent = stopRecordingStateActionTxt;
+	document.getElementById("recordBtn").textContent = STOP_RECORDING_STATE_ACTION_TXT;
 	enableWaitCursor();
 }
 
@@ -755,6 +970,92 @@ function colorFromTuple(rgbTuple)
 function colorWithAlpha(rgbTuple, alpha)
 {
 	return `rgba(${rgbTuple[0]}, ${rgbTuple[1]}, ${rgbTuple[2]}, ${alpha})`;
+}
+
+// Convert "rgb(R, G, B)" color strings to [R, G, B] tuples
+// < rgbString: (str) A string of form "rgb(R, G, B)"
+//                    where "R", "G", and "B" are ints (0 <= i <= 255)
+// > returns: ([R, G, B]) A tuple of ints where "R", G", "B" are the
+//                        values extracted from above
+function rgbColorToTuple(rgbString)
+{
+	return rgbString.match(/\d+/g).slice(0, 3).map(Number);
+}
+
+// -----------------------
+
+// Draw a horizontal line
+function drawHLine(ctx, xs, xe, y, lineColor="white", lineWidth=1.0)
+{
+	ctx.strokeStyle = lineColor;
+	ctx.lineWidth = lineWidth;
+	
+	ctx.beginPath();
+	ctx.moveTo(xs, y);
+	ctx.lineTo(xe, y);
+	ctx.stroke();
+}
+
+// Draw a vertical line
+function drawVLine(ctx, x, ys, ye, lineColor="white", lineWidth=1.0)
+{
+	ctx.strokeStyle = lineColor;
+	ctx.lineWidth = lineWidth;
+	
+	ctx.beginPath();
+	ctx.moveTo(x, ys);
+	ctx.lineTo(x, ye);
+	ctx.stroke();
+}
+
+// Draw filled rounded rect in a canvas context
+function drawFilledRoundedRect(
+	ctx,
+	topLeftX, topLeftY,
+	width, height,
+	radii,
+	fillColor)
+{
+	ctx.beginPath();
+	ctx.roundRect(
+		topLeftX, topLeftY,
+		width, height,
+		radii);
+	
+	ctx.fillStyle = fillColor;
+	ctx.fill();
+}
+
+// Draw rounded rect outline in a canvas context
+function drawOutlineRoundedRect(
+	ctx,
+	topLeftX, topLeftY,
+	width, height,
+	radii,
+	strokeColor="white",
+	lineWidth=1.0)
+{
+	ctx.strokeStype = strokeColor;
+	ctx.lineWidth = lineWidth;
+	
+	ctx.beginPath();
+	ctx.roundRect(
+		topLeftX, topLeftY,
+		width, height,
+		radii);
+	ctx.stroke();
+}
+
+// Draw text string in a canvas context
+function drawText(ctx, text, x, y, color="white", font=undefined)
+{
+	ctx.fillStyle = color;
+	
+	if (font != undefined) {
+		ctx.font = font;
+	}
+	
+	ctx.fillText(text, x, y);
 }
 
 // Coordinate Conversion Utils ===================================
@@ -832,13 +1133,13 @@ function tunedMidi(freq)
 {
 	// Convert into a Midi note number
 	const midi = 
-		((semitonesPerOctave * Math.log2(freq / aTuningHz)) + 
-		  midiRefPitch + 
+		((SEMITONES_PER_OCTAVE * Math.log2(freq / aTuningHz)) + 
+		  MIDI_REF_PITCH + 
 		  tuningOffset);
 	
 	// Decompose into components
-	const octave = Math.floor(midi / semitonesPerOctave);
-	const pitch  = Math.round(midi) % semitonesPerOctave;
+	const octave = Math.floor(midi / SEMITONES_PER_OCTAVE);
+	const pitch  = Math.round(midi) % SEMITONES_PER_OCTAVE;
 	
 	// Assemble into an object
 	return { midi: midi, pitch: pitch, octave: octave };
@@ -872,13 +1173,9 @@ function octaveToLilypondString(octave)
 	}
 }
 
-// Given a midi pitch-semitone (0-12) and an octave value, return a 
-// "pitch name label" for the UI
-// < pitchIndex: (int :: 0 <= i < 12) Semitone index, starting from "C"
-// < octave: (int) Octave index
-// < (octaveIsOptional): (bool) If true, the octave is wrapped in parentheses
-// > returns: (str) Pitch name string to use in the UI
-function getPitchNameLabel(pitchIndex, octave, octaveIsOptional=false)
+// Given a midi pitch semitone (0-11), get a "pitch name"
+// returns: (str) A pitch name string for that semitone to use in the UI
+function getSemitoneName(pitchIndex)
 {
 	let styleName = 
 		(pitchNameStyle === LILYPOND_HYBRID_NOTATION) ? LILYPOND_NOTATION 
@@ -886,6 +1183,47 @@ function getPitchNameLabel(pitchIndex, octave, octaveIsOptional=false)
 	
 	let pitchName = 
 		pitchNamesTable[sharpFlatBiasMode][styleName][pitchIndex];
+	
+	return pitchName;
+}
+
+// Get semitone name for colormap table keys
+// > returns: (str) The "semitoneName" part of the result of getColormapTableKey()
+//
+// NOTE: This is a variant of getSemitoneName() that does just what we want
+//       and is optimised for this usecase, to avoid introducing branches into
+//       that code that will be confusing to manage.
+function getColormapTableSemitoneName(pitchIndex)
+{
+	// Force use to use only one notation, as we can't maintain both for the table
+	let semitoneName =
+		pitchNamesTable[sharpFlatBiasMode][SCIENTIFIC_NOTATION][pitchIndex];
+		
+	return semitoneName;
+}
+
+// Given a midi pitch semitone (0-11) + an octave value, return a color map ID
+// for looking up the relevant color
+// < pitchIndex: (int :: 0 <= i < 12) Semitone index, starting from "C"
+// < octave: (int) Octave index
+// > returns: (str) The "pitchKey" string for looking up the relevant color from the colorMapTable
+function getColormapTableKey(pitchIndex, octave)
+{
+	let semitoneName = getColormapTableSemitoneName(pitchIndex);
+	
+	// Combine pitchName and octave-number for the key to use
+	return `${semitoneName}${octave}`;
+}
+
+// Given a midi pitch-semitone (0-11) and an octave value, return a 
+// "pitch name label" for the UI
+// < pitchIndex: (int :: 0 <= i < 12) Semitone index, starting from "C"
+// < octave: (int) Octave index
+// < (octaveIsOptional): (bool) If true, the octave is wrapped in parentheses
+// > returns: (str) Pitch name string to use in the UI
+function getPitchNameLabel(pitchIndex, octave, octaveIsOptional=false)
+{
+	let pitchName = getSemitoneName(pitchIndex);
 	
 	let octaveString = `${octave}`;
 	if (pitchNameStyle === LILYPOND_NOTATION) {
@@ -919,148 +1257,26 @@ function colorForFreq(freq)
 	const midiPitchInfo = tunedMidi(freq);
 	
 	let pitchName = midiToLabel(midiPitchInfo);
+	let pitchIdx = midiPitchInfo.pitch;
 	let octave = midiPitchInfo.octave;
 	
-	switch (midiPitchInfo.pitch) {
-		case 0: // C
-			return [255,210,160];     // #FFD2A0 (peach)
+	if (colorMapTableData.length != 0) {
+		// Adjust octave down, as midiPichInfo adds 1 for octave values...
+		// e.g. "c6" in the table would be retrieved for a "c5" value
+		octave--;
 		
-		case 1: // C#  (NOTE: Almost never "Db"...)
-			return [255,218,160];     // #FFDAA0 (lighter peach)
+		// Get the key to do the colormap lookup
+		const pitchKey = getColormapTableKey(pitchIdx, octave);
 		
-		case 2: // D
-			if (octave === MIDDLE_C_OCTAVE + 1) {
-				// NOTE: This needed to be made "5" as using "4" to match "d4"
-				//       wasn't working...
-				return [46,71,182];       // #2E47B6  (navy blue - lighter version)
-			}
-			if (octave <= MIDDLE_C_OCTAVE) {
-				// Things below d4 should be even darker...
-				return [30,92,194];       // #1E5CC2  (navy blue)
-			}
-			// For higher registers...
-			return [55,123,225];          // #377BE1  (medium-dark blue)
-		
-		case 3: // D# / Eb
-			if (pitchName.startsWith("e")) {
-				// Eb
-				if (octave <= 5) {
-					// Darker Brown
-					return [120,80,50];     // #785032 (darker brown)
-				}
-				else {
-					// Darker Lavendar
-					return [199,143,248];  // #C78FF8 (darker lavender)
-				}
-			}
-			else {
-				// D#
-				return [56,143,233];       // #388FE9  (blue)
-			}
-		
-		case 4: // E
-			if (freq >= aTuningHz) {
-				// Lavender for "Higher" E's
-				if (octave >= 7) {
-					// Lighter for higher
-					return [231,205,254];   // #E7CDFE (lavender)
-				}
-				return [220,180,255];   // #DCB4FF (lavender)
-			}
-			
-			// Brown for "Lower" E's
-			return [182,116,66];        // #B67442 (warmer brown)
-		
-		case 5: // F
-			if (octave == 7) {
-				// Desaturated yellow - As this is the "harmonic band" that is really glowy
-				return [237,222,148];      // #EDDE94 (desaturated yellow)
-			}
-			return [245,217,84];      // #F5D954 (yellow)
-		
-		case 6: // F# / Gb
-			if (pitchName.startsWith("g") || (octave === 4)) {
-				// "G"
-				// NOTE: The octave == 3 thing is a hack for violin-layering,
-				//       where tagging if "f#" for "open G" should just resolve to "G"
-				//       (XXX: Do this earlier in the pipeline instead?)
-				return [162,231,71];   // #A2E747 (darker parakeet green)
-			}
-			else {
-				// "F"
-				if (octave <= 3) {
-					return [200,194,92];  // #C8C25C (lighter but darker yellow)
-				}
-				return [242,234,106];  // #F2EA6A (lighter yellow)
-			}
-		
-		case 7: // G
-			if (octave < 5) {
-				// "G-String" on Violin Ends Up At "g3 / g4"
-				return [0,80,30];    // #00501E (dark green)
-			}
-			if (octave === 5) {
-				// "G" below tuning A
-				return [70,190,50];  // #46BE32 (lawn green)
-			}
-			if (octave === 7 || octave === 8) {
-				// De-emphasize "Harmonics Band" G, as it's too overwhelming...
-				return [191,219,154]; // #BFDB9A (lighter lime green)
-			}
-			return [180,255,80];     // #B4FF50 (parakeet green)
-		
-		case 8: // G# / Ab
-			if (pitchName.startsWith("g") && (aTuningHz != 432)) {
-				// "G"
-				if (octave <= 5) {
-					// "G" below tuning A
-					return [59,225,31];  // #3BE11F ("brighter forest green")
-				}
-				else {
-					// All others
-					return [197,251,126];     // #C5FB7E (brighter parakeet green)
-				}
-			}
-			else {
-				// Ab
-				// NOTE: The A=432 check to force this case to happen is a hack
-				//       to cope with some "off tuning" in this case ending up
-				//       in the G# band instead...
-				
-				return [222,39,39];      // #DE2727 (darker red)
-			}
-		
-		case 9: // A
-			if (octave < 4) {
-				// A below tuning A
-				return [197,28,28];      // #C51C1C (dark red)
-			}
-			if (octave === 4) {
-				// Tuning A
-				return [244,21,21];      // #F41515 (tomato red)
-			}
-			return [255,70,70];          // #FF4646 (light red)
-		
-		case 10: // A# / Bb
-			if (pitchName.startsWith("b")) {
-				// "Bb"
-				return [92,166,192];    // #5CA6C0 (teal-blue)
-			}
-			else {
-				// "A#"
-				return [251,115,115];     // #FB7373 (lighter red)
-			}
-		
-		case 11: // B
-			if (octave < 6) {
-				// Lower B's should look more like D cases...
-				return [68,159,237];     // #449FED  (medium blue)
-			}
-			return [120,220,255];    // #78DCFF (sky blue)
-		
-		default: // Undefined / Unknown - Light Grey
-			return [180,180,180];
+		let result = colorMapTableData[pitchIdx][pitchKey];
+		if (result !== undefined) {
+			return result;
+		}
 	}
+	
+	// Fallback: Look up default color for this pitch from the hardcoded color logic
+	// NOTE: This is being used for the "high" frequencies above c9
+	return defaultColorForPitch(pitchName, pitchIdx, octave);
 }
 
 // Find which detected "midiEvent" note is active for the current time
@@ -1170,7 +1386,7 @@ function identifyMidiEventForSlice(i, spec)
 		const note = midiToLabel(tunedMidi(freq));
 		
 		const prev = midiEvents[midiEvents.length - 1];
-		const t = i * hop / audioCtx.sampleRate;
+		const t = i * HOP / audioCtx.sampleRate;
 		
 		// Sanity Check: Skip this note if it falls out of range we're interested in.
 		if (freq < MIN_FREQ || freq > MAX_FREQ) {
@@ -1256,10 +1472,10 @@ function recalcSpectrogramAndAllNoteIds()
 	
 	console.log("Recalculating spectrogram and all note id's...");
 	
-	// Reprocess each of the cached spectogram slices...
+	// Reprocess each of the cached spectrogram slices...
 	// TODO: Update status text again with our progress
 	for (let i = 0; i < cachedSpectrogram.length; i++) {
-		// Redraw colours (which may haved changed due to the tuning)
+		// Redraw colours (which may have changed due to the tuning)
 		redrawSpectrogramColumn(
 			i,
 			cachedSpectrogram[i]
@@ -1308,10 +1524,10 @@ async function processAudio(buffer)
 	cachedSpectrogram = [];
 	
 	const data = buffer.getChannelData(0);
-	const total = Math.floor((data.length - fftSize) / hop);
+	const total = Math.floor((data.length - FFT_SIZE) / HOP);
 	
 	fixedColumnWidth = spectogramWidth / total;
-	fftToFreqFactor = audioCtx.sampleRate / fftSize;
+	fftToFreqFactor = audioCtx.sampleRate / FFT_SIZE;
 	
 	const processingStart = performance.now();
 	
@@ -1319,8 +1535,8 @@ async function processAudio(buffer)
 		// Perform CQT transform
 		const seg =
 			data.slice(
-				i * hop,
-				i * hop + fftSize
+				i * HOP,
+				i * HOP + FFT_SIZE
 			);
 		
 		const segCountScaleFactor = TWO_PI / (seg.length - 1);
@@ -1446,15 +1662,12 @@ function drawTimeline()
 		const x = LEFT_GUTTER + s * px;
 		const major = (s % 10 === 0);
 		
-		ctx.strokeStyle = "white";
-		
-		ctx.beginPath();
-		ctx.moveTo(x,y);
-		ctx.lineTo(
+		drawVLine(
+			ctx,
 			x,
-			y - (major ? 24 : 12)
-		);
-		ctx.stroke();
+			y,
+			y - (major ? 24 : 12));
+		
 		
 		if (major) {
 			ctx.fillStyle = "white";
@@ -1473,12 +1686,12 @@ function drawTimeline()
 function drawCMarkers()
 {
 	for (let octave = 0; octave < 9; octave++) {
-		const midi = (octave + 1) * semitonesPerOctave;
+		const midi = (octave + 1) * SEMITONES_PER_OCTAVE;
 		const freq =
 			aTuningHz *
 			Math.pow(
 				2,
-				(midi - midiRefPitch) / semitonesPerOctave
+				(midi - MIDI_REF_PITCH) / SEMITONES_PER_OCTAVE
 			);
 		
 		if (freq < MIN_FREQ || freq > MAX_FREQ) {
@@ -1488,16 +1701,17 @@ function drawCMarkers()
 		const MARKER_COLOR = [255, 255, 255];
 		const y = freqToY(freq);
 		
-		ctx.strokeStyle = colorWithAlpha(MARKER_COLOR, 0.25);
-		
-		ctx.beginPath();
-		ctx.moveTo(0, y);
-		ctx.lineTo(16, y);
-		ctx.stroke();
+		drawHLine(
+			ctx,
+			0,
+			16,
+			y,
+			colorWithAlpha(MARKER_COLOR, 0.25));
 		
 		if (octave === MIDDLE_C_OCTAVE) {
 			// C4
-			ctx.font = "bold 12px monospace";
+			const labelFont = "bold 12px monospace";
+			ctx.font = labelFont;
 			
 			const label = getPitchNameLabel(C_PITCH_INDEX, MIDDLE_C_OCTAVE);
 			const tw = ctx.measureText(label).width;
@@ -1517,16 +1731,24 @@ function drawCMarkers()
 			ctx.strokeStyle = colorWithAlpha(MARKER_COLOR, 0.55);
 			ctx.stroke();
 			
-			ctx.fillStyle = "white";
-			ctx.fillText(label, 23, y+2)
+			drawText(ctx,
+				label,
+				23,
+				y + 2,
+				"white",
+				labelFont);
 		}
 		else {
 			// All other C's
 			const label = getPitchNameLabel(C_PITCH_INDEX, octave);
+			const labelFont = "11px monospace";
 			
-			ctx.fillStyle = colorWithAlpha(MARKER_COLOR, 0.75);
-			ctx.font = "11px monospace";
-			ctx.fillText(label, 24, y+3)
+			drawText(ctx,
+				label,
+				24,
+				y + 3,
+				colorWithAlpha(MARKER_COLOR, 0.75),
+				labelFont);
 		}
 	}
 }
@@ -1573,17 +1795,14 @@ function drawBubbles()
 				);
 			
 			// Orange Fill for label background
-			ctx.fillStyle = colorWithAlpha(SCRUBBER_COLOR, 0.92);
-			
-			ctx.beginPath();
-			ctx.roundRect(
+			drawFilledRoundedRect(ctx,
 				bx,
 				bubbleY - 25, //bubbleY - 12,
 				w,
 				22,
-				10
+				10,
+				colorWithAlpha(SCRUBBER_COLOR, 0.92)
 			);
-			ctx.fill();
 			
 			// Label Text
 			ctx.fillStyle = "white";
@@ -1691,23 +1910,22 @@ function render()
 		// Scrubber Line
 		ctx.save();
 		
-		ctx.strokeStyle = colorWithAlpha(SCRUBBER_COLOR, 0.85);
-		ctx.lineWidth = 2;
-		
 		if (recording) {
 			// Show glow if recording
 			ctx.shadowBlur = 15;
 			ctx.shadowColor = colorWithAlpha(SCRUBBER_COLOR, 0.95);
 		}
 		
-		ctx.beginPath();
-		ctx.moveTo(scrubberPosition, 0);
-		ctx.lineTo(scrubberPosition, canvas.height);
-		ctx.stroke();
+		drawVLine(ctx,
+			scrubberPosition,
+			0,
+			canvas.height,
+			colorWithAlpha(SCRUBBER_COLOR, 0.85),
+			2.0);
 		
 		ctx.restore();
 		
-		// Top Tag/Bubble - Time + Pitch
+		// Top Tag/Bubble - Time + Pitch:
 		const t = xToTime(scrubberPosition);
 		const pitch = dominantPitchAtTime(t);
 		
@@ -1717,7 +1935,8 @@ function render()
 		const pitchNameForLabel = (pitch) ? pitch.label : "--";
 		const label =`${formatTime(t)} ${pitchNameForLabel}`;
 		
-		ctx.font = "12px monospace";
+		const bubbleFont = "12px monospace";
+		ctx.font = bubbleFont;
 		
 		const tw = ctx.measureText(label).width;
 		const bx =
@@ -1726,39 +1945,36 @@ function render()
 				scrubberPosition + 10
 			);
 		
-		ctx.fillStyle = colorWithAlpha(SCRUBBER_COLOR, 0.95);
-		
-		ctx.beginPath();
-		ctx.roundRect(
+		// Bubble Background
+		drawFilledRoundedRect(ctx,
 			bx,
 			bubbleY,
 			tw + 44,
 			24,
-			8
-		);
-		ctx.fill();
+			8,
+			colorWithAlpha(SCRUBBER_COLOR, 0.95));
 		
 		if (pitch) {
+			// Pitch Indicator in Bubble
 			const c = colorForFreq(pitch.freq);
-			ctx.fillStyle = colorFromTuple(c);
 			
-			ctx.beginPath();
-			ctx.roundRect(
-				bx+8,
-				bubbleY+5,
+			drawFilledRoundedRect(ctx,
+				bx + 8,
+				bubbleY + 5,
 				14,
 				14,
-				4
-			);
-			ctx.fill();
+				4,
+				colorFromTuple(c));
 		}
 		
-		ctx.fillStyle = "white";
-		ctx.fillText(
+		// Bubble Text
+		drawText(
+			ctx,
 			label,
-			bx+30,
-			bubbleY+16
-		);
+			bx + 30,
+			bubbleY + 16,
+			"white",
+			bubbleFont);
 	}
 }
 
@@ -1792,6 +2008,7 @@ function stopPlayback()
 	cancelAnimationFrame(render);
 	
 	// Clear scrubber position so it doesn't hang around
+	// XXX: Redraw once more before cancelling the animation redraw?
 	scrubberPosition = INVALID_HIDDEN_SCRUBBER_IDX;
 	
 	// Reset UI state
@@ -2080,6 +2297,663 @@ function resize()
 addEventListener("resize", resize);
 resize();
 
+
+// Color Map Table ===================================
+
+// Column Labels in the Color Table
+const COLOR_MAP_COLUMNS = ["2", "3", "4", "5", "6", "7", "8"];
+
+// Rows in the Color Table
+// FIXME: The names need to come from the sharp/flat bias...
+//        FIXME: Each sharp/flat version needs a separate entry here!
+//        TODO: Need a way of highlighting which ones the current bias-scheme uses
+const COLOR_MAP_ROWS = [
+	{ semitoneIndex: 0,  id: "c",      accidental: false },
+	{ semitoneIndex: 1,  id: "cSharp", accidental: true  },
+	
+	{ semitoneIndex: 2,  id: "d",      accidental: false },
+	{ semitoneIndex: 3,  id: "eFlat",  accidental: true  },
+	
+	{ semitoneIndex: 4,  id: "e",      accidental: false },
+	
+	{ semitoneIndex: 5,  id: "f",      accidental: false },
+	{ semitoneIndex: 6,  id: "fSharp", accidental: true  },
+	
+	{ semitoneIndex: 7,  id: "g",      accidental: false },
+	{ semitoneIndex: 8,  id: "gSharp", accidental: true  },
+	
+	{ semitoneIndex: 9,  id: "a",      accidental: false },
+	{ semitoneIndex: 10, id: "bFlat",  accidental: true  },
+	
+	{ semitoneIndex: 11, id: "b",      accidental: false }
+];
+
+// ------------------------------
+
+// Get the default color for each semitone + octave combination
+// ! This is the hardcoded logic version, that may eventually be removed
+// < pitchName: (str) For resolving sharp/flat variants of sharp/flats
+// < pitchIdx: (0 - 12) Semitone index
+// < octave: (int) Scientific Pitch Notation octave number
+function defaultColorForPitch(pitchName, pitchIdx, octave)
+{
+	// Ensure all args are of the right types
+	if (typeof pitchIdx == "string") {
+		pitchIdx = parseInt(pitchIdx);
+	}
+	if (typeof octave == "string") {
+		octave = parseInt(octave);
+	}
+	
+	// Now do the lookup
+	switch (pitchIdx) {
+		case 0: // C
+			return [255,210,160];     // #FFD2A0 (peach)
+		
+		case 1: // C#  (NOTE: Almost never "Db"...)
+			return [255,218,160];     // #FFDAA0 (lighter peach)
+		
+		case 2: // D
+			if (octave === MIDDLE_C_OCTAVE + 1) {
+				// NOTE: This needed to be made "5" as using "4" to match "d4"
+				//       wasn't working...
+				return [46,71,182];       // #2E47B6  (navy blue - lighter version)
+			}
+			if (octave <= MIDDLE_C_OCTAVE) {
+				// Things below d4 should be even darker...
+				return [30,92,194];       // #1E5CC2  (navy blue)
+			}
+			// For higher registers...
+			return [55,123,225];          // #377BE1  (medium-dark blue)
+		
+		case 3: // D# / Eb
+			if (pitchName.startsWith("e")) {
+				// Eb
+				if (octave <= 5) {
+					// Darker Brown
+					return [120,80,50];     // #785032 (darker brown)
+				}
+				else {
+					// Darker Lavendar
+					return [199,143,248];  // #C78FF8 (darker lavender)
+				}
+			}
+			else {
+				// D#
+				return [56,143,233];       // #388FE9  (blue)
+			}
+		
+		case 4: // E
+			if (octave >= 5) {
+				// Lavender for "Higher" E's (freq >= aTuningHz)
+				if (octave >= 7) {
+					// Lighter for higher
+					return [231,205,254];   // #E7CDFE (lavender)
+				}
+				return [220,180,255];   // #DCB4FF (lavender)
+			}
+			
+			// Brown for "Lower" E's
+			return [182,116,66];        // #B67442 (warmer brown)
+		
+		case 5: // F
+			if (octave == 7) {
+				// Desaturated yellow - As this is the "harmonic band" that is really glowy
+				return [237,222,148];      // #EDDE94 (desaturated yellow)
+			}
+			return [245,217,84];      // #F5D954 (yellow)
+		
+		case 6: // F# / Gb
+			if (pitchName.startsWith("g") || (octave === 4)) {
+				// "G"
+				// NOTE: The octave == 3 thing is a hack for violin-layering,
+				//       where tagging if "f#" for "open G" should just resolve to "G"
+				//       (XXX: Do this earlier in the pipeline instead?)
+				return [162,231,71];   // #A2E747 (darker parakeet green)
+			}
+			else {
+				// "F"
+				if (octave <= 3) {
+					return [200,194,92];  // #C8C25C (lighter but darker yellow)
+				}
+				return [242,234,106];  // #F2EA6A (lighter yellow)
+			}
+		
+		case 7: // G
+			if (octave < 5) {
+				// "G-String" on Violin Ends Up At "g3 / g4"
+				return [0,80,30];    // #00501E (dark green)
+			}
+			if (octave === 5) {
+				// "G" below tuning A
+				return [70,190,50];  // #46BE32 (lawn green)
+			}
+			if (octave === 7 || octave === 8) {
+				// De-emphasize "Harmonics Band" G, as it's too overwhelming...
+				return [191,219,154]; // #BFDB9A (lighter lime green)
+			}
+			return [180,255,80];     // #B4FF50 (parakeet green)
+		
+		case 8: // G# / Ab
+			if (pitchName.startsWith("g") && (aTuningHz != 432)) {
+				// "G"
+				if (octave <= 5) {
+					// "G" below tuning A
+					return [59,225,31];  // #3BE11F ("brighter forest green")
+				}
+				else {
+					// All others
+					return [197,251,126];     // #C5FB7E (brighter parakeet green)
+				}
+			}
+			else {
+				// Ab
+				// NOTE: The A=432 check to force this case to happen is a hack
+				//       to cope with some "off tuning" in this case ending up
+				//       in the G# band instead...
+				
+				return [222,39,39];      // #DE2727 (darker red)
+			}
+		
+		case 9: // A
+			if (octave < 4) {
+				// A below tuning A
+				return [197,28,28];      // #C51C1C (dark red)
+			}
+			if (octave === 4) {
+				// Tuning A
+				return [244,21,21];      // #F41515 (tomato red)
+			}
+			return [255,70,70];          // #FF4646 (light red)
+		
+		case 10: // A# / Bb
+			if (pitchName.startsWith("b")) {
+				// "Bb"
+				return [92,166,192];    // #5CA6C0 (teal-blue)
+			}
+			else {
+				// "A#"
+				return [251,115,115];     // #FB7373 (lighter red)
+			}
+		
+		case 11: // B
+			if (octave < 6) {
+				// Lower B's should look more like D cases...
+				return [68,159,237];     // #449FED  (medium blue)
+			}
+			return [120,220,255];    // #78DCFF (sky blue)
+		
+		default: // Undefined / Unknown - Light Grey
+			return [180,180,180];
+	}
+}
+
+// ------------------------------
+
+// Current color-map values
+// * Top Level = Rows = Semitone Idx's
+// * Per-Row   = Map of Octave Id = Hex/RGB Color
+let colorMapTableData = [];
+
+// Populate colorMapTableData
+function populateColorMapTableData()
+{
+	// NOTE: This may be replaced eventually by a hardcoded table?
+	// FIXME: Need to encode both sharp and flat versions, so need to recode to use the row-template thing instead
+	COLOR_MAP_ROWS.forEach(rowInfo => {
+		const semitoneIndex = rowInfo.semitoneIndex;
+		
+		// Construct color mapping between this each octave version
+		// this semitone, and the corresponding color.
+		let rowMap = {};
+		
+		COLOR_MAP_COLUMNS.forEach(octave => {
+			// FIXME: need to handle both variants of the semitone, so can't do it this way!!!
+			const semitoneName = getColormapTableSemitoneName(semitoneIndex);
+			const pitchId = getColormapTableKey(semitoneIndex, octave);
+			
+			const colorTuple = defaultColorForPitch(semitoneName, semitoneIndex, octave);
+			
+			// NOTE: The table needs to store tuples, otherwise the lookups for drawing the spectrogram fail...
+			rowMap[pitchId] = colorTuple; 
+		});
+		
+		colorMapTableData.push(rowMap);
+	});
+}
+
+// Update the table with an updated value
+// NOTE: This is abstracted out, as we cannot just edit these from
+//       within an event-handler without the edits going to a local copy
+function updateColorMapTableEntry(semitoneIndex, octave, newColorTuple)
+{
+	const pitchKey = getColormapTableKey(semitoneIndex, octave);
+	
+	// NOTE: Color table needs to store the raw tuples, otherwise
+	//       the spectrogram drawing (i.e. using gradients) breaks
+	colorMapTableData[semitoneIndex][pitchKey] = newColorTuple;
+}
+
+
+// Populate color map table with initial data
+populateColorMapTableData();
+
+// ------------------------------
+
+// Pretty print color table
+function prettyPrintColorTable()
+{
+	console.log("Color Map Table:");
+	console.log(JSON.stringify(colorMapTableData));
+}
+
+// ------------------------------
+
+// Colormap Extension
+const COLORMAP_FILENAME_EXTN = ".colormap";
+
+// Last used filename for saving a colormap
+let lastUsedColormapName = "MyColorMap.colormap";
+
+// Load ColorMap table from a file (with file picker)
+function loadColorMapFromFile()
+{
+	// Read the selected filename to load from
+	const f = document.getElementById("loadColorMapFilename").files[0];
+	if (!f) {
+		console.error("No colormap selected to load from");
+		return;
+	}
+	
+	// Try to load JSON from that file
+	const reader = new FileReader();
+	reader.onload = function(e) {
+		console.log(`Loaded ColorMap from ${f.name}`);
+		
+		const fileContents = e.target.result; // Get the file contents
+		const fileJson = JSON.parse(fileContents);
+		
+		// TODO: Validate the file...
+		console.log(`  Loaded ColorMap: ${fileJson}`);
+		
+		colorMapTableData = fileJson;
+		
+		// Trigger refresh...
+		console.log("Redrawing with new colormap...");
+		performHeavyAction(recalcSpectrogram);
+	};
+	reader.readAsText(f); // Read the selected file as text
+}
+
+// Save ColorMap to a file (with file picker)
+// < filename: (str) Filename hint to save as
+function saveColorMapToFile(filename)
+{
+	console.log(`Saving ColorMap as ${filename}...`)
+	
+	// Generate the JSON
+	const colormapJson = JSON.stringify(colorMapTableData);
+	
+	const blob =
+		new Blob(
+			[colormapJson],
+			{
+				type: "text/json"
+			}
+		);
+	
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	a.download = filename;
+	a.click();
+	
+	URL.revokeObjectURL(url);
+}
+
+// Event Bindings - Load Colormap
+document.getElementById("loadColorMapBtn").onclick = () => {
+	// Trigger the file picker
+	// NOTE: As per https://stackoverflow.com/a/8595592, 
+	//       we use "visibility:hidden" not "display:none"
+	//       otherwise click won't work
+	document.getElementById("loadColorMapFilename").click();
+};
+document.getElementById("loadColorMapFilename").onchange = loadColorMapFromFile;
+
+// Event Bindings - Save Colormap
+document.getElementById("saveColorMapBtn").onclick = () => {
+	// Get a filename to save under
+	let filename = prompt("Save colormap as:", lastUsedColormapName);
+	if (filename != null) {
+		// Validate filename
+		if (!filename.endsWith(COLORMAP_FILENAME_EXTN)) {
+			filename = filename + COLORMAP_FILENAME_EXTN;
+		}
+		
+		// Save this name as the basis for the next one
+		lastUsedColormapName = filename;
+		
+		// Perform colormap saving
+		saveColorMapToFile(filename);
+	}
+};
+
+// ------------------------------
+
+// Initialise the colorMapTable element, which is just an empty placeholder initially
+// to avoid having to hand-code all those elements
+function initColorTableUI()
+{
+	const table = document.getElementById("colorMapTable");
+	if (table == null) {
+		console.error("colorMapTable element not found in HTML");
+		return;
+	}
+	
+	// Add heading row
+	const thead = document.createElement("thead");
+	const headerRow = document.createElement("tr");
+	
+	const noteKeysHeader = document.createElement("th");
+	noteKeysHeader.colSpan = 2;
+	headerRow.appendChild(noteKeysHeader);
+	
+	COLOR_MAP_COLUMNS.forEach(octave => {
+		const th = document.createElement("th");
+		th.textContent = `c${octave}`;
+		headerRow.appendChild(th);
+	});
+	
+	thead.appendChild(headerRow);
+	table.appendChild(thead);
+	
+	// Body - Per-Semitone Rows
+	const tbody = document.createElement("tbody");
+	
+	COLOR_MAP_ROWS.forEach(rowInfo => {
+		const semitoneIndex = rowInfo.semitoneIndex;
+		const semitoneName = getSemitoneName(semitoneIndex);
+		const row = COLOR_MAP_ROWS[semitoneIndex];
+		
+		const tr = document.createElement("tr");
+		tr.className = 
+			row.accidental ? "colormap-key-accidental" : "colormap-key-natural";
+		
+		const tdNote = document.createElement("td");
+		tdNote.className = "colormap-table-note-col";
+		tdNote.textContent = (row.accidental) ? "" : semitoneName;
+		tr.appendChild(tdNote);
+		
+		const tdAlias = document.createElement("td");
+		tdAlias.className = "colormap-table-accidental-col";
+		tdAlias.textContent = (row.accidental) ? semitoneName : "";
+		tr.appendChild(tdAlias);
+		
+		COLOR_MAP_COLUMNS.forEach(octave => {
+			const td = document.createElement("td");
+			td.class = "colormap-table-cell";
+			
+			const swatch = document.createElement("div");
+			swatch.className = "swatch";
+			swatch.id = `colorSwatch_${row.id}${octave}`;
+			
+			let pitchKey = getColormapTableKey(semitoneIndex, octave);
+			let colorTuple = colorMapTableData[semitoneIndex][pitchKey];
+			let color = colorFromTuple(colorTuple);
+			swatch.style.background = color;
+			
+			// Store the indexing info in the "dataset" stuff on the colorswatch
+			// so that we can retrieve it from there later.
+			swatch.dataset.semitoneIndex = semitoneIndex;
+			swatch.dataset.octave = octave;
+			swatch.dataset.pitchKey = pitchKey; // XXX
+			
+			swatch.onclick = (e) => {
+				console.log(`Swatch clicked - ${swatch.id}!`);
+				if (e.button === 2) {
+					// Right-Click
+					triggerSwatchContextMenu(e, swatch);
+				}
+				else {
+					// Left Click
+					triggerSwatchPickColor(e, swatch);
+				}
+			};
+			
+			td.appendChild(swatch);
+			tr.appendChild(td);
+		});
+		
+		tbody.appendChild(tr);
+	});
+	
+	table.appendChild(tbody);
+}
+
+// Function for updating the Color Map Table to:
+// 1) Only show the rows that should currently be visible according to the
+//    sharp/flats bias mode
+// 2) Adjust the label names if switching between Scientific and Lilypond naming modes
+function updateColorTableRows()
+{
+	/// TODO: Should we painstakingly update, or just rebuild from scratch?
+	console.log("Trigger color map table update...");
+}
+
+// ------------------------------
+
+// Swatch right-click event handler = Show a context menu
+// (e.g. for propagating events to other widgets)
+// < e: (PointerEvent)
+// < swatch: (Element) The swatch element that was clicked
+function triggerSwatchContextMenu(e, swatch)
+{
+	
+}
+
+// ------------------------------
+
+// Swatch click-event handler = Pick a color
+// < e: (PointerEvent)
+// < swatch: (Element) The swatch element that was clicked
+function triggerSwatchPickColor(e, swatch)
+{
+	const picker = document.getElementById("colorPicker");
+	
+	const pickerLabel = document.getElementById("colorPickerLabel");
+	const pickerPreview = document.getElementById("colorPickerPreview");
+	const pickerApplyButton = document.getElementById("colorPickerApplyBtn");
+	const pickerResetButton = document.getElementById("colorPickerResetBtn");
+	
+	const semitoneIndex = swatch.dataset.semitoneIndex;
+	const octave = swatch.dataset.octave;
+	const uiNoteName = getPitchNameLabel(semitoneIndex, octave);
+	
+	pickerLabel.textContent = uiNoteName;
+	pickerPreview.style.background = swatch.style.background; // XXX: Should be writing this value to a property for reading...
+	updateColorPickerSliders();
+	
+	// Set picker to show near the swatch, while respecting the screen bounds
+	let showAtX = e.clientX + "px";
+	let showAtY = e.clientY + "px";
+	
+	picker.style.position = "fixed";
+	picker.style.setProperty("--x", showAtX);
+	picker.style.setProperty("--y", showAtY);
+	
+	// Make the picker visible
+	picker.classList.remove("hidden");
+	
+	console.log(`Swatch colorpicker shown: ${picker} at (${showAtX}, ${showAtY})`);
+	
+	// Replace the apply/reset button"onclick" handlers, as we need to bind
+	// the swatch that we're dealing with to these functions,
+	// as there's no other easy way to send that through
+	pickerApplyButton.onclick = () => {
+		colorPickerApply(swatch);
+	}
+	
+	pickerResetButton.onclick = () => {
+		colorPickerResetToDefault(swatch);
+	}
+}
+
+// Apply color from color picker back to swatch + colorTable + spectrogram
+// < swatch: (DOMElement) The DOM element (i.e. a div) used to render the swatch
+function colorPickerApply(swatch)
+{
+	const picker = document.getElementById("colorPicker");
+	const pickerPreview = document.getElementById("colorPickerPreview");
+	
+	const pitchKey = swatch.dataset.pitchKey;
+	const semitoneIndex = swatch.dataset.semitoneIndex;
+	const octave = swatch.dataset.octave;
+	const uiNoteName = getPitchNameLabel(semitoneIndex, octave);
+	
+	// Flush color back to UI
+	const newColorString = pickerPreview.style.background
+	swatch.style.background = newColorString;
+	
+	// Flush color back to the colorMapTable that is used for all the calculations...
+	const newColorTuple = rgbColorToTuple(newColorString);
+	updateColorMapTableEntry(semitoneIndex, octave, newColorTuple);
+	
+	// Debug: Check that the new value got set
+	//prettyPrintColorTable();
+	
+	// Close the picker now
+	console.log("Closing colorPicker popup...")
+	picker.classList.add("hidden");
+	
+	
+	// Update the spectrogram too
+	console.log(`Updating spectrogram to show new ${uiNoteName} color (${newColorTuple}) at semi index = ${semitoneIndex} (for pitchKey=${pitchKey})...`);
+	
+	performHeavyAction(recalcSpectrogram);
+}
+
+// Reset color picker color to default
+function colorPickerResetToDefault(swatch)
+{
+	const pickerPreview = document.getElementById("colorPickerPreview");
+	
+	const semitoneIndex = swatch.dataset.semitoneIndex;
+	const octave = swatch.dataset.octave;
+	const uiNoteName = getPitchNameLabel(semitoneIndex, octave);
+	
+	// Reset the color in the UI, then apply that, even though this is slightly less efficient
+	// NOTE: This depends on the implementation details above, which read from the preview
+	const defaultColorTuple = defaultColorForPitch(uiNoteName, semitoneIndex, octave);
+	const defaultColorString = colorFromTuple(defaultColorTuple);
+	
+	console.log(`Resetting ${uiNoteName} to ${defaultColorString} - semi = ${semitoneIndex}, octave = ${octave}, tuple = ${defaultColorTuple}`);
+	pickerPreview.style.background = defaultColorString;
+	
+	// Apply this via the "Apply" button
+	colorPickerApply(swatch);
+}
+
+// Close Color Picker
+document.getElementById("colorPickerCancelBtn").onclick = () => {
+	const picker = document.getElementById("colorPicker");
+	picker.classList.add("hidden");
+}
+
+// Color Picker UI (Slider) Methods ==============================
+
+// TODO: Define UI_* wrapper API functions for defining the standard bindings for widgets, then use these here
+
+// (bool) Flag to indicate whether RGB updates on slider changes are blocked
+let colorPickerRgbUpdatesOnComponentChangeAllowed = true;
+
+
+// Set Color Picker's Red / Green / Blue slider <-> numinput pairs
+// so that they are in sync with each other.
+// < value: (0 <= v <= 255)
+function setColorPickerValue_Red(value)
+{
+	colorPickerSlider_Red.value = colorPickerNumInput_Red.value = value;
+	
+	if (colorPickerRgbUpdatesOnComponentChangeAllowed) {
+		updateColorPickerSwatch();
+	}
+}
+function setColorPickerValue_Green(value)
+{
+	colorPickerSlider_Green.value = colorPickerNumInput_Green.value = value;
+	
+	if (colorPickerRgbUpdatesOnComponentChangeAllowed) {
+		updateColorPickerSwatch();
+	}
+}
+function setColorPickerValue_Blue(value)
+{
+	colorPickerSlider_Blue.value = colorPickerNumInput_Blue.value = value;
+	
+	if (colorPickerRgbUpdatesOnComponentChangeAllowed) {
+		updateColorPickerSwatch();
+	}
+}
+
+// Update color picker slider values from the current color
+function updateColorPickerSliders()
+{
+	const picker = document.getElementById("colorPickerPreview");
+	
+	const colorString = getComputedStyle(picker).backgroundColor;
+	const rgb = rgbColorToTuple(colorString);
+	
+	// Block full-color updates until all components changed...
+	colorPickerRgbUpdatesOnComponentChangeAllowed = false;
+	
+	setColorPickerValue_Red(rgb[0]);
+	setColorPickerValue_Green(rgb[1]);
+	setColorPickerValue_Blue(rgb[2]);
+	
+	colorPickerRgbUpdatesOnComponentChangeAllowed = true;
+}
+
+// Update color picker swatch from the individual slider values
+// (assuming the sliders and numinputs are in sync now)
+function updateColorPickerSwatch()
+{
+	const picker = document.getElementById("colorPickerPreview");
+	
+	const r_value = colorPickerSlider_Red.value;
+	const g_value = colorPickerSlider_Green.value;
+	const b_value = colorPickerSlider_Blue.value;
+	
+	picker.style.background = `rgb(${r_value},${g_value},${b_value})`;
+}
+
+// Bind slider/numinput events
+// NOTE: Bind to "oninput" for the sliders instead of "onchange"
+//       here as this widget is more lightweight, and should be
+//       more responsive to interactive editing. Live-updates as
+//       the slider is dragged are important here.
+document.getElementById("colorPickerSlider_Red").oninput = () => {
+	setColorPickerValue_Red(parseInt(colorPickerSlider_Red.value));
+};
+document.getElementById("colorPickerNumInput_Red").onchange = () => {
+	setColorPickerValue_Red(parseInt(colorPickerNumInput_Red.value));
+};
+
+document.getElementById("colorPickerSlider_Green").oninput = () => {
+	setColorPickerValue_Green(parseInt(colorPickerSlider_Green.value));
+};
+document.getElementById("colorPickerNumInput_Green").onchange = () => {
+	setColorPickerValue_Green(parseInt(colorPickerNumInput_Green.value));
+};
+
+document.getElementById("colorPickerSlider_Blue").oninput = () => {
+	setColorPickerValue_Blue(parseInt(colorPickerSlider_Blue.value));
+};
+document.getElementById("colorPickerNumInput_Blue").onchange = () => {
+	setColorPickerValue_Blue(parseInt(colorPickerNumInput_Blue.value));
+};
+
+
 // Button Event Handlers =============================
 
 // Update the "A tuning frequency" when the dropdown changes
@@ -2093,12 +2967,10 @@ document.getElementById("aTuning").onchange = () => {
 	
 	// Only trigger recalc if there is data to already cached data to recompute
 	if (cachedSpectrogram.length > 0) {
-		enableWaitCursor();
-		
-		console.log(`Retuning with new A=${aTuningHz} Hz (and tuningOffset = ${tuningOffset})`);
-		recalcSpectrogramAndAllNoteIds();
-		
-		clearWaitCursor();
+		performHeavyAction(() => {
+			console.log(`Retuning with new A=${aTuningHz} Hz (and tuningOffset = ${tuningOffset})`);
+			recalcSpectrogramAndAllNoteIds();
+		});
 	}
 };
 
@@ -2117,6 +2989,9 @@ function setPitchNameStyle(styleName)
 {
 	// Update pitch name styling mode
 	pitchNameStyle = pitchNameStyleSelector.value = styleName;
+	
+	// Update color map table
+	updateColorTableRows();
 	
 	// Force recalculation of the names, otherwise the "label" arg
 	// still keeps using the old ones only...
@@ -2146,13 +3021,14 @@ function setSharpFlatBiasMode(biasMode)
 	// Update pitch name styling mode
 	sharpFlatBiasMode = sharpFlatBiasSelector.value = biasMode;
 	
+	// Update color map table
+	updateColorTableRows();
+	
 	// Recalc the labels + spectrogram to match this...
-	enableWaitCursor();
-	
-	console.log("Updating spectrogram + note names for sharp/flat bias change...");
-	recalcSpectrogramAndAllNoteIds();
-	
-	clearWaitCursor();
+	performHeavyAction(() => {
+		console.log("Updating spectrogram + note names for sharp/flat bias change...");
+		recalcSpectrogramAndAllNoteIds();
+	});
 }
 
 // Reset Sharp/Flat Bias Mode
@@ -2175,12 +3051,8 @@ document.getElementById("resetSharpFlatBiasBtn").onclick = resetSharpFlatBiasMod
 // ! This causes a recomputation of the spectogram, which can be slow...
 function setBrightnessBoost(value)
 {
-	enableWaitCursor();
-	
 	brightnessSlider.value = brightnessBoost = value;
-	recalcSpectrogram();
-	
-	clearWaitCursor();
+	performHeavyAction(recalcSpectrogram);
 }
 
 // Reset brightness boost to default values
@@ -2224,12 +3096,10 @@ function setTuningOffsetValues(value)
 // tuning update change.
 function applyTuningOffsetUpdate()
 {
-	enableWaitCursor();
-	
-	console.log(`Retuning with A=${aTuningHz} Hz and tuningOffset = ${tuningOffset}`);
-	recalcSpectrogramAndAllNoteIds();
-	
-	clearWaitCursor();
+	performHeavyAction(() => {
+		console.log(`Retuning with A=${aTuningHz} Hz and tuningOffset = ${tuningOffset}`);
+		recalcSpectrogramAndAllNoteIds();
+	});
 }
 
 // Reset Tuning Offset value
@@ -2287,12 +3157,10 @@ function setMinPitchStrengthValues(value)
 // "minimum pitch strength" update.
 function applyMinPitchStrengthUpdate()
 {
-	enableWaitCursor();
-	
-	console.log(`Recalculating dominant notes after min-pitch-strength change...`);
-	recalcNoteIdsOnly();
-	
-	clearWaitCursor();
+	performHeavyAction(() => {
+		console.log(`Recalculating dominant notes after min-pitch-strength change...`);
+		recalcNoteIdsOnly();
+	});
 }
 
 // Reset "Min Pitch Strength" value
@@ -2425,8 +3293,31 @@ document.getElementById("recordBtn").onclick = () => {
 
 // Main Project-Level Buttons ==============================
 
+// Clear existing spectrogram when the filename is cleared
+// (i.e. so changing tuning in anticipation won't then trigger a recalc)
+document.getElementById("file").onchange = () => {
+	// Flag for whether we had any old data
+	const notFirstTime = (cachedSpectrogram.length > 0);
+	
+	// Stop playback in case we were playing the old file...
+	// This should stop any recording too.
+	stopPlayback();
+	
+	// Clear the old spectrogram + notes data...
+	clearSpectrogramCanvasCache();
+	clearDetectedNotesList();
+	
+	// Update UI to indicate that the data needs to be processed again now
+	// but only if something analysed previously
+	if (notFirstTime) {
+		updateStatusText("Click Analyse again to process this newly selected sound file...");
+	}
+};
+
+// Start analysing audio...
 document.getElementById("analyzeBtn").onclick = analyseAudio;
 
+// Export detected notes...
 document.getElementById("exportBtn").onclick = exportDetectedNotes;
 
 
@@ -2444,6 +3335,10 @@ function syncResetState()
 }
 
 // Main Entrypoint =========================================
+
+// Initialise color table
+// NOTE: updateColorTableRows() will fire when the name/bias values get set next
+initColorTableUI();
 
 // Ensure internal values are set to match what the widgets have set
 syncResetState();
