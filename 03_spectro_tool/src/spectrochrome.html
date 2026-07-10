@@ -842,6 +842,9 @@ const BUBBLE_COLOR = [80, 120, 255];
 // Standard debounce threshold for the slider updates (in ms)
 const STD_DEBOUNCE_DELAY_MS = 500;
 
+// Timer-ID for keeping track of if we have a pending event we're waiting on...
+let batchingTimerId = undefined;
+
 // For interactive slider events, use "Debounce" Pattern for deferring / batching
 // events until the last in a stream of rapidly occurring updates on an interactive 
 // element
@@ -854,9 +857,6 @@ const STD_DEBOUNCE_DELAY_MS = 500;
 // NOTE: From https://stackoverflow.com/questions/75988682/debounce-in-javascript
 function debounce(delay, callback)
 {
-	// Timer-ID for keeping track of if we have a pending event we're waiting on...
-	let batchingTimerId;
-	
 	return (...args) => {
 		// Reset the timer, as a new event came in...
 		clearTimeout(batchingTimerId);
