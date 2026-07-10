@@ -3293,8 +3293,31 @@ document.getElementById("recordBtn").onclick = () => {
 
 // Main Project-Level Buttons ==============================
 
+// Clear existing spectrogram when the filename is cleared
+// (i.e. so changing tuning in anticipation won't then trigger a recalc)
+document.getElementById("file").onchange = () => {
+	// Flag for whether we had any old data
+	const notFirstTime = (cachedSpectrogram.length > 0);
+	
+	// Stop playback in case we were playing the old file...
+	// This should stop any recording too.
+	stopPlayback();
+	
+	// Clear the old spectrogram + notes data...
+	clearSpectrogramCanvasCache();
+	clearDetectedNotesList();
+	
+	// Update UI to indicate that the data needs to be processed again now
+	// but only if something analysed previously
+	if (notFirstTime) {
+		updateStatusText("Click Analyse again to process this newly selected sound file...");
+	}
+};
+
+// Start analysing audio...
 document.getElementById("analyzeBtn").onclick = analyseAudio;
 
+// Export detected notes...
 document.getElementById("exportBtn").onclick = exportDetectedNotes;
 
 
