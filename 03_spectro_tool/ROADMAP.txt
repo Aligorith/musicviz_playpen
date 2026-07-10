@@ -13,6 +13,16 @@ Spectrochrome Roadmap
 
 * Tooltip-showing-component
 
+* Finish colormap table todo's
+  * The UI should adapt to Pitch Naming Style + Sharp/Flat Bias changes
+  * Cannot set certain sharp / flat colours, as the relevant rows are not displayed in the table in the UI
+  * Context menu support for copying colours to related colors
+
+* Refactor color picker to use Javascript variable value storage, instead of storing in the HTML elements and having to transform in/out of that form each time any manipulations are performed
+
+* Unify "pitchIdx" / "pitchIndex" / "semitoneIndex" variable naming styles
+
+
 
 == High Priority Defect Fixes ==
 * Fix bad resizing behaviour (i.e. requires refactoring the drawing to draw to a cache buffer, instead of directly to a frame buffer that can get corrupted) - see "v51_prompt"
