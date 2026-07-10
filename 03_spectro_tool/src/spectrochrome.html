@@ -676,9 +676,15 @@ let aTuningHz = 440;
 
 // "Tweaks" Panel Items ---------
 
+// "Boost" factor to brighten dim layouts
 let brightnessBoost = 1;
+
+// Offset to all pitch values in semitones (to adjust minor off-tuning)
 let tuningOffset = 0;
 
+// Minimum "magnitude" in the spectrogram needed for a pitch to be considered
+// for the "dominant pitch" detection
+let minimumPitchStrength = 30;
 
 // Viz State Constants ==================================
 
@@ -730,12 +736,6 @@ const midiRefPitch = 69;
 
 const fftSize = 4096;
 const hop = 1024;
-
-// --------------------------------------
-
-// Minimum "magnitude" in the spectrogram needed for a pitch to be considered
-// for the "dominant pitch" detection
-let minimumPitchStrength = 30;
 
 // --------------------------------------
 
