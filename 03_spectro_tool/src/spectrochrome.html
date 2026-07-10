@@ -720,7 +720,7 @@ let fixedColumnWidth = 1;
 // Factor that each "b" or "bin" value from the FFT "spec" array
 // needs to be multiplied by to obtain a frequency value.
 //
-// NOTE: Calculated as "audioCtx.sampleRate / fftSize"
+// NOTE: Calculated as "audioCtx.sampleRate / FFT_SIZE"
 //       in processAudio()
 let fftToFreqFactor = 1;
 
@@ -731,11 +731,11 @@ const TWO_PI = 2 * Math.PI;
 
 // --------------------------------------
 
-const semitonesPerOctave = 12;
-const midiRefPitch = 69;
+const SEMITONES_PER_OCTAVE = 12;
+const MIDI_REF_PITCH = 69;
 
-const fftSize = 4096;
-const hop = 1024;
+const FFT_SIZE = 4096;
+const HOP = 1024;
 
 // --------------------------------------
 
@@ -828,10 +828,10 @@ let sharpFlatBiasMode = COMMON_BIAS_MODE;
 // UI Defines / Utils ===================================
 
 // UI Labels for toggle buttons ...............
-const playStateActionTxt          = "▶ Play";
-const pauseStateActionTxt         = "⏸ Pause";
-const recordStateActionTxt        = "⬤ Record";
-const stopRecordingStateActionTxt = "■ Recording";
+const PLAY_STATE_ACTION_TXT           = "▶ Play";
+const PAUSE_STATE_ACTION_TXT          = "⏸ Pause";
+const RECORD_STATE_ACTION_TXT         = "⬤ Record";
+const STOP_RECORDING_STATE_ACTION_TXT = "■ Recording";
 
 // Color Defines ..............................
 const SCRUBBER_COLOR = [255, 140, 40];
@@ -913,23 +913,23 @@ function updateStatusText(text)
 
 function setPlayButtonState()
 {
-	document.getElementById("playPauseBtn").textContent = playStateActionTxt;
+	document.getElementById("playPauseBtn").textContent = PLAY_STATE_ACTION_TXT;
 }
 
 function setPauseButtonState()
 {
-	document.getElementById("playPauseBtn").textContent = pauseStateActionTxt;
+	document.getElementById("playPauseBtn").textContent = PAUSE_STATE_ACTION_TXT;
 }
 
 function setStartRecordingButtonState()
 {
-	document.getElementById("recordBtn").textContent = recordStateActionTxt;
+	document.getElementById("recordBtn").textContent = RECORD_STATE_ACTION_TXT;
 	clearWaitCursor();
 }
 
 function setStopRecordingButtonState()
 {
-	document.getElementById("recordBtn").textContent = stopRecordingStateActionTxt;
+	document.getElementById("recordBtn").textContent = STOP_RECORDING_STATE_ACTION_TXT;
 	enableWaitCursor();
 }
 
@@ -1114,13 +1114,13 @@ function tunedMidi(freq)
 {
 	// Convert into a Midi note number
 	const midi = 
-		((semitonesPerOctave * Math.log2(freq / aTuningHz)) + 
-		  midiRefPitch + 
+		((SEMITONES_PER_OCTAVE * Math.log2(freq / aTuningHz)) + 
+		  MIDI_REF_PITCH + 
 		  tuningOffset);
 	
 	// Decompose into components
-	const octave = Math.floor(midi / semitonesPerOctave);
-	const pitch  = Math.round(midi) % semitonesPerOctave;
+	const octave = Math.floor(midi / SEMITONES_PER_OCTAVE);
+	const pitch  = Math.round(midi) % SEMITONES_PER_OCTAVE;
 	
 	// Assemble into an object
 	return { midi: midi, pitch: pitch, octave: octave };
@@ -1367,7 +1367,7 @@ function identifyMidiEventForSlice(i, spec)
 		const note = midiToLabel(tunedMidi(freq));
 		
 		const prev = midiEvents[midiEvents.length - 1];
-		const t = i * hop / audioCtx.sampleRate;
+		const t = i * HOP / audioCtx.sampleRate;
 		
 		// Sanity Check: Skip this note if it falls out of range we're interested in.
 		if (freq < MIN_FREQ || freq > MAX_FREQ) {
@@ -1505,10 +1505,10 @@ async function processAudio(buffer)
 	cachedSpectrogram = [];
 	
 	const data = buffer.getChannelData(0);
-	const total = Math.floor((data.length - fftSize) / hop);
+	const total = Math.floor((data.length - FFT_SIZE) / HOP);
 	
 	fixedColumnWidth = spectogramWidth / total;
-	fftToFreqFactor = audioCtx.sampleRate / fftSize;
+	fftToFreqFactor = audioCtx.sampleRate / FFT_SIZE;
 	
 	const processingStart = performance.now();
 	
@@ -1516,8 +1516,8 @@ async function processAudio(buffer)
 		// Perform CQT transform
 		const seg =
 			data.slice(
-				i * hop,
-				i * hop + fftSize
+				i * HOP,
+				i * HOP + FFT_SIZE
 			);
 		
 		const segCountScaleFactor = TWO_PI / (seg.length - 1);
@@ -1667,12 +1667,12 @@ function drawTimeline()
 function drawCMarkers()
 {
 	for (let octave = 0; octave < 9; octave++) {
-		const midi = (octave + 1) * semitonesPerOctave;
+		const midi = (octave + 1) * SEMITONES_PER_OCTAVE;
 		const freq =
 			aTuningHz *
 			Math.pow(
 				2,
-				(midi - midiRefPitch) / semitonesPerOctave
+				(midi - MIDI_REF_PITCH) / SEMITONES_PER_OCTAVE
 			);
 		
 		if (freq < MIN_FREQ || freq > MAX_FREQ) {
