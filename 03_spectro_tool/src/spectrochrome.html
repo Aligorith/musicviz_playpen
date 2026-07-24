@@ -17,6 +17,8 @@ html, body {
 	background: #454545;
 	color: white;
 	font-family: sans-serif;
+	
+	line-height: 1.3;
 }
 
 /* Force the wait cursor on everything while the active class is present */
@@ -109,6 +111,12 @@ aside {
 	padding-left: 20px;
 	background-color: rgba(128,128,128, 0.3);
 	border-left: 4px solid lightskyblue;
+}
+
+/* General list item formatting */
+li:not(:last-child) {
+	/* Increase spacing between items */
+	margin-bottom: 3px;
 }
 
 /* ************************* */
@@ -279,6 +287,9 @@ th, td {
 	overflow-y: scroll;
 	max-height: 90%;
 	
+	/* Increase left-side margin for better visual balance */
+	margin-left: 20px;
+	
 	/* Show glowy-border along the bottom edge to 
 	 * indicate that there is more to see...
 	 */
@@ -418,6 +429,15 @@ th, td {
 	right: -45%;
 }
 
+/* ************************* */
+/* About Panel */
+
+#aboutPanel {
+	/* Override the font used, to be easier to read */
+	font-family: Georgia, Times, Serif;
+	font-size: 1.05em;
+}
+
 </style>
 </head>
 
@@ -473,9 +493,9 @@ th, td {
 			
 			<h2>Implementation Details</h2>
 			<p>This tool is currently implemented using Vanilla Javascript in a Single HTML file (*), with all processing and rendering happening entirely locally in browser.</p>
-			<aside>(*) There is an optional (but default-enabled) external dependency on the <a href="https://github.com/indutny/fft.js/">fft.js</a> library. This is used to accelerate the Fast Fourier Transform calculations needed for decomposing the audio into its constituent frequencies.</aside>
+			<aside>(*) There is an optional (but default-enabled) external dependency on the <a href="https://github.com/indutny/fft.js/">fft.js</a> library. This is used to accelerate the Fast Fourier Transform calculations needed for decomposing the audio into its constituent frequencies. Without this library, even a 10 second clip can easily take a 1.5 minutes to process on a reasonably grunty CPU.</aside>
 			
-			<h2>Usage Tips:</h2>
+			<h2>Usage Tips</h2>
 			<ul>
 				<li>
 					<b>Basic Usage:</b>
@@ -485,6 +505,14 @@ th, td {
 						<li>Click "Analyze" to process</li>
 						<li>You can now play / scrub / explore, or export the spectrogram</li>
 					</ol>
+				</li>
+				
+				<li>
+					<b>Tweaking the Appearance:</b>
+					<ul>
+						<li>Use the "Legend" and "Tweaks" popovers to adjust how the spectrogram and pitch detection work.</li>
+						<li><b>CAUTION:</b> Most of these updates are SLOW, especially on longer sound clips and/or slower CPU's.</li>
+					</ul>
 				</li>
 				
 				<li>
@@ -499,21 +527,40 @@ th, td {
 					<b>Audio File Notes:</b>
 					<ul>
 						<li>This tool has been designed and optimised to work with <strong>short</strong> audio files - specifically those around 1 minute long!</li>
-						<li>Longer files "can" be used (with success up to about 5 minutes). However, be prepared for this to potentially take a while to compute and/or update (especially on slower machines).</li>
+						<li>Clips +/- 30 seconds should generally still be ok.</li>
+						
+						<li>Longer files "can" be used (with success up to about 5 minutes). However, be prepared for this to potentially take a while to compute and/or update (especially on slower machines). </li>
+						
+						<li>From limited tests so far, results may vary when dealing with "professionally mixed + produced" tracks (e.g. many pop music tracks), as the full frequency spectrum tends to be quite "saturated" in these, reducing the utility of this tool.</li>
+						
+						<li>Any audio files supported by your browser should be able to be used. Examples of supported formats that have been successfully tested include .wav, .mp3, and .flac</li>
 					</ul>
 				</li>
 				
 				<li>
 					<b>Supported Browsers:</b>
-					<p>This was mainly built and tested on Firefox 151 on Windows 10 and Linux.</p>
+					<ul>
+						<li>This was mainly built and tested on Firefox 151 on Windows 10 and Linux.</li>
+						<li>Earlier versions have also been checked on Ms Edge.</li>
+						<li><b>CAUTION:</b>  It is not currently recommended to keep this page open on a laptop running on battery power. A future update will improve energy efficiency when idling, but currently this is not supported.</li>
+					</ul>
 				</li>
 			</ul>
 			
 			<h2>Further Info</h2>
 			<p>For further information about this project, see the following links:</p>
 			<ul>
-				<li>https://github.com/Aligorith/musicviz_playpen/tree/master/03_spectro_tool</li>
+				<li><a href="https://github.com/Aligorith/musicviz_playpen/tree/master/03_spectro_tool">https://github.com/Aligorith/musicviz_playpen/tree/master/03_spectro_tool</a> (Original Git Repo)</li>
 			</ul>
+			<p>~ Joshua Leung (2026)</p>
+		</div>
+		
+		<!-- Gap -->
+		<div style="height: 15px;"></div>
+		
+		<!-- Close About Panel -->
+		<div class="centerControls">
+			<button id="closeAboutBtn" title="Close 'About' text panel">Close</button>
 		</div>
 	</div>
 </div>
@@ -3448,11 +3495,17 @@ document.getElementById("analyzeBtn").onclick = analyseAudio;
 // Export detected notes...
 document.getElementById("exportBtn").onclick = exportDetectedNotes;
 
-// About panel
+// About Panel
 document.getElementById("aboutBtn").onclick = () => {
 	const p = document.getElementById("aboutPanel");
 	p.classList.toggle("hidden");
 };
+
+// Close "About" Panel
+document.getElementById("closeAboutBtn").onclick = () => {
+	const p = document.getElementById("aboutPanel");
+	p.classList.add("hidden");
+}
 
 // State Setup =============================================
 
