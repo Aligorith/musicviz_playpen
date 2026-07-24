@@ -85,6 +85,32 @@ html.is-processing * {
 	flex: 1;
 }
 
+
+/* ************************* */
+/* General Basics for Common HTML Elements */
+
+/* Basic link styling
+ * (To be more visible against black)
+ */
+a:link {
+	color: lightskyblue;
+}
+
+/* Visited link styling
+ * (To be more visible against black)
+ */
+a:visited {
+	color: lightcoral;
+}
+
+/* "Aside" Formatting */
+aside {
+	font-style: italic;
+	padding-left: 20px;
+	background-color: rgba(128,128,128, 0.3);
+	border-left: 4px solid lightskyblue;
+}
+
 /* ************************* */
 /* General Basics for Widgets */
 
@@ -179,7 +205,8 @@ th, td {
  * NOTE: "popover-panel" uses the same base styling, hence set that here too...
  */
 .floating-panel,
-.popover-panel 
+.popover-panel,
+.centered-floating-panel
 {
 	padding: 14px;
 	
@@ -198,7 +225,8 @@ th, td {
 }
 
 .floating-panel.hidden,
-.popover-panel.hidden
+.popover-panel.hidden,
+.centered-floating-panel.hidden
 {
 	opacity: 0;
 	pointer-events: none;
@@ -215,6 +243,45 @@ th, td {
 	position: fixed;
 	
 	/* TODO: Prevent overflowing outside screen bounds */
+}
+
+/* ************************* */
+/* Centered Floating Panel Stuff */
+
+/* The background container hosting the floating popups */
+.big-popup-panel-host {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+/* One of the centered floating panels */
+.centered-floating-panel {
+	position: fixed;
+	inset: 0px;
+	width: 60vw;
+	height: 50vh;
+	max-width: 100vw;
+	max-height: 100dvh;
+	margin: auto;
+	
+	/* Force higher than the background, but below the floating-panels */
+	z-index: 5000;
+}
+
+
+/* Contents container for central floating panel */
+.popup-panel-contents {
+	/* Text wrapping for long lines */
+	text-wrap: wrap;
+	
+	/* Show scrollbar if the text grows too long */
+	overflow-y: scroll;
+	max-height: 90%;
+	
+	/* Show glowy-border along the bottom edge to 
+	 * indicate that there is more to see...
+	 */
 }
 
 /* ************************* */
@@ -383,11 +450,71 @@ th, td {
 		<div class="rightControls">
 			<button id="legendBtn">Legend</button>
 			<button id="tweaksBtn">Tweaks</button>
+			<button id="aboutBtn">About</button>
 		</div>
 	</div>
 	
 	<div id="status">
 		Load a file, then click Analyse
+	</div>
+</div>
+
+<!-- Container for popover panels appearing centered in the window -->
+<div class="big-popup-panel-host">
+	<!-- NOTE: Only one of these should be visible at a time -->
+	<div id="aboutPanel" class="centered-floating-panel hidden">
+		<div class="popup-panel-contents">
+			<h1>About Spectrochrome</h1>
+			<p>Spectrochrome is an experimental music visualisation tool. It is based on a "showcqt" style <a href="https://en.wikipedia.org/wiki/Spectrogram">spectrogram</a> visualisation, but unlike conventional approaches, this tool assigns a set of hand-picked colours for each pitch (versus using colour to encode intensity).</p>
+			
+			<!-- TODO: Include colour scale figure-->
+			
+			<p>In addition to showing a pitch-keyed spectrogram, this tool also acts as a testbed for identifying the notes being played at each instant. The current "strongest pitch detection" algorithm implemented is a crude method for trying to find a way of detecting the melody line of the clip (though it doesn't work very well yet!)  Building out these capabilities is topic for future development.</p>
+			
+			<h2>Implementation Details</h2>
+			<p>This tool is currently implemented using Vanilla Javascript in a Single HTML file (*), with all processing and rendering happening entirely locally in browser.</p>
+			<aside>(*) There is an optional (but default-enabled) external dependency on the <a href="https://github.com/indutny/fft.js/">fft.js</a> library. This is used to accelerate the Fast Fourier Transform calculations needed for decomposing the audio into its constituent frequencies.</aside>
+			
+			<h2>Usage Tips:</h2>
+			<ul>
+				<li>
+					<b>Basic Usage:</b>
+					<ol>
+						<li>Load an audio file</li>
+						<li>Configuring tuning (i.e. "A = 440Hz or A = 432 Hz)")</li>
+						<li>Click "Analyze" to process</li>
+						<li>You can now play / scrub / explore, or export the spectrogram</li>
+					</ol>
+				</li>
+				
+				<li>
+					<b>Exporting Music Videos:</b>
+					<ul>
+						<li>Use the "Record" button to export a video of the viewport (with synchronised soound playback). By default, the exported video will show the timeline scrubber scrolling across the screen, slowly revealing the full spectrogram in all its full technicolour glory, in sync with the music.</li>
+						<li>Avoid clicking or interacting with the page during this process, as any changes you make will be included in the video.</li>
+					</ul>
+				</li>
+				
+				<li>
+					<b>Audio File Notes:</b>
+					<ul>
+						<li>This tool has been designed and optimised to work with <strong>short</strong> audio files - specifically those around 1 minute long!</li>
+						<li>Longer files "can" be used (with success up to about 5 minutes). However, be prepared for this to potentially take a while to compute and/or update (especially on slower machines).</li>
+					</ul>
+				</li>
+				
+				<li>
+					<b>Supported Browsers:</b>
+					<p>This was mainly built and tested on Firefox 151 on Windows 10 and Linux.</p>
+				</li>
+			</ul>
+			
+			<h2>Further Info</h2>
+			<p>For further information about this project, see the following links:</p>
+			<ul>
+				<li>https://github.com/Aligorith/musicviz_playpen/tree/master/03_spectro_tool</li>
+			</ul>
+		</div>
 	</div>
 </div>
 
@@ -3321,6 +3448,11 @@ document.getElementById("analyzeBtn").onclick = analyseAudio;
 // Export detected notes...
 document.getElementById("exportBtn").onclick = exportDetectedNotes;
 
+// About panel
+document.getElementById("aboutBtn").onclick = () => {
+	const p = document.getElementById("aboutPanel");
+	p.classList.toggle("hidden");
+};
 
 // State Setup =============================================
 
