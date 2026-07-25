@@ -474,6 +474,26 @@ th, td {
 }
 
 /* ************************* */
+/* General "Fancy" Table
+ * NOTE: This applies to all explicitly marked "data" tables,
+ *       so that this doesn't apply to the colormap table.
+ */
+
+/* Alternating rows end up shaded... */
+table.pretty-data-table tbody tr:nth-child(even) {
+	background-color: #444;
+}
+
+/* Hover color on pretty-data-table rows */
+table.pretty-data-table tbody tr:hover {
+	/* Darker version of SCRUBBER_COLOR */
+	background-color: rgb(230, 125, 33);
+	
+	/* Slight text shadow to make the text stand out more */
+	text-shadow: 1px 1px black;
+}
+
+/* ************************* */
 /* Pitch ID's Table */
 
 /* NOTE: PitchID column is child "1" */
@@ -637,7 +657,7 @@ th, td {
 			</aside>
 			
 			<!-- TODO: Auto-populate table of detected pitches at each time, along with strength -->
-			<table id="pitchIdsTable"></table>
+			<table id="pitchIdsTable" class="pretty-data-table"></table>
 		</div>
 		
 		<!-- Gap -->
