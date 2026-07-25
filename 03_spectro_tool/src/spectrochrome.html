@@ -87,6 +87,9 @@ html.is-processing * {
 	flex: 1;
 }
 
+.tightControlSpacing {
+	gap: 5px;
+}
 
 /* ************************* */
 /* General Basics for Common HTML Elements */
@@ -134,8 +137,18 @@ a:visited {
 aside {
 	font-style: italic;
 	padding-left: 20px;
+	padding-top: 0.3em;
+	padding-bottom: 0.3em;
 	background-color: rgba(128,128,128, 0.3);
 	border-left: 4px solid lightskyblue;
+}
+
+/* Hiding asides */
+aside.hidden {
+	/* Use the "display:none" approach here, since this is inline
+	 * and part of the flow...
+	 */
+	display: none;
 }
 
 /* ************************* */
@@ -294,6 +307,8 @@ th, td {
 	
 	/* Force higher than the background, but below the floating-panels */
 	z-index: 5000;
+	
+	/* TODO: Introduce transition animation when showing? */
 }
 
 
@@ -312,6 +327,7 @@ th, td {
 	/* Show glowy-border along the bottom edge to 
 	 * indicate that there is more to see...
 	 */
+	/* ... TODO... */
 }
 
 /* ************************* */
@@ -457,6 +473,56 @@ th, td {
 	font-size: 1.05em;
 }
 
+/* ************************* */
+/* General "Fancy" Table
+ * NOTE: This applies to all explicitly marked "data" tables,
+ *       so that this doesn't apply to the colormap table.
+ */
+
+/* Alternating rows end up shaded... */
+table.pretty-data-table tbody tr:nth-child(even) {
+	background-color: #444;
+}
+
+/* Hover color on pretty-data-table rows */
+table.pretty-data-table tbody tr:hover {
+	/* Darker version of SCRUBBER_COLOR */
+	background-color: rgb(230, 125, 33);
+	
+	/* Slight text shadow to make the text stand out more */
+	text-shadow: 1px 1px black;
+}
+
+/* ************************* */
+/* Pitch ID's Table */
+
+/* NOTE: PitchID column is child "1" */
+
+/* Left Align Pitch ID's Table Contents... */
+#pitchIdsTable tbody td:nth-child(4)  /* Key Pitch */
+{
+	text-align: left;
+}
+
+/* Right Align Pitch Id's Table Columns... */
+#pitchIdsTable tbody td:nth-child(2),  /* Start Time */
+#pitchIdsTable tbody td:nth-child(3),  /* End Time */
+#pitchIdsTable tbody td:nth-child(5),  /* Freq */
+#pitchIdsTable tbody td:nth-child(6)   /* Strength */
+{
+	text-align: right;
+}
+
+/* Make header sticky, so it's clear what the columns are for
+ * when the table gets scrolled down
+ */
+#pitchIdsTable thead th {
+	position: sticky;
+	top: 0;
+	background: #10353e; /* Prevent rows from showing through. Color to complement aside accents (lightskyblue) */
+	z-index: 1;
+}
+
 </style>
 </head>
 
@@ -475,8 +541,6 @@ th, td {
 			</label>
 			
 			<button id="analyzeBtn">Analyze</button>
-			
-			<button id="exportBtn">Export</button>
 		</div>
 		
 		<div class="centerControls">
@@ -486,9 +550,14 @@ th, td {
 			<button id="recordBtn">⬤ Record</button>
 		</div>
 		
-		<div class="rightControls">
+		<div class="rightControls tightControlSpacing">
 			<button id="legendBtn">Legend</button>
 			<button id="tweaksBtn">Tweaks</button>
+			
+			<!-- Gap -->
+			<div style="width: 15px"></div>
+			
+			<button id="pitchIdBtn">PitchId</button>
 			<button id="aboutBtn">About</button>
 		</div>
 	</div>
@@ -501,18 +570,22 @@ th, td {
 <!-- Container for popover panels appearing centered in the window -->
 <div class="big-popup-panel-host">
 	<!-- NOTE: Only one of these should be visible at a time -->
+	
+	<!-- ABOUT Panel -->
 	<div id="aboutPanel" class="centered-floating-panel hidden">
 		<div class="popup-panel-contents">
 			<h1>About Spectrochrome</h1>
-			<p>Spectrochrome is an experimental music visualisation tool. It is based on a "showcqt" style <a href="https://en.wikipedia.org/wiki/Spectrogram">spectrogram</a> visualisation, but unlike conventional approaches, this tool assigns a set of hand-picked colours for each pitch (versus using colour to encode intensity).</p>
+			<p>Spectrochrome is an experimental music visualisation tool. It is based on a "<a href="https://trac.ffmpeg.org/wiki/FancyFilteringExamples#showcqt">showcqt</a>" style <a href="https://en.wikipedia.org/wiki/Spectrogram">spectrogram</a> visualisation, but unlike conventional approaches, this tool assigns a set of hand-picked colours for each pitch (versus using colour to encode intensity).</p>
 			
 			<!-- TODO: Include colour scale figure-->
 			
 			<p>In addition to showing a pitch-keyed spectrogram, this tool also acts as a testbed for identifying the notes being played at each instant. The current "strongest pitch detection" algorithm implemented is a crude method for trying to find a way of detecting the melody line of the clip (though it doesn't work very well yet!)  Building out these capabilities is topic for future development.</p>
 			
 			<h2>Implementation Details</h2>
-			<p>This tool is currently implemented using Vanilla Javascript in a Single HTML file (*), with all processing and rendering happening entirely locally in browser.</p>
-			<aside>(*) There is an optional (but default-enabled) external dependency on the <a href="https://github.com/indutny/fft.js/">fft.js</a> library. This is used to accelerate the Fast Fourier Transform calculations needed for decomposing the audio into its constituent frequencies. Without this library, even a 10 second clip can easily take a 1.5 minutes to process on a reasonably grunty CPU.</aside>
+			<p>This tool is currently implemented using Plain/Vanilla Javascript in a single HTML file (*). All processing and rendering strictly happens entirely locally in your browser, on your own hardware.</p>
+			<aside>
+				(*) There is an optional (but default-enabled) external dependency on the <a href="https://github.com/indutny/fft.js/">fft.js</a> library. This is used to accelerate the Fast Fourier Transform calculations needed for decomposing the audio into its constituent frequencies. Without this library, even a 10 second clip can easily take a 1.5 minutes to process on a reasonably grunty CPU.
+			</aside>
 			
 			<h2>Usage Tips</h2>
 			<ul>
@@ -580,6 +653,33 @@ th, td {
 		<!-- Close About Panel -->
 		<div class="centerControls">
 			<button id="closeAboutBtn" title="Close 'About' text panel">Close</button>
+		</div>
+	</div>
+	
+	
+	<!-- PITCH ID Panel -->
+	<div id="pitchIdPanel" class="centered-floating-panel hidden">
+		<div id="pitchIdPanelContents" class="popup-panel-contents">
+			<h1>Pitches Detected</h1>
+			
+			<!-- Placeholder label for when nothing has been detected yet -->
+			<aside id="pitchIdsTablePlaceholderBanner">
+				<b>No pitches detected yet.</b>
+				<p>Load + Analyse an Audio File, or adjust settings under "Tweaks"</p>
+			</aside>
+			
+			<!-- Auto-populated table of detected pitches (see updatePitchesDetectedTable())-->
+			<table id="pitchIdsTable" class="pretty-data-table"></table>
+		</div>
+		
+		<!-- Gap -->
+		<div style="height: 15px;"></div>
+		
+		<!-- Button Box -->
+		<div class="centerControls">
+			<button id="exportBtn">Export as CSV</button>
+			
+			<button id="closePitchIdsBtn" title="Close 'Pitches Detected' panel">Close</button>
 		</div>
 	</div>
 </div>
@@ -1148,6 +1248,22 @@ function setStopRecordingButtonState()
 
 // -----------------------
 
+// Formats the number with decimal and thousands separator.
+// < v: (float) The number value to format
+// < decimals: (int) The number of decimal values to show
+function NumberFormat_Standard(v, decimals=1)
+{
+	let numString = v.toLocaleString(undefined, {
+		minimumFractionDigits: decimals,
+		maximumFractionDigits: decimals,
+	});
+	
+	return numString;
+}
+
+
+// -----------------------
+
 // Convert a "RGB Tuple" into a "rgb()" color string
 // < rgbTuple: ([uchar, uchar, uchar]) RGB color, represented as "0 <= c <= 255"
 // > returns: (str) "rgb(r, g, b)"
@@ -1624,7 +1740,12 @@ function clearSpectrogramCanvasCache()
 // Clear cache of notes identified
 function clearDetectedNotesList()
 {
+	// Clear the detected events list
 	midiEvents.length = 0;
+	
+	// Update any UI elements displaying the contents of that list
+	clearPitchIdTableContents();
+	updatePitchesDetectedPlaceholderBannerVisibility();
 }
 
 // ---------------------------
@@ -1699,6 +1820,8 @@ function recalcNoteIdsOnly()
 		// Recalculate the most likely pitches
 		identifyMidiEventForSlice(i, cachedSpectrogram[i]);
 	}
+	
+	updatePitchesDetectedTable();
 }
 
 // ---------------------------
@@ -1770,6 +1893,8 @@ async function processAudio(buffer)
 			r => setTimeout(r, 0)
 		);
 	}
+	
+	updatePitchesDetectedTable();
 	
 	const totalTimeElapsed = elapsedTime(processingStart);
 	updateStatusText(
@@ -3147,6 +3272,188 @@ document.getElementById("colorPickerNumInput_Blue").onchange = () => {
 	setColorPickerValue_Blue(parseInt(colorPickerNumInput_Blue.value));
 };
 
+// Pitches Detected Table ============================
+
+// Clear contents of the pitchIdsTable
+// TODO: Don't clear the headers...
+function clearPitchIdTableContents()
+{
+	// Lazy way to clear everything in the table
+	const table = document.getElementById("pitchIdsTable");
+	table.innerHTML = '';
+	
+	// Force the container div to scroll back to the beginning
+	const tableContainerDiv = document.getElementById("pitchIdPanelContents");
+	tableContainerDiv.scrollTop = 0;
+}
+
+// Create pitchIdTable -> Header
+// < table: (HTML Table)
+function createPitchIdTableHeader(table)
+{
+	const thead = document.createElement("thead");
+	const headerRow = document.createElement("tr");
+	
+	// Row Index
+	{
+		const th = document.createElement("th");
+		th.textContent = "ID";
+		headerRow.appendChild(th);
+	}
+	
+	// Start Time
+	{
+		const th = document.createElement("th");
+		th.textContent = "Start Time (s)";
+		headerRow.appendChild(th);
+	}
+	
+	// End Time
+	{
+		const th = document.createElement("th");
+		th.textContent = "End Time (s)";
+		headerRow.appendChild(th);
+	}
+	
+	// Note Identified
+	{
+		const th = document.createElement("th");
+		th.textContent = "Key Pitch";
+		headerRow.appendChild(th);
+	}
+	
+	// Strongest Frequency
+	{
+		const th = document.createElement("th");
+		th.textContent = "Strongest Freq (Hz)";
+		headerRow.appendChild(th);
+	}
+	
+	// Strongest Intensity
+	{
+		const th = document.createElement("th");
+		th.textContent = "Strongest Intensity";
+		headerRow.appendChild(th);
+	}
+	
+	// TODO: Other frequencies detected
+	if (false) {
+		const th = document.createElement("th");
+		// ... FIXME ...
+		headerRow.appendChild(th);
+	}
+	
+	thead.appendChild(headerRow);
+	table.appendChild(thead);
+}
+
+// Create pitchIdTable row for a "midiEvent" (i.e. one of the detected note events)
+// < tbody: (HTML Table Body) The "TBODY" element to add the row to
+// < event: (MidiEventObject) The midiEvent from "midiEvents" to represent
+function createPitchIdTableRow(rowIndex, tbody, event)
+{
+	const tr = document.createElement("tr");
+	
+	// Row Index
+	{
+		const th = document.createElement("th");
+		th.textContent = NumberFormat_Standard(rowIndex, 0);
+		tr.appendChild(th);
+	}
+	
+	// Start Time
+	{
+		const td = document.createElement("td");
+		td.textContent = NumberFormat_Standard(event.start);
+		tr.appendChild(td);
+	}
+	
+	// End Time
+	{
+		const td = document.createElement("td");
+		td.textContent = NumberFormat_Standard(event.end);
+		tr.appendChild(td);
+	}
+	
+	// Note Identified
+	{
+		const td = document.createElement("td");
+		td.textContent = event.label;
+		tr.appendChild(td);
+	}
+	
+	// Strongest Frequency + Intensity
+	{
+		const td = document.createElement("td");
+		td.textContent = NumberFormat_Standard(event.freq);
+		tr.appendChild(td);
+	}
+	
+	// Strongest Intensity
+	{
+		const td = document.createElement("td");
+		td.textContent = NumberFormat_Standard(event.intensity);
+		tr.appendChild(td);
+	}
+	
+	// TODO: Other frequencies detected
+	if (false) {
+		const td = document.createElement("td");
+		tr.appendChild(td);
+	}
+	
+	tbody.appendChild(tr);
+}
+
+// Update the "Pitches Detected" table (accessed via the "pitchIdPanel")
+function updatePitchesDetectedTable()
+{
+	const table = document.getElementById("pitchIdsTable");
+	if (!table) {
+		console.error("Could not find pitchIdsTable");
+		return;
+	}
+	
+	// Clear the existing table's contents
+	clearPitchIdTableContents(table);
+	
+	// Populate the table (if there are midiEvents)
+	if (midiEvents.length > 0) {
+		// Create the header
+		// TODO: Only create if it doesn't exist...
+		createPitchIdTableHeader(table);
+		
+		// Body - Per-Detected Pitch Event
+		// TODO: Don't recreate the tbody element each time
+		const tbody = document.createElement("tbody");
+		
+		let i = 1;
+		for (const e of midiEvents) {
+			createPitchIdTableRow(i, tbody, e);
+			i++;
+		}
+		
+		table.appendChild(tbody);
+	}
+	
+	// Update visibility of the placeholder banner...
+	updatePitchesDetectedPlaceholderBannerVisibility();
+}
+
+// Update visibility of the placeholder banner...
+function updatePitchesDetectedPlaceholderBannerVisibility()
+{
+	// If there is content, hide the banner. Otherwise, show it
+	const placeholderBanner = document.getElementById("pitchIdsTablePlaceholderBanner");
+	if (midiEvents.length > 0) {
+		// Hide banner - We have a table
+		placeholderBanner.classList.add("hidden");
+	}
+	else {
+		// Show banner - Nothing to see
+		placeholderBanner.classList.remove("hidden");
+	}
+}
 
 // Button Event Handlers =============================
 
@@ -3511,11 +3818,39 @@ document.getElementById("file").onchange = () => {
 // Start analysing audio...
 document.getElementById("analyzeBtn").onclick = analyseAudio;
 
+// Popup Tool Panels ========================================
+
+// Export ---------------------------------------------------
+
 // Export detected notes...
 document.getElementById("exportBtn").onclick = exportDetectedNotes;
 
+// PitchId Panel
+document.getElementById("pitchIdBtn").onclick = () => {
+	// Ensure "About" is closed
+	const o = document.getElementById("aboutPanel");
+	o.classList.add("hidden");
+	
+	// Show PitchID panel
+	const p = document.getElementById("pitchIdPanel");
+	p.classList.toggle("hidden");
+};
+
+// Close "PitchId" Panel
+document.getElementById("closePitchIdsBtn").onclick = () => {
+	const p = document.getElementById("pitchIdPanel");
+	p.classList.add("hidden");
+}
+
+// About ---------------------------------------------------
+
 // About Panel
 document.getElementById("aboutBtn").onclick = () => {
+	// Ensure "PitchID" panel is closed
+	const o = document.getElementById("pitchIdPanel");
+	o.classList.add("hidden");
+	
+	// Show About Panel
 	const p = document.getElementById("aboutPanel");
 	p.classList.toggle("hidden");
 };
