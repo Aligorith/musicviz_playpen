@@ -18,7 +18,7 @@ html, body {
 	color: white;
 	font-family: sans-serif;
 	
-	line-height: 1.3;
+	line-height: 1.25;
 }
 
 /* Force the wait cursor on everything while the active class is present */
@@ -91,6 +91,31 @@ html.is-processing * {
 /* ************************* */
 /* General Basics for Common HTML Elements */
 
+/* Headings - Increase spacing before, but reduce after */
+h2, h3
+{
+	margin-top: 1.3em;
+	margin-bottom: 0.2em;
+}
+
+/* General Paragraph Formatting */
+p:not(:last-child) {
+	/* Increase spacing between paragraphs */
+	margin-bottom: 1.5em;
+	
+	/* Don't put too much gap above (relative to headings) */
+	margin-top: 0.3em;
+}
+
+/* General list item formatting */
+li:not(:last-child) {
+	/* Increase spacing between items */
+	margin-bottom: 1.25em;
+	
+	/* Don't put too much gap above (relative to headings) */
+	margin-top: 0.3em;
+}
+
 /* Basic link styling
  * (To be more visible against black)
  */
@@ -111,12 +136,6 @@ aside {
 	padding-left: 20px;
 	background-color: rgba(128,128,128, 0.3);
 	border-left: 4px solid lightskyblue;
-}
-
-/* General list item formatting */
-li:not(:last-child) {
-	/* Increase spacing between items */
-	margin-bottom: 3px;
 }
 
 /* ************************* */
@@ -501,7 +520,7 @@ th, td {
 					<b>Basic Usage:</b>
 					<ol>
 						<li>Load an audio file</li>
-						<li>Configuring tuning (i.e. "A = 440Hz or A = 432 Hz)")</li>
+						<li>Configuring tuning (i.e. "<a href="https://en.wikipedia.org/wiki/A440_(pitch_standard)">A = 440 Hz</a>" or "<a href="https://en.wikipedia.org/wiki/Concert_pitch#19th-_and_20th-century_standards">A = 432 Hz</a>")</li>
 						<li>Click "Analyze" to process</li>
 						<li>You can now play / scrub / explore, or export the spectrogram</li>
 					</ol>
