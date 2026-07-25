@@ -473,6 +473,26 @@ th, td {
 	font-size: 1.05em;
 }
 
+/* ************************* */
+/* Pitch ID's Table */
+
+/* NOTE: PitchID column is child "1" */
+
+/* Left Align Pitch ID's Table Contents... */
+#pitchIdsTable tbody td:nth-child(4)  /* Key Pitch */
+{
+	text-align: left;
+}
+
+/* Right Align Pitch Id's Table Columns... */
+#pitchIdsTable tbody td:nth-child(2),  /* Start Time */
+#pitchIdsTable tbody td:nth-child(3),  /* End Time */
+#pitchIdsTable tbody td:nth-child(5),  /* Freq */
+#pitchIdsTable tbody td:nth-child(6)   /* Strength */
+{
+	text-align: right;
+}
+
 </style>
 </head>
 
