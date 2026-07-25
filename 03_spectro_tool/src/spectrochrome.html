@@ -1188,6 +1188,22 @@ function setStopRecordingButtonState()
 
 // -----------------------
 
+// Formats the number with decimal and thousands separator.
+// < v: (float) The number value to format
+// < decimals: (int) The number of decimal values to show
+function NumberFormat_Standard(v, decimals=1)
+{
+	let numString = v.toLocaleString(undefined, {
+		minimumFractionDigits: decimals,
+		maximumFractionDigits: decimals,
+	});
+	
+	return numString;
+}
+
+
+// -----------------------
+
 // Convert a "RGB Tuple" into a "rgb()" color string
 // < rgbTuple: ([uchar, uchar, uchar]) RGB color, represented as "0 <= c <= 255"
 // > returns: (str) "rgb(r, g, b)"
