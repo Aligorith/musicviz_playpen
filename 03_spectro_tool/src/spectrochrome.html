@@ -3253,6 +3253,13 @@ function createPitchIdTableHeader(table)
 		headerRow.appendChild(th);
 	}
 	
+	// Note Identified
+	{
+		const th = document.createElement("th");
+		th.textContent = "Key Pitch";
+		headerRow.appendChild(th);
+	}
+	
 	// Strongest Frequency
 	{
 		const th = document.createElement("th");
@@ -3264,13 +3271,6 @@ function createPitchIdTableHeader(table)
 	{
 		const th = document.createElement("th");
 		th.textContent = "Strongest Intensity";
-		headerRow.appendChild(th);
-	}
-	
-	// Note Identified
-	{
-		const th = document.createElement("th");
-		th.textContent = "Key Pitch";
 		headerRow.appendChild(th);
 	}
 	
@@ -3313,6 +3313,13 @@ function createPitchIdTableRow(rowIndex, tbody, event)
 		tr.appendChild(td);
 	}
 	
+	// Note Identified
+	{
+		const td = document.createElement("td");
+		td.textContent = event.label;
+		tr.appendChild(td);
+	}
+	
 	// Strongest Frequency + Intensity
 	{
 		const td = document.createElement("td");
@@ -3324,13 +3331,6 @@ function createPitchIdTableRow(rowIndex, tbody, event)
 	{
 		const td = document.createElement("td");
 		td.textContent = NumberFormat_Standard(event.intensity);
-		tr.appendChild(td);
-	}
-	
-	// Note Identified
-	{
-		const td = document.createElement("td");
-		td.textContent = event.label;
 		tr.appendChild(td);
 	}
 	
