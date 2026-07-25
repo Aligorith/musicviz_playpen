@@ -575,15 +575,17 @@ table.pretty-data-table tbody tr:hover {
 	<div id="aboutPanel" class="centered-floating-panel hidden">
 		<div class="popup-panel-contents">
 			<h1>About Spectrochrome</h1>
-			<p>Spectrochrome is an experimental music visualisation tool. It is based on a "showcqt" style <a href="https://en.wikipedia.org/wiki/Spectrogram">spectrogram</a> visualisation, but unlike conventional approaches, this tool assigns a set of hand-picked colours for each pitch (versus using colour to encode intensity).</p>
+			<p>Spectrochrome is an experimental music visualisation tool. It is based on a "<a href="https://trac.ffmpeg.org/wiki/FancyFilteringExamples#showcqt">showcqt</a>" style <a href="https://en.wikipedia.org/wiki/Spectrogram">spectrogram</a> visualisation, but unlike conventional approaches, this tool assigns a set of hand-picked colours for each pitch (versus using colour to encode intensity).</p>
 			
 			<!-- TODO: Include colour scale figure-->
 			
 			<p>In addition to showing a pitch-keyed spectrogram, this tool also acts as a testbed for identifying the notes being played at each instant. The current "strongest pitch detection" algorithm implemented is a crude method for trying to find a way of detecting the melody line of the clip (though it doesn't work very well yet!)  Building out these capabilities is topic for future development.</p>
 			
 			<h2>Implementation Details</h2>
-			<p>This tool is currently implemented using Vanilla Javascript in a Single HTML file (*), with all processing and rendering happening entirely locally in browser.</p>
-			<aside>(*) There is an optional (but default-enabled) external dependency on the <a href="https://github.com/indutny/fft.js/">fft.js</a> library. This is used to accelerate the Fast Fourier Transform calculations needed for decomposing the audio into its constituent frequencies. Without this library, even a 10 second clip can easily take a 1.5 minutes to process on a reasonably grunty CPU.</aside>
+			<p>This tool is currently implemented using Plain/Vanilla Javascript in a single HTML file (*). All processing and rendering strictly happens entirely locally in your browser, on your own hardware.</p>
+			<aside>
+				(*) There is an optional (but default-enabled) external dependency on the <a href="https://github.com/indutny/fft.js/">fft.js</a> library. This is used to accelerate the Fast Fourier Transform calculations needed for decomposing the audio into its constituent frequencies. Without this library, even a 10 second clip can easily take a 1.5 minutes to process on a reasonably grunty CPU.
+			</aside>
 			
 			<h2>Usage Tips</h2>
 			<ul>
@@ -675,7 +677,7 @@ table.pretty-data-table tbody tr:hover {
 		
 		<!-- Button Box -->
 		<div class="centerControls">
-			<button id="exportBtn">Export...</button>
+			<button id="exportBtn">Export as CSV</button>
 			
 			<button id="closePitchIdsBtn" title="Close 'Pitches Detected' panel">Close</button>
 		</div>
