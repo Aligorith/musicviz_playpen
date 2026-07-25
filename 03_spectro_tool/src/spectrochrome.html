@@ -513,6 +513,16 @@ table.pretty-data-table tbody tr:hover {
 	text-align: right;
 }
 
+/* Make header sticky, so it's clear what the columns are for
+ * when the table gets scrolled down
+ */
+#pitchIdsTable thead th {
+	position: sticky;
+	top: 0;
+	background: #10353e; /* Prevent rows from showing through. Color to complement aside accents (lightskyblue) */
+	z-index: 1;
+}
+
 </style>
 </head>
 
