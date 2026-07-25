@@ -3200,7 +3200,17 @@ function createPitchIdTableHeader(table)
 	const thead = document.createElement("thead");
 	const headerRow = document.createElement("tr");
 	
+	// Start Time
 	
+	// End Time
+	
+	// Strongest Frequency
+	
+	// Note Identified
+	
+	// Intensity of the Strongest Frequency
+	
+	// TODO: Other frequencies detected
 	
 	thead.appendChild(headerRow);
 	table.appendChild(thead);
@@ -3231,6 +3241,7 @@ function updatePitchesDetectedTable()
 		const tbody = document.createElement("tbody");
 		
 		//const tr = document.createElement("tr");
+		// TODO: Do this in identifyMidiEventForSlice() to include the extra info?
 		
 		table.appendChild(tbody);
 	}
