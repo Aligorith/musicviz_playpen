@@ -48,8 +48,6 @@ Spectrochrome Roadmap
 
 * Review architecture of the UI, and how much the default text labels / etc. are set in the HTML vs applied on startup. Look into how we can keep these things in sync (so the UI is still useful initially if JS is disabled)
   * JS Disabled Banner?
-  * Help Info Popup?
-  * General Centered Large Popup Panel
 
 * Option to hide the scrubber for taking a screenshot of the overall colourful spectrogram.  (Also include option for disabling the other axes)
   * Dismiss also if dragging fast to the very start or very end?
