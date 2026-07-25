@@ -1737,6 +1737,8 @@ function recalcNoteIdsOnly()
 		// Recalculate the most likely pitches
 		identifyMidiEventForSlice(i, cachedSpectrogram[i]);
 	}
+	
+	updatePitchesDetectedTable();
 }
 
 // ---------------------------
@@ -1808,6 +1810,8 @@ async function processAudio(buffer)
 			r => setTimeout(r, 0)
 		);
 	}
+	
+	updatePitchesDetectedTable();
 	
 	const totalTimeElapsed = elapsedTime(processingStart);
 	updateStatusText(
@@ -3185,6 +3189,61 @@ document.getElementById("colorPickerNumInput_Blue").onchange = () => {
 	setColorPickerValue_Blue(parseInt(colorPickerNumInput_Blue.value));
 };
 
+// Pitches Detected Table ============================
+
+// Create pitchIdTable -> Header
+// < table: (HTML Table)
+function createPitchIdTableHeader(table)
+{
+	const thead = document.createElement("thead");
+	const headerRow = document.createElement("tr");
+	
+	
+	
+	thead.appendChild(headerRow);
+	table.appendChild(thead);
+}
+
+
+// Update the "Pitches Detected" table (accessed via the "pitchIdPanel")
+function updatePitchesDetectedTable()
+{
+	const table = document.getElementById("pitchIdsTable");
+	if (!table) {
+		console.error("Could not find pitchIdsTable");
+		return;
+	}
+	
+	// Clear the existing table's contents
+	// TODO: Don't clear the headers...
+	table.innerHTML = ''; // Clear table
+	
+	// Populate the table (if there are midiEvents)
+	if (midiEvents.length > 0) {
+		// Create the header
+		// TODO: Only create if it doesn't exist...
+		createPitchIdTableHeader();
+		
+		// Body - Per-Detected Pitch Event
+		// TODO: Don't recreate each time
+		const tbody = document.createElement("tbody");
+		
+		//const tr = document.createElement("tr");
+		
+		table.appendChild(tbody);
+	}
+	
+	// If there is content, hide the banner. Otherwise, show it
+	const placeholderBanner = document.getElementById("pitchIdsTablePlaceholderBanner");
+	if (table.tBodies.length === 0) {
+		// Show banner - Nothing to see
+		placeholderBanner.classList.remove("hidden");
+	}
+	else {
+		// Hide banner - We have a table
+		placeholderBanner.classList.add("hidden")
+	}
+}
 
 // Button Event Handlers =============================
 
