@@ -657,7 +657,7 @@ table.pretty-data-table tbody tr:hover {
 	
 	<!-- PITCH ID Panel -->
 	<div id="pitchIdPanel" class="centered-floating-panel hidden">
-		<div class="popup-panel-contents">
+		<div id="pitchIdPanelContents" class="popup-panel-contents">
 			<h1>Pitches Detected</h1>
 			
 			<!-- Placeholder label for when nothing has been detected yet -->
@@ -666,7 +666,7 @@ table.pretty-data-table tbody tr:hover {
 				<p>Load + Analyse an Audio File, or adjust settings under "Tweaks"</p>
 			</aside>
 			
-			<!-- TODO: Auto-populate table of detected pitches at each time, along with strength -->
+			<!-- Auto-populated table of detected pitches (see updatePitchesDetectedTable())-->
 			<table id="pitchIdsTable" class="pretty-data-table"></table>
 		</div>
 		
@@ -1738,7 +1738,12 @@ function clearSpectrogramCanvasCache()
 // Clear cache of notes identified
 function clearDetectedNotesList()
 {
+	// Clear the detected events list
 	midiEvents.length = 0;
+	
+	// Update any UI elements displaying the contents of that list
+	clearPitchIdTableContents();
+	updatePitchesDetectedPlaceholderBannerVisibility();
 }
 
 // ---------------------------
@@ -3269,10 +3274,15 @@ document.getElementById("colorPickerNumInput_Blue").onchange = () => {
 
 // Clear contents of the pitchIdsTable
 // TODO: Don't clear the headers...
-function clearPitchIdTableContents(table)
+function clearPitchIdTableContents()
 {
 	// Lazy way to clear everything in the table
+	const table = document.getElementById("pitchIdsTable");
 	table.innerHTML = '';
+	
+	// Force the container div to scroll back to the beginning
+	const tableContainerDiv = document.getElementById("pitchIdPanelContents");
+	tableContainerDiv.scrollTop = 0;
 }
 
 // Create pitchIdTable -> Header
@@ -3406,8 +3416,6 @@ function updatePitchesDetectedTable()
 	clearPitchIdTableContents(table);
 	
 	// Populate the table (if there are midiEvents)
-	let hasRows = false;
-	
 	if (midiEvents.length > 0) {
 		// Create the header
 		// TODO: Only create if it doesn't exist...
@@ -3424,15 +3432,20 @@ function updatePitchesDetectedTable()
 		}
 		
 		table.appendChild(tbody);
-		hasRows = true;
 	}
 	
+	// Update visibility of the placeholder banner...
+	updatePitchesDetectedPlaceholderBannerVisibility();
+}
+
+// Update visibility of the placeholder banner...
+function updatePitchesDetectedPlaceholderBannerVisibility()
+{
 	// If there is content, hide the banner. Otherwise, show it
 	const placeholderBanner = document.getElementById("pitchIdsTablePlaceholderBanner");
-	if (hasRows) {
+	if (midiEvents.length > 0) {
 		// Hide banner - We have a table
-		placeholderBanner.classList.add("hidden")
-		
+		placeholderBanner.classList.add("hidden");
 	}
 	else {
 		// Show banner - Nothing to see
