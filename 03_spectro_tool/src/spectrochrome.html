@@ -3232,7 +3232,12 @@ function createPitchIdTableHeader(table)
 	const thead = document.createElement("thead");
 	const headerRow = document.createElement("tr");
 	
-	// TODO: Row index
+	// Row Index
+	{
+		const th = document.createElement("th");
+		th.textContent = "ID";
+		headerRow.appendChild(th);
+	}
 	
 	// Start Time
 	{
@@ -3283,11 +3288,16 @@ function createPitchIdTableHeader(table)
 // Create pitchIdTable row for a "midiEvent" (i.e. one of the detected note events)
 // < tbody: (HTML Table Body) The "TBODY" element to add the row to
 // < event: (MidiEventObject) The midiEvent from "midiEvents" to represent
-function createPitchIdTableRow(tbody, event)
+function createPitchIdTableRow(rowIndex, tbody, event)
 {
 	const tr = document.createElement("tr");
 	
-	// TODO: Row index
+	// Row Index
+	{
+		const th = document.createElement("th");
+		th.textContent = NumberFormat_Standard(rowIndex, 0);
+		tr.appendChild(th);
+	}
 	
 	// Start Time
 	{
@@ -3357,8 +3367,10 @@ function updatePitchesDetectedTable()
 		// TODO: Don't recreate the tbody element each time
 		const tbody = document.createElement("tbody");
 		
+		let i = 1;
 		for (const e of midiEvents) {
-			createPitchIdTableRow(tbody, e);
+			createPitchIdTableRow(i, tbody, e);
+			i++;
 		}
 		
 		table.appendChild(tbody);
