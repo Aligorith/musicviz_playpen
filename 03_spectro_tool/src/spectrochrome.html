@@ -294,6 +294,8 @@ th, td {
 	
 	/* Force higher than the background, but below the floating-panels */
 	z-index: 5000;
+	
+	/* TODO: Introduce transition animation when showing? */
 }
 
 
@@ -312,6 +314,7 @@ th, td {
 	/* Show glowy-border along the bottom edge to 
 	 * indicate that there is more to see...
 	 */
+	/* ... TODO... */
 }
 
 /* ************************* */
@@ -475,8 +478,6 @@ th, td {
 			</label>
 			
 			<button id="analyzeBtn">Analyze</button>
-			
-			<button id="exportBtn">Export</button>
 		</div>
 		
 		<div class="centerControls">
@@ -489,6 +490,11 @@ th, td {
 		<div class="rightControls">
 			<button id="legendBtn">Legend</button>
 			<button id="tweaksBtn">Tweaks</button>
+			
+			<!-- Gap -->
+			<div style="width: 15px"></div>
+			
+			<button id="pitchIdBtn">PitchId</button>
 			<button id="aboutBtn">About</button>
 		</div>
 	</div>
@@ -501,6 +507,8 @@ th, td {
 <!-- Container for popover panels appearing centered in the window -->
 <div class="big-popup-panel-host">
 	<!-- NOTE: Only one of these should be visible at a time -->
+	
+	<!-- ABOUT Panel -->
 	<div id="aboutPanel" class="centered-floating-panel hidden">
 		<div class="popup-panel-contents">
 			<h1>About Spectrochrome</h1>
@@ -580,6 +588,33 @@ th, td {
 		<!-- Close About Panel -->
 		<div class="centerControls">
 			<button id="closeAboutBtn" title="Close 'About' text panel">Close</button>
+		</div>
+	</div>
+	
+	
+	<!-- PITCH ID Panel -->
+	<div id="pitchIdPanel" class="centered-floating-panel hidden">
+		<div class="popup-panel-contents">
+			<h1>Pitches Detected</h1>
+			
+			<!-- Placeholder label for when nothing has been detected yet -->
+			<aside id="pitchIdsTablePlaceholderBanner">
+				<b>No pitches detected yet.</b>
+				<p>Load + Analyse an Audio File, or adjust settings under "Tweaks"</p>
+			</aside>
+			
+			<!-- TODO: Auto-populate table of detected pitches at each time, along with strength -->
+			<table id="pitchIdsTable"></table>
+		</div>
+		
+		<!-- Gap -->
+		<div style="height: 15px;"></div>
+		
+		<!-- Button Box -->
+		<div class="centerControls">
+			<button id="exportBtn">Export...</button>
+			
+			<button id="closePitchIdsBtn" title="Close 'Pitches Detected' panel">Close</button>
 		</div>
 	</div>
 </div>
@@ -3511,11 +3546,39 @@ document.getElementById("file").onchange = () => {
 // Start analysing audio...
 document.getElementById("analyzeBtn").onclick = analyseAudio;
 
+// Popup Tool Panels ========================================
+
+// Export ---------------------------------------------------
+
 // Export detected notes...
 document.getElementById("exportBtn").onclick = exportDetectedNotes;
 
+// PitchId Panel
+document.getElementById("pitchIdBtn").onclick = () => {
+	// Ensure "About" is closed
+	const o = document.getElementById("aboutPanel");
+	o.classList.add("hidden");
+	
+	// Show PitchID panel
+	const p = document.getElementById("pitchIdPanel");
+	p.classList.toggle("hidden");
+};
+
+// Close "PitchId" Panel
+document.getElementById("closePitchIdsBtn").onclick = () => {
+	const p = document.getElementById("pitchIdPanel");
+	p.classList.add("hidden");
+}
+
+// About ---------------------------------------------------
+
 // About Panel
 document.getElementById("aboutBtn").onclick = () => {
+	// Ensure "PitchID" panel is closed
+	const o = document.getElementById("pitchIdPanel");
+	o.classList.add("hidden");
+	
+	// Show About Panel
 	const p = document.getElementById("aboutPanel");
 	p.classList.toggle("hidden");
 };
