@@ -1677,47 +1677,92 @@ function fft(sig)
 //   if it finds anything worth adding.
 function identifyMidiEventForSlice(i, spec)
 {
-	// Find the strongest frequency
-	let strongestMagnitude = 0;
-	let strongestBin = 0;
+	// Find the strongest frequencies that are within range
+	// NOTE: We can no longer report if the strongest freq present was out of range
+	let allPeaks = [];
 	
 	for (let b = 1; b < spec.length; b++) {
-		if (spec[b] > strongestMagnitude) {
-			strongestMagnitude = spec[b];
-			strongestBin = b;
+		// TODO: Apply loudness-boost corrections to the magnitude?
+		// TODO: Apply equal loudness corrections to the magnitude?
+		let magnitude = spec[b];
+		
+		// Only consider this entry if the magnitude exceeds the minimum threshold
+		// of significance  (see "reference_data" datafiles for examples of the
+		// range of values, and why this has been set like this)
+		if (magnitude > minimumPitchStrength) {
+			// Figure out what note this represents
+			const freq = b * fftToFreqFactor;
+			const note = midiToLabel(tunedMidi(freq));
+			
+			// Skip if frequency is outside the range we care about
+			if (freq < MIN_FREQ || freq > MAX_FREQ) {
+				continue;
+			}
+			
+			// Add to list of all peaks found
+			allPeaks.push({
+				freq: freq,
+				label: note,
+				magnitude: spec[b]
+			});
 		}
 	}
 	
-	// Only consider this entry if it exceeds the minimum threshold
-	// of significance  (see "reference_data" datafiles for examples
-	// of the range of values, and why this has been set like this)
-	if (strongestMagnitude > minimumPitchStrength) {
-		const freq = strongestBin * fftToFreqFactor;
-		const note = midiToLabel(tunedMidi(freq));
+	// Sort peaks:
+	// * First by magnitude (strongest to weakest)
+	// * Then by frequency (to get the fundamentals before the harmonics, if applicable)
+	allPeaks.sort((a, b) => {
+		if (a.magnitude > b.magnitude) {
+			// a has higher magnitude than b, so should come first
+			return -1;
+		}
+		else if (a.magnitude < b.magnitude) {
+			// a has lower magnitude than b, so should later
+			return 1;
+		}
+		else {
+			// Magnitudes: a == b
+			// Repeat with frequencies...
+			if (a.freq < b.freq) {
+				// Freq: a lower than b, so should come first
+				return -1;
+			}
+			else if (a.freq > b.freq) {
+				// Freq: a higher than b, so should come later
+				return 1;
+			}
+			else {
+				// Even the frequencies are equal - Which shouldn't happen!
+				return 0;
+			}
+		}
+	});
+	
+	// TODO: Verify if the two match...
+	if (allPeaks.length > 0) {
+		// Peaks are sorted in order of strength...
+		const strongestPeak = allPeaks[0];
 		
 		const prev = midiEvents[midiEvents.length - 1];
 		const t = i * HOP / audioCtx.sampleRate;
-		
-		// Sanity Check: Skip this note if it falls out of range we're interested in.
-		if (freq < MIN_FREQ || freq > MAX_FREQ) {
-			console.log(`Skipping strongest frequency ${freq} at ${i} (mag = ${strongestMagnitude}, as out of range`);
-			return;
-		}
 		
 		// TODO: The pitch-change-needed thing may be blocking repeated notes
 		//       showing up as new midi events...
 		if (!prev ||
 			(t - prev.start) > 1.1 ||
-			prev.label !== note) 
+			prev.label !== strongestPeak.label)
 		{
+			// Store the info
 			midiEvents.push({
 				start: t,
 				end: t + 0.8,
 				
-				freq,
+				freq: strongestPeak.freq,
 				
-				label: note,
-				intensity: strongestMagnitude
+				label: strongestPeak.label,
+				intensity: strongestPeak.magnitude,
+				
+				peaks: allPeaks
 			});
 		}
 	}
