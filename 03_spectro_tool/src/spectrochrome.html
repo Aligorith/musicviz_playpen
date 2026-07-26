@@ -1700,6 +1700,7 @@ function identifyMidiEventForSlice(i, spec)
 			}
 			
 			// Add to list of all peaks found
+			// FIXME: Need to group these by the note... can't just add all of them!
 			allPeaks.push({
 				freq: freq,
 				label: note,
