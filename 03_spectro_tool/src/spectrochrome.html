@@ -3381,15 +3381,43 @@ function createPitchIdTableHeader(table)
 		headerRow.appendChild(th);
 	}
 	
-	// TODO: Other frequencies detected
-	if (false) {
+	// List of other "Peak Frequencies" detected
+	{
 		const th = document.createElement("th");
-		// ... FIXME ...
+		th.textContent = "Peak Freqs";
 		headerRow.appendChild(th);
 	}
 	
 	thead.appendChild(headerRow);
 	table.appendChild(thead);
+}
+
+// Create the contents to display for the "Peak Freqs" cells
+// < event: (MidiEvent) The event to display data for
+// > returns: (HTML Element) The element to append to the table-cell
+function createPeakFreqsElementForMidiEvent(event)
+{
+	// TODO: Create the table for the collapsed details
+	
+	
+	// Process the data:
+	// 1) Extract the "summary line" (which just shows the pitches)
+	// 2) Construct also the collapsed table, that shows what
+	//    intensities each of these detected frequencies uses
+	let summaryText = "";
+	
+	for (const peakItem of event.peaks) {
+		summaryText += peakItem.label + " | ";
+	}
+	
+	// Create summary line text
+	// FIXME: Placeholder only
+	let summaryElem = document.createElement("p");
+	summaryElem.innerText = summaryText;
+	
+	
+	// FIXME: Return something else later 
+	return summaryElem;
 }
 
 // Create pitchIdTable row for a "midiEvent" (i.e. one of the detected note events)
@@ -3441,9 +3469,14 @@ function createPitchIdTableRow(rowIndex, tbody, event)
 		tr.appendChild(td);
 	}
 	
-	// TODO: Other frequencies detected
-	if (false) {
+	// Peak Frequencies
+	{
 		const td = document.createElement("td");
+		
+		// Create "Peak Frequencies" element
+		let peakFreqsElem = createPeakFreqsElementForMidiEvent(event);
+		td.appendChild(peakFreqsElem);
+		
 		tr.appendChild(td);
 	}
 	
