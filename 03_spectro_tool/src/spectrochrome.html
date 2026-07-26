@@ -1677,9 +1677,11 @@ function fft(sig)
 //   if it finds anything worth adding.
 function identifyMidiEventForSlice(i, spec)
 {
-	// Find the strongest frequencies that are within range
+	// Find the strongest midi-pitches that are within range + identified in this slice
+	// NOTE: We are reporting midi pitches and not individual frequencies, as there can
+	//       be multiple closely-spaced but distinct frequencies present...
 	// NOTE: We can no longer report if the strongest freq present was out of range
-	let allPeaks = [];
+	let allPeaksSet = {};
 	
 	for (let b = 1; b < spec.length; b++) {
 		// TODO: Apply loudness-boost corrections to the magnitude?
@@ -1692,22 +1694,58 @@ function identifyMidiEventForSlice(i, spec)
 		if (magnitude > minimumPitchStrength) {
 			// Figure out what note this represents
 			const freq = b * fftToFreqFactor;
-			const note = midiToLabel(tunedMidi(freq));
+			const midiPitchInfo = tunedMidi(freq);
+			const label = midiToLabel(midiPitchInfo);
 			
 			// Skip if frequency is outside the range we care about
 			if (freq < MIN_FREQ || freq > MAX_FREQ) {
 				continue;
 			}
 			
-			// Add to list of all peaks found
-			// FIXME: Need to group these by the note... can't just add all of them!
-			allPeaks.push({
-				freq: freq,
-				label: note,
-				magnitude: spec[b]
-			});
+			// Convert midi value to a key
+			// NOTE: That value is a double, but the keys need to be ints or strings
+			const midiKey = Math.floor(midiPitchInfo.midi);
+			
+			// Add to list of all peaks found, if this midi note isn't featured yet
+			if (midiKey in allPeaksSet) {
+				// Update an existing entry
+				let existingEntry = allPeaksSet[midiKey];
+				
+				// ... store all frequencies included (so we can play with this further)
+				existingEntry.freqs.push(freq);
+				
+				// ... only store the peak magnitude...
+				if (magnitude > existingEntry.magnitude) {
+					existingEntry.freq = freq;
+					existingEntry.magnitude = magnitude;
+				}
+			}
+			else {
+				allPeaksSet[midiKey] = {
+					key: midiKey,
+					
+					midi: midiPitchInfo,
+					label: label,
+					magnitude: spec[b],
+					
+					freq: freq,    // Max frequency for this pitch
+					freqs: [freq]  // List of all frequencies for this pitch
+				};
+			}
 		}
 	}
+	
+	// Convert peaks set to a list
+	let allPeaks = Object.values(allPeaksSet);
+	
+	if (allPeaks.length == 0) {
+		console.log(`No peaks for slice ${i} (${allPeaks.length})`)
+		return;
+	}
+	
+	console.log(`slice = ${i} - set length = ${allPeaks.length}...`);
+	console.log(`allPeaksSet = ${JSON.stringify(allPeaksSet)}`);
+	console.log(`allPeaks = ${JSON.stringify(allPeaks)}`);
 	
 	// Sort peaks:
 	// * First by magnitude (strongest to weakest)
@@ -1723,12 +1761,12 @@ function identifyMidiEventForSlice(i, spec)
 		}
 		else {
 			// Magnitudes: a == b
-			// Repeat with frequencies...
-			if (a.freq < b.freq) {
+			// Repeat with midi info...
+			if (a.midi < b.midi) {
 				// Freq: a lower than b, so should come first
 				return -1;
 			}
-			else if (a.freq > b.freq) {
+			else if (a.midi > b.midi) {
 				// Freq: a higher than b, so should come later
 				return 1;
 			}
@@ -1739,8 +1777,7 @@ function identifyMidiEventForSlice(i, spec)
 		}
 	});
 	
-	// TODO: Verify if the two match...
-	if (allPeaks.length > 0) {
+	{
 		// Peaks are sorted in order of strength...
 		const strongestPeak = allPeaks[0];
 		
