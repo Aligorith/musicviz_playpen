@@ -1765,19 +1765,39 @@ function identifyMidiEventForSlice(i, spec)
 			return 1;
 		}
 		else {
-			// Magnitudes: a == b
-			// Repeat with midi info...
-			if (a.midi < b.midi) {
-				// Freq: a lower than b, so should come first
+			// Magnitudes: a == b    (i.e. two pitch-bands where the strength is similar)
+			//
+			// Favour:
+			// 1) The option that contains more frequencies
+			//    (i.e. favour a pitch with stronger vibrato / fluctuations)
+			//    so that something like a "g# vs a" situation won't end up
+			//    lots of superfluous entries getting added
+			//
+			// 2) If we still can't decide, favour the one at the lower octave
+			//    (i.e. we want to favour the fundamentals over the harmonics)
+			if (a.freqs.length > b.freqs.length) {
+				// a covers a broader range of freqs than b, so may have more intense vibrato
 				return -1;
 			}
-			else if (a.midi > b.midi) {
-				// Freq: a higher than b, so should come later
+			else if (a.freqs.length < b.freqs.length) {
+				// b has more freqs...
 				return 1;
 			}
 			else {
-				// Even the frequencies are equal - Which shouldn't happen!
-				return 0;
+				// Still a tie... Repeat with midi info, as a proxy for octave
+				if (a.midi < b.midi) {
+					// Freq: a lower than b, so should come first
+					return -1;
+				}
+				else if (a.midi > b.midi) {
+					// Freq: a higher than b, so should come later
+					return 1;
+				}
+				else {
+					// Even the frequencies are equal - Which shouldn't happen!
+					// By this point, the sort order is non-deterministic!
+					return 0;
+				}
 			}
 		}
 	});
@@ -3510,14 +3530,14 @@ function createPitchIdTableRow(rowIndex, tbody, event)
 	// Start Time
 	{
 		const td = document.createElement("td");
-		td.textContent = NumberFormat_Standard(event.start);
+		td.textContent = NumberFormat_Standard(event.start, 2);
 		tr.appendChild(td);
 	}
 	
 	// End Time
 	{
 		const td = document.createElement("td");
-		td.textContent = NumberFormat_Standard(event.end);
+		td.textContent = NumberFormat_Standard(event.end, 2);
 		tr.appendChild(td);
 	}
 	
