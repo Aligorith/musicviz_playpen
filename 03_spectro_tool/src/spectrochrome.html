@@ -677,7 +677,11 @@ table.pretty-data-table tbody tr:hover {
 		
 		<!-- Button Box -->
 		<div class="centerControls">
-			<button id="exportBtn">Export as CSV</button>
+			<button id="exportCsvBtn">Export as CSV</button>
+			<button id="exportJsonBtn">Export as JSON</button>
+			
+			<!-- Gap -->
+			<div style="width: 15px;"></div>
 			
 			<button id="closePitchIdsBtn" title="Close 'Pitches Detected' panel">Close</button>
 		</div>
@@ -2632,8 +2636,10 @@ async function startRecording()
 	playAt(0);
 }
 
-// Export detected note timing info
-function exportDetectedNotes()
+// Export Midi Events ====================================
+
+// Export detected note timing info as a CSV file
+function exportDetectedNotesAsCsv()
 {
 	if (!midiEvents.length) {
 		return;
@@ -2665,6 +2671,34 @@ function exportDetectedNotes()
 	a.href = url;
 	
 	const filename = `${inputFileName}_detected_notes_v${recordVersion}.csv`;
+	a.download = filename;
+	a.click();
+	
+	URL.revokeObjectURL(url);
+}
+
+// Export detected note timing info as a JSON file
+function exportDetectedNotesAsJson()
+{
+	if (!midiEvents.length) {
+		return;
+	}
+	
+	let jsonBlob = JSON.stringify(midiEvents, null, '\t');
+	
+	const blob =
+		new Blob(
+			[jsonBlob],
+			{
+				type: "application/json."
+			}
+		);
+	
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement("a");
+	a.href = url;
+	
+	const filename = `${inputFileName}_detected_notes_v${recordVersion}.json`;
 	a.download = filename;
 	a.click();
 	
@@ -3939,7 +3973,8 @@ document.getElementById("analyzeBtn").onclick = analyseAudio;
 // Export ---------------------------------------------------
 
 // Export detected notes...
-document.getElementById("exportBtn").onclick = exportDetectedNotes;
+document.getElementById("exportCsvBtn").onclick = exportDetectedNotesAsCsv;
+document.getElementById("exportJsonBtn").onclick = exportDetectedNotesAsJson;
 
 // PitchId Panel
 document.getElementById("pitchIdBtn").onclick = () => {
