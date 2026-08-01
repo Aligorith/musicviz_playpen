@@ -1014,10 +1014,13 @@ let minimumPitchStrength = 30;
 // Automatically prune any events / peaks detected whose magnitude falls below
 // "pruneWeakPitchThresh" (relative to the average / median) pitch-magnitudes 
 // detected...
-let pruneWeakerPitches = true;  // TODO: Expose in UI
+	// TODO: Expose in UI
+let pruneWeakerPitches = true;
 
-// Threshold to use for pruneWeakerMidiEvents()
-let pruneWeakPitchThresh = 1.0;
+// Threshold to use for pruneWeakerMidiEvents() - Applied as an offset to
+// raise (+ve) or lower (-ve) the threshold at which the values are excluded.
+	// TODO: Expose in UI
+let pruneWeakPitchThresh = 0.0;
 
 // Viz State Constants ==================================
 
@@ -1889,21 +1892,13 @@ function pruneWeakerMidiEvents()
 	});
 	console.log(`Average magnitude from ${midiEvents.length} events is ${meanMagnitude}  (min=${minMagnitude}, max=${maxMagnitude})`);
 	
-	// Calculate standard deviation...
-	let deviances = midiEvents.map(e => {
-		return Math.pow(e.intensity - meanMagnitude, 2);
-	});
-	let variance = Math.sumPrecise(deviances) / (deviances.length);
-	let stdev = Math.sqrt(variance);
-	console.log(`Stdev magnitude is ${stdev}`);
-	
 	// Filter out anything below the thresh - 
-	let magnitudeThresh = meanMagnitude - (stdev * pruneWeakPitchThresh);
-	console.log(`Weak Magnitude Filtering Threshold = ${magnitudeThresh} (at ${pruneWeakPitchThresh} SD's of the Mean at ${meanMagnitude})`);
+	let magnitudeThresh = meanMagnitude - pruneWeakPitchThresh;
+	console.log(`Weak Magnitude Filtering Threshold = ${magnitudeThresh} (i.e. ${pruneWeakPitchThresh} Offset from the Mean at ${meanMagnitude})`);
 	
 	let filteredEvents = midiEvents.filter(e => {
 		// Check if this event is ok
-		if (e.intensity > magnitudeThresh) {
+		if (e.intensity >= magnitudeThresh) {
 			// Filter its peaks too...
 			e.allPeaks = e.peaks;  // Archive original "peaks" list
 			e.peaks = e.peaks.filter(f => {
