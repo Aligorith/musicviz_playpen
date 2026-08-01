@@ -993,15 +993,31 @@ let aTuningHz = 440;
 
 // "Tweaks" Panel Items ---------
 
+// "Brightness / Loudness" Tweaks ..............
+
 // "Boost" factor to brighten dim layouts
 let brightnessBoost = 1;
+
+// "Tuning" Tweaks .............................
 
 // Offset to all pitch values in semitones (to adjust minor off-tuning)
 let tuningOffset = 0;
 
+
+// Weak Pitch Pruning ..........................
+
 // Minimum "magnitude" in the spectrogram needed for a pitch to be considered
 // for the "dominant pitch" detection
 let minimumPitchStrength = 30;
+
+
+// Automatically prune any events / peaks detected whose magnitude falls below
+// "pruneWeakPitchThresh" (relative to the average / median) pitch-magnitudes 
+// detected...
+let pruneWeakerPitches = true;  // TODO: Expose in UI
+
+// Threshold to use for pruneWeakerMidiEvents()
+let pruneWeakPitchThresh = 1.0;
 
 // Viz State Constants ==================================
 
@@ -1840,6 +1856,72 @@ function identifyMidiEventForSlice(i, spec)
 	}
 }
 
+// Pitch Detection Optimisation Pass: "Weak Pitch Pruning"
+//
+// This removes any events that have a peak magnitude less than the
+// "pruneWeakPitchThresh" threshold, relative to the detected magnitudes.
+//
+// ! Assumes that this is only called when pruneWeakerPitches is enabled.
+function pruneWeakerMidiEvents()
+{
+	// Sanity Check
+	if (midiEvents.length <= 2) {
+		// Too few datapoints to prune...
+		return;
+	}
+	
+	// Compute "average" peak (and/or the min/max values)
+	// TODO: Store these values in variables to expose in the UI
+	// TODO: Calculate median too...
+	const avgFactor = 1.0 / midiEvents.length;
+	
+	let meanMagnitude = 0.0;
+	let minMagnitude = Number.MAX_VALUE;
+	let maxMagnitude = 0.0; // Note: Should not be lower than 
+	
+	console.log("\nComputing average magnitude from detected peaks...");
+	midiEvents.forEach(e => {
+		console.log(`magnitude = ${e.intensity}`)
+		meanMagnitude += e.intensity * avgFactor;
+		
+		minMagnitude = Math.min(minMagnitude, e.intensity);
+		maxMagnitude = Math.max(maxMagnitude, e.intensity);
+	});
+	console.log(`Average magnitude from ${midiEvents.length} events is ${meanMagnitude}  (min=${minMagnitude}, max=${maxMagnitude})`);
+	
+	// Calculate standard deviation...
+	let deviances = midiEvents.map(e => {
+		return Math.pow(e.intensity - meanMagnitude, 2);
+	});
+	let variance = Math.sumPrecise(deviances) / (deviances.length);
+	let stdev = Math.sqrt(variance);
+	console.log(`Stdev magnitude is ${stdev}`);
+	
+	// Filter out anything below the thresh - 
+	let magnitudeThresh = meanMagnitude - (stdev * pruneWeakPitchThresh);
+	console.log(`Weak Magnitude Filtering Threshold = ${magnitudeThresh} (at ${pruneWeakPitchThresh} SD's of the Mean at ${meanMagnitude})`);
+	
+	let filteredEvents = midiEvents.filter(e => {
+		// Check if this event is ok
+		if (e.intensity > magnitudeThresh) {
+			// Filter its peaks too...
+			e.allPeaks = e.peaks;  // Archive original "peaks" list
+			e.peaks = e.peaks.filter(f => {
+				return f.magnitude >= magnitudeThresh;
+			});
+			
+			return true;
+		}
+		
+		// Doesn't meet the threshold
+		return false;
+	});
+	
+	// Replace the array - Need to use "splice(), as cannot just reassign)
+	midiEvents.splice(0, midiEvents.length, ...filteredEvents);
+	console.log(`After filtering count = ${midiEvents.length}`);
+}
+
 // ---------------------------
 
 // Clear the cached spectrogram canvas
@@ -1919,6 +2001,11 @@ function recalcSpectrogramAndAllNoteIds()
 		// TODO: Update progress text
 	}
 	
+	// Apply "weak pitches pruning" pass
+	if (pruneWeakerPitches) {
+		pruneWeakerMidiEvents();
+	}
+	
 	// Update UI table
 	updatePitchesDetectedTable();
 }
@@ -1939,6 +2026,11 @@ function recalcNoteIdsOnly()
 	for (let i = 0; i < cachedSpectrogram.length; i++) {
 		// Recalculate the most likely pitches
 		identifyMidiEventForSlice(i, cachedSpectrogram[i]);
+	}
+	
+	// Apply "weak pitches pruning" pass
+	if (pruneWeakerPitches) {
+		pruneWeakerMidiEvents();
 	}
 	
 	// Update UI table
@@ -2013,6 +2105,14 @@ async function processAudio(buffer)
 		await new Promise(
 			r => setTimeout(r, 0)
 		);
+	}
+	
+	// Apply "weak pitches pruning" pass
+	if (pruneWeakerPitches) {
+		const timeElapsedSoFar = elapsedTime(processingStart);
+		updateStatusText(`Pruning weaker pitches... Processing took ${timeElapsedSoFar.toFixed(1)}s`);
+		
+		pruneWeakerMidiEvents();
 	}
 	
 	// Update pitches detected table...
