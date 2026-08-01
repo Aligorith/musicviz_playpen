@@ -1811,12 +1811,21 @@ function identifyMidiEventForSlice(i, spec)
 		
 		// TODO: The pitch-change-needed thing may be blocking repeated notes
 		//       showing up as new midi events...
+		// TODO: The pitch change may be too sensitive for certain frequency-strength warbles?
+		//       Maybe switch to an explicit parameter for both of these conditions?
 		if (!prev ||
 			(t - prev.start) > 1.1 ||
 			prev.label !== strongestPeak.label)
 		{
 			// Store the info
 			midiEvents.push({
+				// Debug (Which condition let this through) ----------
+				conditionA: midiEvents.length === 0,
+				conditionB: (prev) ? (t - prev.start) > 1.1 : undefined,
+				conditionC: (prev) ? prev.label !== strongestPeak.label : undefined,
+				// --------------------------------------------------
+				
+				
 				start: t,
 				end: t + 0.8,
 				
