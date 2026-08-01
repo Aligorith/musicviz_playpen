@@ -1715,8 +1715,9 @@ function identifyMidiEventForSlice(i, spec)
 				// Update an existing entry
 				let existingEntry = allPeaksSet[midiKey];
 				
-				// ... store all frequencies included (so we can play with this further)
-				existingEntry.freqs.push(freq);
+				// Store all frequencies included (so we can play with this further)
+				// NOTE: Store these as frequency-magnitude pairs to preserve this info
+				existingEntry.freqs.push({ freq, magnitude });
 				
 				// ... only store the peak magnitude...
 				if (magnitude > existingEntry.magnitude) {
@@ -1730,10 +1731,10 @@ function identifyMidiEventForSlice(i, spec)
 					
 					midi: midiPitchInfo,
 					label: label,
-					magnitude: spec[b],
+					magnitude: magnitude,
 					
 					freq: freq,    // Max frequency for this pitch
-					freqs: [freq]  // List of all frequencies for this pitch
+					freqs: [{ freq, magnitude }]  // List of all frequencies-magnitude pairs for this pitch
 				};
 			}
 		}
