@@ -1931,7 +1931,7 @@ function pruneWeakerMidiEvents()
 	
 	console.log("\nComputing average magnitude from detected peaks...");
 	midiEvents.forEach(e => {
-		console.log(`magnitude = ${e.intensity}`)
+		console.log(`    ${e.label}: magnitude = ${e.intensity}`)
 		meanMagnitude += e.intensity * avgFactor;
 		
 		minMagnitude = Math.min(minMagnitude, e.intensity);
