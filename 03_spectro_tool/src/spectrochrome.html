@@ -1022,6 +1022,19 @@ let pruneWeakerPitches = true;
 	// TODO: Expose in UI
 let pruneWeakPitchThresh = 0.0;
 
+
+// Tuning Jitter Fixes ..........................
+
+// Minimum time in seconds between notes when they will be considered
+// allowed to emit a new event
+// NOTE: Tweak to allow repeating notes in a melody
+let minimumNewNoteSpacingSecs = 1.1;
+
+// Minimum time in seconds between semitone step changes being allowed
+// NOTE: This is supposed to get rid of semitone step flip-flopping issues 
+let minimumSemitoneChangeSpacingSecs = 1.1;
+
+
 // Viz State Constants ==================================
 
 // Min/Max Range of Frequencies able to be shown:
@@ -1825,25 +1838,59 @@ function identifyMidiEventForSlice(i, spec)
 		// Peaks are sorted in order of strength...
 		const strongestPeak = allPeaks[0];
 		
+		// Try to retrieve last added event. Will be undefined if none exists yet
 		const prev = midiEvents[midiEvents.length - 1];
+		
+		// Calculate timestamp for this event
 		const t = i * HOP / audioCtx.sampleRate;
 		
-		// TODO: The pitch-change-needed thing may be blocking repeated notes
-		//       showing up as new midi events...
-		// TODO: The pitch change may be too sensitive for certain frequency-strength warbles?
-		//       Maybe switch to an explicit parameter for both of these conditions?
-		if (!prev ||
-			(t - prev.start) > 1.1 ||
-			prev.label !== strongestPeak.label)
-		{
+		// Determine if we can add this event...
+		let canIncludeEvent = false;
+		let inclusionCriteria = undefined;
+		
+		if (!prev) {
+			// No previous
+			canIncludeEvent = true;
+			inclusionCriteria = "First Event";
+		}
+		else if ((t - prev.start) > minimumNewNoteSpacingSecs) {
+			// It has been long enough since the last note detected
+			canIncludeEvent = true;
+			inclusionCriteria = "Long enough since last event";
+		}
+		else if (prev.label !== strongestPeak.label) {
+			// Pitch has changed. Only allow this if this isn't a semitone change
+			// that has occurred after `minimumSemitoneChangeSpacingSecs` from the last
+			// event...
+			const prevMidi = prev.peaks[0].midi;
+			const thisMidi = strongestPeak.midi;
+			const midiDistance = Math.abs(thisMidi - prevMidi);
+			
+			if (midiDistance > 1) {
+				// At least 2 steps, so not likely to be fuzzy midi overlap
+				canIncludeEvent = true;
+				inclusionCriteria =
+					`Midi more than 1 semitone ` +
+					`(${midiDistance}: prev = ${prevMidi}, this =${thisMidi})`;
+			}
+			else if ((t - prev.start) > minimumSemitoneChangeSpacingSecs) {
+				// Semitone, but exceeds spacing requirement
+				canIncludeEvent = true;
+				inclusionCriteria =
+					`Semitone more than ${minimumSemitoneChangeSpacingSecs}s later: ` +
+					`t_delta = ${t - prev.start} s`;
+			}
+			else {
+				// TODO: Update prev event to include this one?
+				// (e.g. To fix problems with the wrong initial pitch being assigned?)
+			}
+		}
+		
+		// Check if this event can now be added...
+		if (canIncludeEvent) {
 			// Store the info
 			midiEvents.push({
-				// Debug (Which condition let this through) ----------
-				conditionA: midiEvents.length === 0,
-				conditionB: (prev) ? (t - prev.start) > 1.1 : undefined,
-				conditionC: (prev) ? prev.label !== strongestPeak.label : undefined,
-				// --------------------------------------------------
-				
+				inclusionCriteria,
 				
 				start: t,
 				end: t + 0.8,
