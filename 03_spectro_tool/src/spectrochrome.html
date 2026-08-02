@@ -1017,10 +1017,10 @@ let minimumPitchStrength = 30;
 	// TODO: Expose in UI
 let pruneWeakerPitches = true;
 
-// Threshold to use for pruneWeakerMidiEvents() - Applied as an offset to
-// raise (+ve) or lower (-ve) the threshold at which the values are excluded.
+// Threshold to use for pruneWeakerMidiEvents()
+// NOTE: Applied as an absolute value
 	// TODO: Expose in UI
-let pruneWeakPitchThresh = 0.0;
+let pruneWeakPitchThresh = 110.0;
 
 
 // Tuning Jitter Fixes ..........................
@@ -1939,8 +1939,8 @@ function pruneWeakerMidiEvents()
 	});
 	console.log(`Average magnitude from ${midiEvents.length} events is ${meanMagnitude}  (min=${minMagnitude}, max=${maxMagnitude})`);
 	
-	// Filter out anything below the thresh - 
-	let magnitudeThresh = meanMagnitude - pruneWeakPitchThresh;
+	// Filter out anything below the thresh...
+	let magnitudeThresh = (meanMagnitude < 100) ? meanMagnitude : pruneWeakPitchThresh;
 	console.log(`Weak Magnitude Filtering Threshold = ${magnitudeThresh} (i.e. ${pruneWeakPitchThresh} Offset from the Mean at ${meanMagnitude})`);
 	
 	let filteredEvents = midiEvents.filter(e => {
